@@ -1,0 +1,411 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ClaraCS – 지능형 CS 데이터 분석·인사이트 플랫폼 (MVP 목업)</title>
+  <style>
+    :root {
+      --bg: #0b0d10;          /* 배경 (다크) */
+      --panel: #151922;       /* 패널 배경 */
+      --panel-2: #0f131b;     /* 서브 패널 */
+      --text: #e7eef7;        /* 기본 텍스트 */
+      --muted: #a6b0c2;       /* 보조 텍스트 */
+      --line: #242b36;        /* 경계선 */
+      --brand: #5b8cff;       /* 포인트 */
+      --ok: #3ddc97;
+      --warn: #ffb020;
+      --danger: #ff6b6b;
+      --radius: 16px;
+      --shadow: 0 8px 24px rgba(0,0,0,.25);
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0; color: var(--text); background: linear-gradient(160deg, #0a0e14 0%, #0d1520 100%);
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans KR", Arial, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+      line-height: 1.5;
+    }
+    a { color: inherit; text-decoration: none; }
+    .app {
+      display: grid; grid-template-columns: 280px 1fr; gap: 0; min-height: 100dvh;
+    }
+    /* 사이드바 */
+    .sidebar {
+      position: sticky; top: 0; align-self: start; height: 100dvh; overflow-y: auto;
+      background: rgba(21,25,34,.8); backdrop-filter: blur(8px);
+      border-right: 1px solid var(--line); padding: 20px; display: flex; flex-direction: column; gap: 16px;
+    }
+    .brand { display:flex; align-items:center; gap:10px; }
+    .brand .logo { width: 14px; height: 14px; border-radius: 4px; background: linear-gradient(135deg, var(--brand), #8fb3ff); box-shadow: 0 0 0 4px rgba(91,140,255,.15); }
+    .brand h1 { font-size: 16px; margin: 0; letter-spacing: .2px; }
+
+    .nav { display: grid; gap: 6px; margin-top: 8px; }
+    .nav a {
+      padding: 10px 12px; border-radius: 10px; color: var(--muted); border: 1px solid transparent;
+      display: grid; grid-template-columns: 20px 1fr auto; gap: 10px; align-items: center;
+    }
+    .nav a:hover { background: var(--panel-2); color: var(--text); border-color: var(--line); }
+    .nav a .dot { width: 8px; height: 8px; border-radius: 999px; background: var(--line); }
+    .nav a.active { background: linear-gradient(180deg, rgba(91,140,255,.12), rgba(91,140,255,.06)); border-color: rgba(91,140,255,.25); color: var(--text); }
+
+    .helper { margin-top: auto; font-size: 12px; color: var(--muted); border-top: 1px dashed var(--line); padding-top: 14px; }
+
+    /* 메인 */
+    .main { padding: 28px; display: grid; gap: 24px; }
+    .section { background: rgba(21,25,34,.65); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); }
+    .section > .head { padding: 18px 20px; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+    .section > .head h2 { font-size: 18px; margin: 0; }
+    .section > .body { padding: 20px; }
+
+    .grid { display: grid; gap: 16px; }
+    .grid.cols-2 { grid-template-columns: repeat(2, minmax(0,1fr)); }
+    .grid.cols-3 { grid-template-columns: repeat(3, minmax(0,1fr)); }
+    .grid.cols-4 { grid-template-columns: repeat(4, minmax(0,1fr)); }
+
+    @media (max-width: 1024px) {
+      .app { grid-template-columns: 1fr; }
+      .sidebar { position: relative; height: auto; }
+      .grid.cols-2, .grid.cols-3, .grid.cols-4 { grid-template-columns: 1fr; }
+    }
+
+    /* 공통 UI */
+    .card { background: var(--panel-2); border: 1px solid var(--line); border-radius: 14px; padding: 16px; box-shadow: var(--shadow); }
+    .kpi { display: grid; gap: 6px; }
+    .kpi .label { color: var(--muted); font-size: 12px; }
+    .kpi .value { font-size: 22px; font-weight: 700; letter-spacing: .2px; }
+    .kpi .trend { font-size: 12px; color: var(--ok); }
+
+    .btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 14px; border-radius: 12px; border: 1px solid var(--line); color: var(--text); background: linear-gradient(180deg, #182033, #131a29); cursor: pointer; }
+    .btn:hover { border-color: rgba(91,140,255,.35); box-shadow: 0 6px 18px rgba(91,140,255,.15) inset; }
+    .btn.primary { background: linear-gradient(180deg, #5b8cff, #3f6ee8); border-color: rgba(91,140,255,.55); }
+    .btn.ghost { background: transparent; }
+
+    .toolbar { display: flex; gap: 8px; flex-wrap: wrap; }
+    .muted { color: var(--muted); }
+    .tip { font-size: 12px; color: var(--muted); }
+
+    .table { width: 100%; border-collapse: collapse; }
+    .table th, .table td { border-bottom: 1px solid var(--line); padding: 10px 12px; font-size: 14px; text-align: left; }
+    .table th { color: var(--muted); font-weight: 600; }
+    .badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; font-size: 12px; border: 1px solid var(--line); border-radius: 999px; }
+    .badge.ok { color: var(--ok); border-color: rgba(61,220,151,.35); }
+    .badge.warn { color: var(--warn); border-color: rgba(255,176,32,.35); }
+    .badge.danger { color: var(--danger); border-color: rgba(255,107,107,.35); }
+
+    .uploader { border: 1.5px dashed rgba(91,140,255,.35); border-radius: 14px; padding: 24px; display: grid; place-items: center; text-align: center; background: rgba(91,140,255,.06); }
+    .uploader .title { font-weight: 700; }
+    .uploader .desc { color: var(--muted); font-size: 13px; }
+
+    .chart-box { height: 220px; background: linear-gradient(180deg, #121824, #0e1420); border: 1px solid var(--line); border-radius: 12px; display: grid; place-items: center; color: var(--muted); }
+
+    .mapping-grid { display: grid; grid-template-columns: 1fr 40px 1fr; gap: 10px; align-items: center; }
+    .select, .input { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: #0e1420; color: var(--text); }
+
+    .legend { display:flex; gap:8px; flex-wrap:wrap; }
+    .legend .item { display:flex; align-items:center; gap:6px; color: var(--muted); font-size: 12px; }
+    .legend .dot { width:10px; height:10px; border-radius: 999px; background: var(--brand); opacity: .7; }
+
+    .subtle { font-size: 13px; color: var(--muted); }
+  </style>
+</head>
+<body>
+<div class="app">
+  <!-- 사이드바 -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="logo"></div>
+      <h1>ClaraCS – 분석&인사이트</h1>
+    </div>
+    <nav class="nav">
+      <a href="#" class="active"><span class="dot"></span><span>대시보드</span><span class="badge ok">MVP</span></a>
+      <a href="#upload"><span class="dot"></span><span>데이터 업로드</span><span></span></a>
+      <a href="#mapping"><span class="dot"></span><span>컬럼 매핑</span><span></span></a>
+      <a href="#classify"><span class="dot"></span><span>자동 분류</span><span></span></a>
+      <a href="#report"><span class="dot"></span><span>분석 리포트</span><span></span></a>
+      <a href="#export"><span class="dot"></span><span>리포트 내보내기</span><span></span></a>
+      <a href="#help"><span class="dot"></span><span>설정 · 도움말</span><span></span></a>
+    </nav>
+    <div class="helper">
+      <div><strong>프로젝트명</strong><br/>지능형 CS 데이터 분석·인사이트 플랫폼 구축</div>
+      <div style="margin-top:10px;" class="tip">※ 이 목업은 HTML/CSS만으로 구성된 정적 화면입니다. 상호작용/데이터는 JS 연동 시 동작합니다.</div>
+    </div>
+  </aside>
+
+  <!-- 메인 -->
+  <main class="main">
+
+    <!-- 대시보드 개요 -->
+    <section class="section" id="dashboard">
+      <div class="head">
+        <h2>대시보드 개요</h2>
+        <div class="toolbar">
+          <button class="btn ghost">기간: 최근 30일</button>
+          <button class="btn">필터</button>
+          <button class="btn primary">새 보고서 생성</button>
+        </div>
+      </div>
+      <div class="body">
+        <div class="grid cols-3">
+          <div class="card kpi"><div class="label">총 접수 건수</div><div class="value">12,483</div><div class="trend">▲ 8.2% (전월 대비)</div></div>
+          <div class="card kpi"><div class="label">자동 분류 정확도(샘플)</div><div class="value">92.4%</div><div class="trend" style="color:var(--warn)">→ 모델 재학습 권장</div></div>
+          <div class="card kpi"><div class="label">재문의율(샘플)</div><div class="value">7.3%</div><div class="trend">▼ 1.1%p</div></div>
+        </div>
+        <div class="grid cols-2" style="margin-top:16px;">
+          <div class="card">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+              <strong>유형별 발생 추이(샘플)</strong>
+              <div class="legend"><div class="item"><span class="dot"></span>배송</div><div class="item"><span class="dot" style="background:#3ddc97"></span>환불</div><div class="item"><span class="dot" style="background:#ffb020"></span>품질</div></div>
+            </div>
+            <div class="chart-box">차트 영역 (라인)</div>
+          </div>
+          <div class="card">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+              <strong>우선순위 분포(샘플)</strong>
+              <span class="badge warn">업데이트 필요</span>
+            </div>
+            <div class="chart-box">차트 영역 (도넛)</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 업로드 -->
+    <section class="section" id="upload">
+      <div class="head">
+        <h2>데이터 업로드 (.xlsx / .csv)</h2>
+        <div class="toolbar">
+          <button class="btn">샘플 파일 다운로드</button>
+          <button class="btn primary">파일 선택</button>
+        </div>
+      </div>
+      <div class="body">
+        <div class="uploader">
+          <div class="title">여기에 파일을 끌어놓거나, 상단의 <em>파일 선택</em>을 클릭하세요</div>
+          <div class="desc" style="margin-top:6px;">필수 컬럼 예시: 접수일, 채널, 고객ID/이메일, 제목, 본문, 상태, 담당자, 카테고리(선택)</div>
+        </div>
+        <p class="tip" style="margin-top:10px;">※ 개인정보 컬럼(전화, 이메일 등)은 암호화/마스킹 처리 방침 적용</p>
+        <div class="card" style="margin-top:16px;">
+          <strong>미리보기(상위 5행)</strong>
+          <table class="table" style="margin-top:8px;">
+            <thead>
+              <tr>
+                <th>접수일</th><th>채널</th><th>고객ID</th><th>제목</th><th>본문</th><th>상태</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>2025-08-01</td><td>이메일</td><td>cust_1023</td><td>배송 지연</td><td>주문한 상품이 아직...</td><td>신규</td></tr>
+              <tr><td>2025-08-02</td><td>챗봇</td><td>cust_3381</td><td>환불 문의</td><td>결제 취소가 안돼요...</td><td>진행중</td></tr>
+              <tr><td>2025-08-02</td><td>전화</td><td>cust_9912</td><td>파손 수령</td><td>박스가 찢어져서...</td><td>신규</td></tr>
+              <tr><td>2025-08-03</td><td>SNS</td><td>cust_1277</td><td>품질 불만</td><td>색상이 사진과 달라요...</td><td>완료</td></tr>
+              <tr><td>2025-08-03</td><td>이메일</td><td>cust_6620</td><td>AS 문의</td><td>작동이 중간에 멈춤...</td><td>신규</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- 컬럼 매핑 -->
+    <section class="section" id="mapping">
+      <div class="head">
+        <h2>컬럼 매핑</h2>
+        <div class="toolbar">
+          <button class="btn">자동 매핑 제안</button>
+          <button class="btn primary">매핑 저장</button>
+        </div>
+      </div>
+      <div class="body grid cols-2">
+        <div class="card">
+          <strong>원본 컬럼</strong>
+          <div class="grid" style="margin-top:10px;">
+            <div class="mapping-grid"><input class="input" value="created_at" /><span style="text-align:center; color:var(--muted)">→</span><select class="select"><option>접수일</option><option>채널</option><option>고객ID</option><option>제목</option><option>본문</option><option>상태</option></select></div>
+            <div class="mapping-grid"><input class="input" value="source" /><span style="text-align:center; color:var(--muted)">→</span><select class="select"><option>채널</option></select></div>
+            <div class="mapping-grid"><input class="input" value="customer_email" /><span style="text-align:center; color:var(--muted)">→</span><select class="select"><option>고객ID/이메일</option></select></div>
+            <div class="mapping-grid"><input class="input" value="subject" /><span style="text-align:center; color:var(--muted)">→</span><select class="select"><option>제목</option></select></div>
+            <div class="mapping-grid"><input class="input" value="message" /><span style="text-align:center; color:var(--muted)">→</span><select class="select"><option>본문</option></select></div>
+            <div class="mapping-grid"><input class="input" value="status" /><span style="text-align:center; color:var(--muted)">→</span><select class="select"><option>상태</option></select></div>
+          </div>
+          <p class="tip" style="margin-top:8px;">※ 매핑 템플릿을 저장해두면 다음 업로드부터 자동 적용</p>
+        </div>
+        <div class="card">
+          <strong>유효성/정합성 체크</strong>
+          <ul class="subtle">
+            <li>필수 컬럼 누락: <span class="badge danger">본문</span> 2열에서 공란 5건</li>
+            <li>날짜 형식 불일치: <span class="badge warn">접수일</span> 3건(YYYY-MM-DD 권장)</li>
+            <li>개인정보 마스킹: <span class="badge ok">고객ID/이메일</span> 자동 마스킹 설정</li>
+          </ul>
+          <div class="toolbar" style="margin-top:10px;">
+            <button class="btn">정제 규칙 보기</button>
+            <button class="btn primary">정제 실행</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 자동 분류 -->
+    <section class="section" id="classify">
+      <div class="head">
+        <h2>자동 분류 (샘플 화면)</h2>
+        <div class="toolbar">
+          <button class="btn">규칙 편집</button>
+          <button class="btn">모델 교체</button>
+          <button class="btn primary">분류 실행</button>
+        </div>
+      </div>
+      <div class="body">
+        <div class="grid cols-2">
+          <div class="card">
+            <strong>분류 결과 요약</strong>
+            <table class="table" style="margin-top:8px;">
+              <thead><tr><th>카테고리</th><th>건수</th><th>비율</th><th>예시 키워드</th></tr></thead>
+              <tbody>
+                <tr><td>배송</td><td>4,210</td><td>33.7%</td><td>지연, 택배, 배송상태</td></tr>
+                <tr><td>환불/취소</td><td>2,890</td><td>23.1%</td><td>환불, 취소, 결제오류</td></tr>
+                <tr><td>품질/하자</td><td>2,031</td><td>16.3%</td><td>불량, 파손, 오작동</td></tr>
+                <tr><td>AS/설치</td><td>1,504</td><td>12.0%</td><td>기사, 방문, 설치</td></tr>
+                <tr><td>기타</td><td>1,848</td><td>14.9%</td><td>문의, 확인, 안내</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="card">
+            <strong>정확도/신뢰도(샘플)</strong>
+            <div class="chart-box" style="height:260px;">차트 영역 (바/레이더)</div>
+            <p class="tip" style="margin-top:8px;">샘플 지표: Macro-F1, Precision, Recall</p>
+          </div>
+        </div>
+        <div class="card" style="margin-top:16px;">
+          <strong>티켓 목록(상위 10건 샘플)</strong>
+          <table class="table" style="margin-top:8px;">
+            <thead><tr><th>접수일</th><th>채널</th><th>제목</th><th>예측 카테고리</th><th>우선순위</th><th>요약</th></tr></thead>
+            <tbody>
+              <tr><td>2025-08-03</td><td>이메일</td><td>배송이 너무 늦어요</td><td><span class="badge">배송</span></td><td><span class="badge warn">중</span></td><td>주문 배송 지연 관련 문의</td></tr>
+              <tr><td>2025-08-03</td><td>챗봇</td><td>환불 진행 상황</td><td><span class="badge">환불/취소</span></td><td><span class="badge ok">하</span></td><td>결제 환불 상태 문의</td></tr>
+              <tr><td>2025-08-02</td><td>전화</td><td>제품 도착 시 파손</td><td><span class="badge danger">품질/하자</span></td><td><span class="badge danger">상</span></td><td>파손 수령으로 교환 요청</td></tr>
+              <tr><td>2025-08-02</td><td>SNS</td><td>색상이 사진과 달라요</td><td><span class="badge">품질/하자</span></td><td><span class="badge warn">중</span></td><td>색상 불일치 불만</td></tr>
+              <tr><td>2025-08-02</td><td>이메일</td><td>설치 일정 문의</td><td><span class="badge">AS/설치</span></td><td><span class="badge ok">하</span></td><td>방문 설치 일정 확인</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- 분석 리포트 -->
+    <section class="section" id="report">
+      <div class="head">
+        <h2>분석 리포트 (요약/인사이트)</h2>
+        <div class="toolbar">
+          <button class="btn">템플릿 선택</button>
+          <button class="btn primary">리포트 생성</button>
+        </div>
+      </div>
+      <div class="body grid cols-2">
+        <div class="card">
+          <strong>요약 하이라이트</strong>
+          <ul class="subtle">
+            <li>배송 지연 이슈가 전월 대비 <b>+18%</b> 증가 (택배사 파업 지역 집중)</li>
+            <li>환불 지연으로 인한 NPS 하락 구간 식별(특정 PG사)</li>
+            <li>품질/하자 영역은 특정 로트(Lot)에 집중되어 발생</li>
+          </ul>
+          <div class="chart-box" style="height:180px;">차트 영역 (하이라이트 카드)</div>
+        </div>
+        <div class="card">
+          <strong>권고안(매크로/프로세스/제품)</strong>
+          <ol class="subtle">
+            <li><b>매크로</b>: 배송 지연 사유·배송추적 링크·보상정책을 포함한 응답 템플릿 배포</li>
+            <li><b>프로세스</b>: 환불 SLA 목표 48시간 → 24시간 단축, 자동 알림</li>
+            <li><b>제품</b>: 하자 다발 품목의 포장 강화 및 출고 전 QC 기준 상향</li>
+          </ol>
+        </div>
+        <div class="card">
+          <strong>카테고리별 추이</strong>
+          <div class="chart-box">차트 영역 (스택 바)</div>
+        </div>
+        <div class="card">
+          <strong>루트코즈(추정)</strong>
+          <table class="table" style="margin-top:8px;">
+            <thead><tr><th>원인 후보</th><th>근거 신호</th><th>권고</th></tr></thead>
+            <tbody>
+              <tr><td>물류 병목(지역)</td><td>배송 지연 키워드·지역 상관</td><td>대체 택배사 라우팅</td></tr>
+              <tr><td>PG사 처리 지연</td><td>환불 지연 + 특정 PG</td><td>PG 이중화/자동 알림</td></tr>
+              <tr><td>포장 기준 미흡</td><td>파손/하자 특정 SKU</td><td>완충재 추가·QC 강화</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- 내보내기/공유 -->
+    <section class="section" id="export">
+      <div class="head">
+        <h2>리포트 내보내기 · 공유</h2>
+        <div class="toolbar">
+          <button class="btn">CSV</button>
+          <button class="btn">PDF</button>
+          <button class="btn">PPT</button>
+          <button class="btn primary">대시보드 공유 링크 생성</button>
+        </div>
+      </div>
+      <div class="body">
+        <div class="grid cols-2">
+          <div class="card">
+            <strong>내보내기 프리셋</strong>
+            <ul class="subtle">
+              <li>경영진용: 요약 + 핵심 지표 5개 + 권고안</li>
+              <li>운영팀용: 카테고리 상세 + 티켓 샘플 100건</li>
+              <li>개발/품질팀용: 루트코즈 + SKU/지역 매핑</li>
+            </ul>
+          </div>
+          <div class="card">
+            <strong>버전/이력</strong>
+            <table class="table" style="margin-top:8px;">
+              <thead><tr><th>버전</th><th>생성일</th><th>생성자</th><th>설명</th></tr></thead>
+              <tbody>
+                <tr><td>v0.3</td><td>2025-08-05</td><td>KMH</td><td>권고안 섹션 추가</td></tr>
+                <tr><td>v0.2</td><td>2025-08-02</td><td>KMH</td><td>카테고리 추이 업데이트</td></tr>
+                <tr><td>v0.1</td><td>2025-08-01</td><td>KMH</td><td>초기 템플릿</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 설정/도움말 -->
+    <section class="section" id="help">
+      <div class="head">
+        <h2>설정 · 도움말</h2>
+        <div class="toolbar">
+          <button class="btn">마스킹 규칙</button>
+          <button class="btn">분류 카테고리 관리</button>
+          <button class="btn">SLA 지표</button>
+          <button class="btn primary">저장</button>
+        </div>
+      </div>
+      <div class="body grid cols-3">
+        <div class="card">
+          <strong>보안/프라이버시</strong>
+          <p class="subtle">개인정보 컬럼: 이메일/전화 → 자동 마스킹 / 암호화 보관</p>
+          <label class="subtle" style="display:block; margin-top:8px;">마스킹 예시</label>
+          <input class="input" value="john****@example.com, 010-12**-56**" />
+        </div>
+        <div class="card">
+          <strong>카테고리 세트</strong>
+          <p class="subtle">표준 카테고리(배송/환불/품질/AS/기타) + 사용자 정의</p>
+          <input class="input" placeholder="예: 교환/반품" />
+          <div class="toolbar" style="margin-top:8px;"><button class="btn">추가</button><button class="btn ghost">초기화</button></div>
+        </div>
+        <div class="card">
+          <strong>도움말</strong>
+          <ul class="subtle">
+            <li>1) 업로드 → 2) 매핑 → 3) 분류 → 4) 리포트 → 5) 내보내기</li>
+            <li>샘플 데이터로 먼저 리포트 흐름을 검증하세요.</li>
+            <li>실제 동작은 JS/백엔드 연동 시 활성화됩니다.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+</body>
+</html>
