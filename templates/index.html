@@ -1,113 +1,13 @@
 <!doctype html>
 <html lang="ko">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>ClaraCS – 지능형 CS 데이터 분석·인사이트 플랫폼 (MVP 목업)</title>
-  <style>
-    :root {
-      --bg: #0b0d10;          /* 배경 (다크) */
-      --panel: #151922;       /* 패널 배경 */
-      --panel-2: #0f131b;     /* 서브 패널 */
-      --text: #e7eef7;        /* 기본 텍스트 */
-      --muted: #a6b0c2;       /* 보조 텍스트 */
-      --line: #242b36;        /* 경계선 */
-      --brand: #5b8cff;       /* 포인트 */
-      --ok: #3ddc97;
-      --warn: #ffb020;
-      --danger: #ff6b6b;
-      --radius: 16px;
-      --shadow: 0 8px 24px rgba(0,0,0,.25);
-    }
-    * { box-sizing: border-box; }
-    html, body { height: 100%; }
-    body {
-      margin: 0; color: var(--text); background: linear-gradient(160deg, #0a0e14 0%, #0d1520 100%);
-      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans KR", Arial, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
-      line-height: 1.5;
-    }
-    a { color: inherit; text-decoration: none; }
-    .app {
-      display: grid; grid-template-columns: 280px 1fr; gap: 0; min-height: 100dvh;
-    }
-    /* 사이드바 */
-    .sidebar {
-      position: sticky; top: 0; align-self: start; height: 100dvh; overflow-y: auto;
-      background: rgba(21,25,34,.8); backdrop-filter: blur(8px);
-      border-right: 1px solid var(--line); padding: 20px; display: flex; flex-direction: column; gap: 16px;
-    }
-    .brand { display:flex; align-items:center; gap:10px; }
-    .brand .logo { width: 14px; height: 14px; border-radius: 4px; background: linear-gradient(135deg, var(--brand), #8fb3ff); box-shadow: 0 0 0 4px rgba(91,140,255,.15); }
-    .brand h1 { font-size: 16px; margin: 0; letter-spacing: .2px; }
-
-    .nav { display: grid; gap: 6px; margin-top: 8px; }
-    .nav a {
-      padding: 10px 12px; border-radius: 10px; color: var(--muted); border: 1px solid transparent;
-      display: grid; grid-template-columns: 20px 1fr auto; gap: 10px; align-items: center;
-    }
-    .nav a:hover { background: var(--panel-2); color: var(--text); border-color: var(--line); }
-    .nav a .dot { width: 8px; height: 8px; border-radius: 999px; background: var(--line); }
-    .nav a.active { background: linear-gradient(180deg, rgba(91,140,255,.12), rgba(91,140,255,.06)); border-color: rgba(91,140,255,.25); color: var(--text); }
-
-    .helper { margin-top: auto; font-size: 12px; color: var(--muted); border-top: 1px dashed var(--line); padding-top: 14px; }
-
-    /* 메인 */
-    .main { padding: 28px; display: grid; gap: 24px; }
-    .section { background: rgba(21,25,34,.65); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); }
-    .section > .head { padding: 18px 20px; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; gap: 16px; }
-    .section > .head h2 { font-size: 18px; margin: 0; }
-    .section > .body { padding: 20px; }
-
-    .grid { display: grid; gap: 16px; }
-    .grid.cols-2 { grid-template-columns: repeat(2, minmax(0,1fr)); }
-    .grid.cols-3 { grid-template-columns: repeat(3, minmax(0,1fr)); }
-    .grid.cols-4 { grid-template-columns: repeat(4, minmax(0,1fr)); }
-
-    @media (max-width: 1024px) {
-      .app { grid-template-columns: 1fr; }
-      .sidebar { position: relative; height: auto; }
-      .grid.cols-2, .grid.cols-3, .grid.cols-4 { grid-template-columns: 1fr; }
-    }
-
-    /* 공통 UI */
-    .card { background: var(--panel-2); border: 1px solid var(--line); border-radius: 14px; padding: 16px; box-shadow: var(--shadow); }
-    .kpi { display: grid; gap: 6px; }
-    .kpi .label { color: var(--muted); font-size: 12px; }
-    .kpi .value { font-size: 22px; font-weight: 700; letter-spacing: .2px; }
-    .kpi .trend { font-size: 12px; color: var(--ok); }
-
-    .btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 14px; border-radius: 12px; border: 1px solid var(--line); color: var(--text); background: linear-gradient(180deg, #182033, #131a29); cursor: pointer; }
-    .btn:hover { border-color: rgba(91,140,255,.35); box-shadow: 0 6px 18px rgba(91,140,255,.15) inset; }
-    .btn.primary { background: linear-gradient(180deg, #5b8cff, #3f6ee8); border-color: rgba(91,140,255,.55); }
-    .btn.ghost { background: transparent; }
-
-    .toolbar { display: flex; gap: 8px; flex-wrap: wrap; }
-    .muted { color: var(--muted); }
-    .tip { font-size: 12px; color: var(--muted); }
-
-    .table { width: 100%; border-collapse: collapse; }
-    .table th, .table td { border-bottom: 1px solid var(--line); padding: 10px 12px; font-size: 14px; text-align: left; }
-    .table th { color: var(--muted); font-weight: 600; }
-    .badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; font-size: 12px; border: 1px solid var(--line); border-radius: 999px; }
-    .badge.ok { color: var(--ok); border-color: rgba(61,220,151,.35); }
-    .badge.warn { color: var(--warn); border-color: rgba(255,176,32,.35); }
-    .badge.danger { color: var(--danger); border-color: rgba(255,107,107,.35); }
-
-    .uploader { border: 1.5px dashed rgba(91,140,255,.35); border-radius: 14px; padding: 24px; display: grid; place-items: center; text-align: center; background: rgba(91,140,255,.06); }
-    .uploader .title { font-weight: 700; }
-    .uploader .desc { color: var(--muted); font-size: 13px; }
-
-    .chart-box { height: 220px; background: linear-gradient(180deg, #121824, #0e1420); border: 1px solid var(--line); border-radius: 12px; display: grid; place-items: center; color: var(--muted); }
-
-    .mapping-grid { display: grid; grid-template-columns: 1fr 40px 1fr; gap: 10px; align-items: center; }
-    .select, .input { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: #0e1420; color: var(--text); }
-
-    .legend { display:flex; gap:8px; flex-wrap:wrap; }
-    .legend .item { display:flex; align-items:center; gap:6px; color: var(--muted); font-size: 12px; }
-    .legend .dot { width:10px; height:10px; border-radius: 999px; background: var(--brand); opacity: .7; }
-
-    .subtle { font-size: 13px; color: var(--muted); }
-  </style>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta property="og:title" content="ClaraCS" />
+    <meta property="og:description" content="ClaraCS의 메인 페이지입니다." />
+    <meta property="og:image" content="" />
+    <title>ClaraCS – 지능형 CS 데이터 분석·인사이트 플랫폼 (MVP 목업)</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
 <div class="app">
@@ -407,5 +307,6 @@
 
   </main>
 </div>
+<script type="text/javascript" src="{{ url_for('static', filename='js/script.js') }}"></script>
 </body>
 </html>
