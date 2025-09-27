@@ -44,6 +44,204 @@ a { color: inherit; text-decoration: none; }
 
 .helper { margin-top: auto; font-size: 12px; color: var(--muted); border-top: 1px dashed var(--line); padding-top: 14px; }
 
+/* 리포트 관련 스타일 */
+.loading-indicator {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(21, 25, 34, 0.95);
+    padding: 20px;
+    border-radius: 12px;
+    text-align: center;
+    z-index: 1000;
+}
+
+.spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid var(--line);
+    border-top: 3px solid var(--brand);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 10px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.message-toast {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 12px 16px;
+    color: var(--text);
+    box-shadow: var(--shadow);
+    z-index: 1001;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    animation: slideIn 0.3s ease-out;
+}
+
+.message-toast.success {
+    border-color: var(--ok);
+    background: rgba(61, 220, 151, 0.1);
+}
+
+.message-toast.error {
+    border-color: var(--danger);
+    background: rgba(255, 107, 107, 0.1);
+}
+
+.message-toast.warning {
+    border-color: var(--warn);
+    background: rgba(255, 176, 32, 0.1);
+}
+
+.message-toast button {
+    background: none;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 18px;
+    line-height: 1;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* 차트 스타일 */
+.chart-container {
+    margin-bottom: 20px;
+    padding: 16px;
+    background: var(--panel-2);
+    border-radius: 8px;
+    border: 1px solid var(--line);
+}
+
+.chart-container h4 {
+    margin: 0 0 12px 0;
+    color: var(--text);
+    font-size: 14px;
+}
+
+.simple-chart {
+    display: flex;
+    gap: 8px;
+    align-items: end;
+    height: 200px;
+    padding: 10px 0;
+}
+
+.chart-group {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+
+.date-label {
+    font-size: 10px;
+    color: var(--muted);
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    margin-bottom: 8px;
+}
+
+.bars {
+    display: flex;
+    gap: 2px;
+    align-items: end;
+    height: 150px;
+}
+
+.bar-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+}
+
+.bar {
+    width: 12px;
+    border-radius: 2px 2px 0 0;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.bar:hover {
+    opacity: 0.8;
+    transform: scaleY(1.05);
+}
+
+.bar-label {
+    font-size: 8px;
+    color: var(--muted);
+    text-align: center;
+}
+
+/* 우선순위 및 난이도 배지 */
+.priority-badge, .difficulty-badge {
+    display: inline-block;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 500;
+    text-transform: uppercase;
+    margin-left: 8px;
+}
+
+.priority-badge.high, .difficulty-badge.hard {
+    background: rgba(255, 107, 107, 0.2);
+    color: var(--danger);
+    border: 1px solid var(--danger);
+}
+
+.priority-badge.medium, .difficulty-badge.medium {
+    background: rgba(255, 176, 32, 0.2);
+    color: var(--warn);
+    border: 1px solid var(--warn);
+}
+
+.priority-badge.low, .difficulty-badge.easy {
+    background: rgba(61, 220, 151, 0.2);
+    color: var(--ok);
+    border: 1px solid var(--ok);
+}
+
+/* 로딩 상태 */
+.section.loading {
+    position: relative;
+    pointer-events: none;
+}
+
+.section.loading::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(21, 25, 34, 0.8);
+    border-radius: var(--radius);
+    z-index: 999;
+}
+
 /* 메인 */
 .main { padding: 28px; display: grid; gap: 24px; }
 .section { background: rgba(21,25,34,.65); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); }
