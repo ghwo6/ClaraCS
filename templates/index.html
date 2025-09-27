@@ -6,7 +6,7 @@
     <meta property="og:title" content="ClaraCS" />
     <meta property="og:description" content="ClaraCS의 메인 페이지입니다." />
     <meta property="og:image" content="" />
-    <title>ClaraCS – 지능형 CS 데이터 분석·인사이트 플랫폼 (MVP 목업)</title>
+    <title>ClaraCS – 지능형 CS 데이터 분석·인사이트 플랫폼</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
@@ -200,36 +200,24 @@
       </div>
       <div class="body grid cols-2">
         <div class="card">
-          <strong>요약 하이라이트</strong>
-          <ul class="subtle">
-            <li>배송 지연 이슈가 전월 대비 <b>+18%</b> 증가 (택배사 파업 지역 집중)</li>
-            <li>환불 지연으로 인한 NPS 하락 구간 식별(특정 PG사)</li>
-            <li>품질/하자 영역은 특정 로트(Lot)에 집중되어 발생</li>
-          </ul>
-          <div class="chart-box" style="height:180px;">차트 영역 (하이라이트 카드)</div>
-        </div>
-        <div class="card">
-          <strong>권고안(매크로/프로세스/제품)</strong>
-          <ol class="subtle">
-            <li><b>매크로</b>: 배송 지연 사유·배송추적 링크·보상정책을 포함한 응답 템플릿 배포</li>
-            <li><b>프로세스</b>: 환불 SLA 목표 48시간 → 24시간 단축, 자동 알림</li>
-            <li><b>제품</b>: 하자 다발 품목의 포장 강화 및 출고 전 QC 기준 상향</li>
-          </ol>
-        </div>
-        <div class="card">
-          <strong>카테고리별 추이</strong>
+          <strong>채널별 추이</strong>
           <div class="chart-box">차트 영역 (스택 바)</div>
         </div>
         <div class="card">
-          <strong>루트코즈(추정)</strong>
-          <table class="table" style="margin-top:8px;">
-            <thead><tr><th>원인 후보</th><th>근거 신호</th><th>권고</th></tr></thead>
-            <tbody>
-              <tr><td>물류 병목(지역)</td><td>배송 지연 키워드·지역 상관</td><td>대체 택배사 라우팅</td></tr>
-              <tr><td>PG사 처리 지연</td><td>환불 지연 + 특정 PG</td><td>PG 이중화/자동 알림</td></tr>
-              <tr><td>포장 기준 미흡</td><td>파손/하자 특정 SKU</td><td>완충재 추가·QC 강화</td></tr>
-            </tbody>
-          </table>
+          <strong>데이터 요약</strong>
+          <ul class="subtle">
+          </ul>
+        </div>
+        <div class="card">
+          <strong>인사이트 도출</strong>
+          <ol class="subtle">
+          </ol>
+        </div>
+        <div class="card">
+          <strong>솔루션 제안</strong>
+          <ul class="subtle">
+            <!-- 솔루션이 여기에 동적으로 생성됩니다 -->
+          </ul>
         </div>
       </div>
     </section>
@@ -307,6 +295,8 @@
 
   </main>
 </div>
-<script type="text/javascript" src="{{ url_for('static', filename='js/script.js') }}"></script>
+<script type="text/javascript" src="{{ url_for('static', filename='js/sidebar.js') }}"></script>
+<script type="text/javascript" src="{{ url_for('static', filename='js/common.js') }}"></script>
+<script type="text/javascript" src="{{ url_for('static', filename='js/report.js') }}"></script>
 </body>
 </html>
