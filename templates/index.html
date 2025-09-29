@@ -73,18 +73,26 @@
     <!-- 업로드 -->
     <section class="section" id="upload">
       <div class="head">
-        <h2>데이터 업로드 (.xlsx / .csv)</h2>
+        <h2>데이터 업로드 (.xlsx / .csv / .xls)</h2>
         <div class="toolbar">
-          <button class="btn">샘플 파일 다운로드</button>
-          <button id="upload_file" class="btn primary">파일 선택</button>
+          <label style="display:inline-flex;align-items:center;gap:4px;">
+            <input type="checkbox" id="select_all" />
+            전체선택
+          </label>
+          <button id="delete_file" class="btn">삭제</button>
+          <button id="upload_file" class="btn primary">파일 첨부</button>
+          <input type="file" id="file_input" style="display: none;" multiple accept=".csv, .xlsx, .xls" />
         </div>
       </div>
       <div class="body">
         <div class="uploader">
-          <div class="title">여기에 파일을 끌어놓거나, 상단의 <em>파일 선택</em>을 클릭하세요</div>
-          <div class="desc" style="margin-top:6px;">필수 컬럼 예시: 접수일, 채널, 고객ID/이메일, 제목, 본문, 상태, 담당자, 카테고리(선택)</div>
+          <br/>
+          <div class="title">여기에 파일을 끌어다 놓거나, 상단의 파일 첨부를 클릭하세요.</div>
+          <div class="desc" style="margin-top:6px;">필수 컬럼 예시: 접수일, 채널, 고객ID/이메일, 본문, 담당자, 카테고리(선택)</div>
+          <div class="file_list"></div>
+          <div id="upload_summary" class="upload-summary"></div>
         </div>
-        <p class="tip" style="margin-top:10px;">※ 개인정보 컬럼(전화, 이메일 등)은 암호화/마스킹 처리 방침 적용</p>
+        <p class="tip" style="margin-top:10px;">※ 권장 사항 : 각 채널당 파일 수는 3~5개, 총 용량 15MB로 업로드해 주세요.</p>
         <div class="card" style="margin-top:16px;">
           <strong>미리보기(상위 5행)</strong>
           <table class="table" style="margin-top:8px;">
