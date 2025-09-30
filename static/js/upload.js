@@ -80,32 +80,46 @@ function handle_files(files) {
         checkbox.value = file.name;
 
         checkbox.addEventListener('change', () => {
+            if (checkbox.checked) {
+                item.classList.add('selected');
+            } else {
+                item.classList.remove('selected');
+            }
+
             const checkboxes = file_list.querySelectorAll('input[type="checkbox"]');
-            const checked = Array.from(checkboxes).every(cb => cb.checked);
-            select_all.checked = checked;
+            const all_checked = Array.from(checkboxes).every(cb => cb.checked);
+            const some_checked = Array.from(checkboxes).some(cb => cb.checked);
+
+            select_all.checked = all_checked;
+            select_all.indeterminate = !all_checked && some_checked;
         });
 
         const label = document.createElement('label');
         label.htmlFor = 'file_' + index;
-        label.textContent = file.name;
-
+        label.innerHTML = `${file.name} <span class ="file_size">(${formatSize(file.size)})</span>`;
+        
         item.appendChild(checkbox);
         item.appendChild(label);
         file_list.appendChild(item);
     });
+
     select_all.checked = false;
     select_all.indeterminate = false;
 
     updateSummary();
+    console.log('Files handled, total files:', all_files.map(f => f.name));
 } 
 
 select_all.addEventListener('change', () => {
     const checkboxes = file_list.querySelectorAll('input[type="checkbox"]');
     checkboxes.forEach(cb => {
         cb.checked = select_all.checked;
+        if (select_all.checked) {
+            cb.parentElement.classList.add('selected');
+        } else {
+            cb.parentElement.classList.remove('selected');
+        }
     });
-    select_all.indeterminate = false;
-    console.log('Select all checkbox changed:', select_all.checked);
 });
 
 delete_files.addEventListener('click', () => {
@@ -123,6 +137,9 @@ delete_files.addEventListener('click', () => {
         const summary = document.getElementById('upload_summary');
         if (summary) summary.textContent = '';
         console.log('All files deleted, reset to default state');
+        
+        select_all.checked = false;
+        select_all.indeterminate = false;
     } else {
         updateSummary();
     }
