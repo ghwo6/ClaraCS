@@ -37,7 +37,7 @@ uploader.addEventListener('drop', (e) => {
     });
     const invalid_files = files.filter(file => !valid_files.includes(file));
     if (invalid_files.length > 0) {
-        alert('허용되는 파일 형식은 .csv, .xlsx, .xls 입니다.');
+        alert('⚠️ 제한 : 허용되는 파일 형식은 .csv, .xlsx, .xls 입니다.');
         console.log('Invalid files filtered out:', invalid_files.map(f => f.name));
     }
         if (valid_files.length > 0) {
@@ -145,3 +145,4 @@ delete_files.addEventListener('click', () => {
     }
     console.log('Delete button clicked, remaining files:', all_files.map(f => f.name));
 });
+

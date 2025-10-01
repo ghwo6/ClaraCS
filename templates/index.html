@@ -42,7 +42,7 @@
         <div class="toolbar">
           <button class="btn ghost">기간: 최근 30일</button>
           <button class="btn">필터</button>
-          <button class="btn primary">새 보고서 생성</button>
+          <button class="btn save">새 보고서 생성</button>
         </div>
       </div>
       <div class="body">
@@ -123,19 +123,115 @@
       </div>
       <div class="body grid cols-2">
         <div class="card">
-          <strong>원본 컬럼</strong>
-          <button id="column_setting" class="btn save">컬럼 저장</button> 
-          <button id="column_reset" class="btn">초기화</button>
-          <div class="grid" style="margin-top:23px; clear:both;">
-            <div class="mapping-grid"><input class="input" value="created_at" /><span style="text-align:center; color:var(--muted)">→</span><select class="select"><option>접수일</option>
-            <div class="mapping-grid"><input class="input" value="customer_ID" /><span style="text-align:center; color:var(--muted)">→</span><select class="select"><option>고객ID/이메일(공용)</option><option>고객ID</option><option>이메일</option></select></div>
-            <div class="mapping-grid"><input class="input" value="channel" /><span style="text-align:center; color:var(--muted)">→</span><select class="select"><option>채널(공용)</option><option>게시판</option><option>전화</option><option>이메일</option><option>네이버 톡톡</option><option>카카오톡</option></select></div>
-            <div class="mapping-grid"><input class="input" value="product_ID" /><span style="text-align:center; color:var(--muted)">→</span><select class="select"><option>상품ID(SKU)</option></select></div>
-            <div class="mapping-grid"><input class="input" value="category" /><span style="text-align:center; color:var(--muted)">→</span><select class="select"><option>카테고리</option></select></div>
-            <div class="mapping-grid"><input class="input" value="message" /><span style="text-align:center; color:var(--muted)">→</span><select class="select"><option>문의 내용(공용)</option><option>제목</option><option>본문</option></select></div>
-            <div class="mapping-grid"><input class="input" value="status" /><span style="text-align:center; color:var(--muted)">→</span><select class="select"><option>처리 상태</option></select></div>
+          <div class="column-header" style="display: flex; align-items: center; justify-content: space-between;">
+            <strong>원본 컬럼</strong>
+            
+            <div class="button-mapping-group" style="display: flex; gap: 8px;">
+              <button class="btn edit">Edit</button>
+              <button class="btn reset">초기화</button>
+              <button id="column_setting" class="btn save">컬럼 저장</button>
+            </div>
           </div>
-          <p class="tip" style="margin-top:8px;">※ 매핑 템플릿을 저장해두면 다음 업로드부터 자동 적용</p>
+          <div class="grid" style="margin-top:23px; clear:both;">
+            <div class="mapping-grid" style="display: flex; align-items: center; gap: 10px;">
+              <div class="delete-btn-container"> 
+                  <button class="btn delete-row-btn">&minus;</button>
+              </div>
+              <input class="input" value="created_at" />
+              <span style="text-align:center; color:var(--muted)">→</span>
+              <select class="select">
+                <option>접수일</option>
+              </select>
+              <div class="toggle-switch">
+                <input type="checkbox" class="toggle-input" id="toggle1" />
+                <label class="toggle-label" for="toggle1"></label>
+              </div>
+            </div>
+            <div class="mapping-grid" style="display: flex; align-items: center; gap: 10px;">
+              <div class="delete-btn-container"> 
+                  <button class="btn delete-row-btn">&minus;</button>
+              </div>
+              <input class="input" value="customer_ID" />
+              <span style="text-align:center; color:var(--muted)">→</span>
+              <select class="select">
+                <option>고객ID/이메일(공용)</option><option>고객ID</option><option>이메일</option>
+              </select>
+              <div class="toggle-switch">
+                <input type="checkbox" class="toggle-input" id="toggle2" />
+                <label class="toggle-label" for="toggle2"></label>
+              </div>
+            </div>
+            <div class="mapping-grid" style="display: flex; align-items: center; gap: 10px;">
+              <div class="delete-btn-container"> 
+                  <button class="btn delete-row-btn">&minus;</button>
+              </div>
+              <input class="input" value="channel" />
+              <span style="text-align:center; color:var(--muted)">→</span>
+              <select class="select">
+                <option>채널(공용)</option><option>게시판</option><option>전화</option><option>이메일</option><option>네이버 톡톡</option><option>카카오톡</option>
+              </select>
+              <div class="toggle-switch">
+                <input type="checkbox" class="toggle-input" id="toggle3" />
+                <label class="toggle-label" for="toggle3"></label>
+              </div>
+            </div>
+            <div class="mapping-grid" style="display: flex; align-items: center; gap: 10px;">
+              <div class="delete-btn-container"> 
+                  <button class="btn delete-row-btn">&minus;</button>
+              </div>
+              <input class="input" value="product_ID" />
+              <span style="text-align:center; color:var(--muted)">→</span>
+              <select class="select"><option>상품ID(SKU)</option>
+              </select>
+              <div class="toggle-switch">
+                <input type="checkbox" class="toggle-input" id="toggle4" />
+                <label class="toggle-label" for="toggle4"></label>
+              </div>
+            </div>
+            <div class="mapping-grid" style="display: flex; align-items: center; gap: 10px;">
+              <div class="delete-btn-container"> 
+                  <button class="btn delete-row-btn">&minus;</button>
+              </div>
+              <input class="input" value="category" />
+              <span style="text-align:center; color:var(--muted)">→</span>
+              <select class="select"><option>카테고리</option>
+              </select>
+              <div class="toggle-switch">
+                <input type="checkbox" class="toggle-input" id="toggle5" />
+                <label class="toggle-label" for="toggle5"></label>
+              </div>
+            </div>
+            <div class="mapping-grid" style="display: flex; align-items: center; gap: 10px;">
+              <div class="delete-btn-container"> 
+                  <button class="btn delete-row-btn">&minus;</button>
+              </div>
+              <input class="input" value="message" />
+              <span style="text-align:center; color:var(--muted)">→</span>
+              <select class="select"><option>문의 내용(공용)</option><option>제목</option><option>본문</option>
+              </select>
+              <div class="toggle-switch">
+                <input type="checkbox" class="toggle-input" id="toggle6" />
+                <label class="toggle-label" for="toggle6"></label>
+              </div>
+            </div>
+            <div class="mapping-grid" style="display: flex; align-items: center; gap: 10px;">
+              <div class="delete-btn-container"> 
+                  <button class="btn delete-row-btn">&minus;</button>
+              </div>
+              <input class="input" value="status" />
+              <span style="text-align:center; color:var(--muted)">→</span>
+              <select class="select"><option>처리 상태</option>
+              </select>
+              <div class="toggle-switch">
+                <input type="checkbox" class="toggle-input" id="toggle7" />
+                <label class="toggle-label" for="toggle7"></label>
+              </div>
+            </div>
+          </div>
+          <p class="tip" style="margin-top:3px;">※ 매핑 템플릿을 저장해두면 다음 업로드부터 자동 적용</p>
+          <div class="add-btn-container">
+            <button id="btn-add-row" class="btn add-row-btn">+</button>
+          </div>
         </div>
         <div class="card">
           <strong>유효성/정합성 체크</strong>
@@ -158,7 +254,7 @@
         <div class="toolbar">
           <button class="btn">규칙 편집</button>
           <button class="btn">모델 교체</button>
-          <button class="btn primary">분류 실행</button>
+          <button class="btn save">분류 실행</button>
         </div>
       </div>
       <div class="body">
@@ -204,7 +300,7 @@
         <h2>분석 리포트 (요약/인사이트)</h2>
         <div class="toolbar">
           <button class="btn">템플릿 선택</button>
-          <button class="btn primary">리포트 생성</button>
+          <button class="btn save">리포트 생성</button>
         </div>
       </div>
       <div class="body grid cols-2">
@@ -239,7 +335,7 @@
           <button class="btn">CSV</button>
           <button class="btn">PDF</button>
           <button class="btn">PPT</button>
-          <button class="btn primary">대시보드 공유 링크 생성</button>
+          <button class="btn save">대시보드 공유 링크 생성</button>
         </div>
       </div>
       <div class="body">
@@ -275,7 +371,7 @@
           <button class="btn">마스킹 규칙</button>
           <button class="btn">분류 카테고리 관리</button>
           <button class="btn">SLA 지표</button>
-          <button class="btn primary">저장</button>
+          <button class="btn save">저장</button>
         </div>
       </div>
       <div class="body grid cols-3">
@@ -308,5 +404,6 @@
 <script type="text/javascript" src="{{ url_for('static', filename='js/common.js') }}"></script>
 <script type="text/javascript" src="{{ url_for('static', filename='js/upload.js') }}"></script>
 <script type="text/javascript" src="{{ url_for('static', filename='js/report.js') }}"></script>
+<script type="text/javascript" src="{{ url_for('static', filename='js/mapping.js') }}"></script>
 </body>
 </html>
