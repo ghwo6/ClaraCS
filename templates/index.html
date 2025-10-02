@@ -73,32 +73,40 @@
     <!-- 업로드 -->
     <section class="section" id="upload">
       <div class="head">
-        <h2>데이터 업로드 (.xlsx / .csv)</h2>
+        <h2>데이터 업로드 (.xlsx / .csv / .xls)</h2>
         <div class="toolbar">
-          <button class="btn">샘플 파일 다운로드</button>
-          <button id="upload_file" class="btn primary">파일 선택</button>
+          <label style="display:inline-flex;align-items:center;gap:4px;">
+            <input type="checkbox" id="select_all" />
+            전체 선택
+          </label>
+          <button id="delete_file" class="btn">삭제</button>
+          <button id="upload_file" class="btn save">파일 첨부</button>
+          <input type="file" id="file_input" style="display: none;" multiple accept=".csv, .xlsx, .xls" />
         </div>
       </div>
       <div class="body">
         <div class="uploader">
-          <div class="title">여기에 파일을 끌어놓거나, 상단의 <em>파일 선택</em>을 클릭하세요</div>
-          <div class="desc" style="margin-top:6px;">필수 컬럼 예시: 접수일, 채널, 고객ID/이메일, 제목, 본문, 상태, 담당자, 카테고리(선택)</div>
+          <br/>
+          <div class="title">여기에 파일을 끌어다 놓거나, 상단의 파일 첨부를 클릭하세요.</div>
+          <div class="desc" style="margin-top:6px;">필수 컬럼 예시: 접수일, 채널, 고객ID/이메일, 본문, 담당자, 카테고리(선택)</div>
+          <div class="file_list"></div>
+          <div id="upload_summary" class="upload-summary"></div>
         </div>
-        <p class="tip" style="margin-top:10px;">※ 개인정보 컬럼(전화, 이메일 등)은 암호화/마스킹 처리 방침 적용</p>
+        <p class="tip" style="margin-top:10px;">※ 권장 사항 : 각 채널당 파일 수는 3~5개, 총 용량 15MB 이내로 업로드해 주세요.</p>
         <div class="card" style="margin-top:16px;">
           <strong>미리보기(상위 5행)</strong>
           <table class="table" style="margin-top:8px;">
             <thead>
               <tr>
-                <th>접수일</th><th>채널</th><th>고객ID</th><th>제목</th><th>본문</th><th>상태</th>
+                <th>created_at</th><th>customer_ID</th><th>channel</th><th>product_ID</th><th>category</th><th>message</th><th>status</th>
               </tr>
             </thead>
             <tbody>
-              <tr><td>2025-08-01</td><td>이메일</td><td>cust_1023</td><td>배송 지연</td><td>주문한 상품이 아직...</td><td>신규</td></tr>
-              <tr><td>2025-08-02</td><td>챗봇</td><td>cust_3381</td><td>환불 문의</td><td>결제 취소가 안돼요...</td><td>진행중</td></tr>
-              <tr><td>2025-08-02</td><td>전화</td><td>cust_9912</td><td>파손 수령</td><td>박스가 찢어져서...</td><td>신규</td></tr>
-              <tr><td>2025-08-03</td><td>SNS</td><td>cust_1277</td><td>품질 불만</td><td>색상이 사진과 달라요...</td><td>완료</td></tr>
-              <tr><td>2025-08-03</td><td>이메일</td><td>cust_6620</td><td>AS 문의</td><td>작동이 중간에 멈춤...</td><td>신규</td></tr>
+              <tr><td>2025-08-01</td><td>cust_1023</td><td>게시판</td><td>MBP16-M3-1TB-SIL</td><td>배송 지연</td><td>	주문한 상품이 아직 도착을 안 했어요. 배송...</td><td>신규</td></tr>
+              <tr><td>2025-08-02</td><td>cust_3381</td><td>챗봇</td><td>MBA13-M2-256GB-MID</td><td>환불 문의</td><td>결제 취소가 안돼요. 지난주에 요청...</td><td>진행중</td></tr>
+              <tr><td>2025-08-02</td><td>cust_9912</td><td>전화</td><td>MBP14-M3-512GB-SPG</td><td>파손 수령</td><td>박스가 찢어져서 제품 외부에 흠집이...</td><td>신규</td></tr>
+              <tr><td>2025-08-03</td><td>cust_1277</td><td>SNS<td>MBA13-M2-256GB-MID</td></td><td>품질 불만</td><td>색상이 사진과 달라요. 화면에서 본 색과...</td><td>완료</td></tr>
+              <tr><td>2025-08-03</td><td>cust_6620</td><td>게시판</td><td>MBA15-M3-512GB-STAR</td><td>AS 문의</td><td>작동이 중간에 멈춤. 전원 버튼을 눌러도...</td><td>신규</td></tr>
             </tbody>
           </table>
         </div>
@@ -110,20 +118,22 @@
       <div class="head">
         <h2>컬럼 매핑</h2>
         <div class="toolbar">
-          <button class="btn">자동 매핑 제안</button>
-          <button class="btn primary">매핑 저장</button>
+          <button class="btn save">매핑 저장</button>
         </div>
       </div>
       <div class="body grid cols-2">
         <div class="card">
           <strong>원본 컬럼</strong>
-          <div class="grid" style="margin-top:10px;">
-            <div class="mapping-grid"><input class="input" value="created_at" /><span style="text-align:center; color:var(--muted)">→</span><select class="select"><option>접수일</option><option>채널</option><option>고객ID</option><option>제목</option><option>본문</option><option>상태</option></select></div>
-            <div class="mapping-grid"><input class="input" value="source" /><span style="text-align:center; color:var(--muted)">→</span><select class="select"><option>채널</option></select></div>
-            <div class="mapping-grid"><input class="input" value="customer_email" /><span style="text-align:center; color:var(--muted)">→</span><select class="select"><option>고객ID/이메일</option></select></div>
-            <div class="mapping-grid"><input class="input" value="subject" /><span style="text-align:center; color:var(--muted)">→</span><select class="select"><option>제목</option></select></div>
-            <div class="mapping-grid"><input class="input" value="message" /><span style="text-align:center; color:var(--muted)">→</span><select class="select"><option>본문</option></select></div>
-            <div class="mapping-grid"><input class="input" value="status" /><span style="text-align:center; color:var(--muted)">→</span><select class="select"><option>상태</option></select></div>
+          <button id="column_setting" class="btn save">컬럼 저장</button> 
+          <button id="column_reset" class="btn">초기화</button>
+          <div class="grid" style="margin-top:23px; clear:both;">
+            <div class="mapping-grid"><input class="input" value="created_at" /><span style="text-align:center; color:var(--muted)">→</span><select class="select"><option>접수일</option>
+            <div class="mapping-grid"><input class="input" value="customer_ID" /><span style="text-align:center; color:var(--muted)">→</span><select class="select"><option>고객ID/이메일(공용)</option><option>고객ID</option><option>이메일</option></select></div>
+            <div class="mapping-grid"><input class="input" value="channel" /><span style="text-align:center; color:var(--muted)">→</span><select class="select"><option>채널(공용)</option><option>게시판</option><option>전화</option><option>이메일</option><option>네이버 톡톡</option><option>카카오톡</option></select></div>
+            <div class="mapping-grid"><input class="input" value="product_ID" /><span style="text-align:center; color:var(--muted)">→</span><select class="select"><option>상품ID(SKU)</option></select></div>
+            <div class="mapping-grid"><input class="input" value="category" /><span style="text-align:center; color:var(--muted)">→</span><select class="select"><option>카테고리</option></select></div>
+            <div class="mapping-grid"><input class="input" value="message" /><span style="text-align:center; color:var(--muted)">→</span><select class="select"><option>문의 내용(공용)</option><option>제목</option><option>본문</option></select></div>
+            <div class="mapping-grid"><input class="input" value="status" /><span style="text-align:center; color:var(--muted)">→</span><select class="select"><option>처리 상태</option></select></div>
           </div>
           <p class="tip" style="margin-top:8px;">※ 매핑 템플릿을 저장해두면 다음 업로드부터 자동 적용</p>
         </div>
@@ -135,8 +145,7 @@
             <li>개인정보 마스킹: <span class="badge ok">고객ID/이메일</span> 자동 마스킹 설정</li>
           </ul>
           <div class="toolbar" style="margin-top:10px;">
-            <button class="btn">정제 규칙 보기</button>
-            <button class="btn primary">정제 실행</button>
+            <button id="camelCase" class="btn">정제 실행</button>
           </div>
         </div>
       </div>
