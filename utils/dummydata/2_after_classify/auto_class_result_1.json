@@ -1,0 +1,57 @@
+{
+  "return_code": 1,
+  "class_result_id": 24092901,
+  "period": { "from": "2025-09-01", "to": "2025-09-29" },
+
+  "category_info": [
+    { "category": "배송",     "count": 4210, "ratio": 0.337, "keywords": ["지연","택배","반품","배송상태"] },
+    { "category": "환불/취소","count": 2890, "ratio": 0.231, "keywords": ["취소","환불","승인","계정오류"] },
+    { "category": "불량/AS",  "count": 1683, "ratio": 0.135, "keywords": ["불량","AS","교체","수리","보증"] },
+    { "category": "상담/기타","count": 1504, "ratio": 0.120, "keywords": ["문의","계약","요금","안내"] }
+  ],
+
+  "channel_info": [
+    {
+      "channel": "1:1 게시판", "count": 3120, "ratio": 0.249,
+      "by_category": { "배송": 1280, "환불/취소": 910, "불량/AS": 520, "상담/기타": 410 }
+    },
+    {
+      "channel": "챗봇 문의", "count": 2045, "ratio": 0.164,
+      "by_category": { "배송": 820, "환불/취소": 530, "불량/AS": 360, "상담/기타": 335 }
+    },
+    {
+      "channel": "전화 상담", "count": 1800, "ratio": 0.144,
+      "by_category": { "배송": 690, "환불/취소": 540, "불량/AS": 310, "상담/기타": 260 }
+    },
+    {
+      "channel": "이메일상담", "count": 1500, "ratio": 0.121,
+      "by_category": { "배송": 560, "환불/취소": 420, "불량/AS": 270, "상담/기타": 250 }
+    },
+    {
+      "channel": "SNS 상담", "count": 2000, "ratio": 0.160,
+      "by_category": { "배송": 760, "환불/취소": 580, "불량/AS": 360, "상담/기타": 300 }
+    },
+    {
+      "channel": "자문게시판", "count": 2018, "ratio": 0.161,
+      "by_category": { "배송": 800, "환불/취소": 510, "불량/AS": 363, "상담/기타": 345 }
+    }
+  ],
+
+  "reliability_info": {
+    "split": { "train": 70, "val": 15, "test": 15 },
+    "macro_f1": 0.842,
+    "micro_f1": 0.883,
+    "accuracy": 0.876,
+    "calibration": {
+      "bin_edges":   [0.0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1.0],
+      "prob_pred":   [0.05,0.15,0.25,0.35,0.45,0.55,0.65,0.75,0.85,0.95],
+      "prob_true":   [0.04,0.12,0.21,0.31,0.41,0.52,0.63,0.72,0.83,0.92]
+    }
+  },
+
+  "ticket_info": [
+    { "id": 501, "title": "환불 요청", "category": "환불/취소", "channel": "전화 상담", "reliability": 0.93, "created_at": "2025-09-28 14:21" },
+    { "id": 502, "title": "로그인 오류", "category": "상담/기타", "channel": "1:1 게시판", "reliability": 0.89, "created_at": "2025-09-28 09:10" },
+    { "id": 503, "title": "배송 지연 문의", "category": "배송", "channel": "SNS 상담", "reliability": 0.86, "created_at": "2025-09-27 20:03" }
+  ]
+}

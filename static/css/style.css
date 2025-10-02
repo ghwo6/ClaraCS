@@ -71,6 +71,75 @@ a { color: inherit; text-decoration: none; }
     padding-bottom: 8px !important;
 }
 
+/* 부드러운 앵커 스크롤 (#classify 이동용) */
+html { scroll-behavior: smooth; }
+
+/*분류 시점 작은글씨, 회색*/
+.small { font-size: 11.5px; }
+.muted { color: var(--muted, #6b7280); }
+
+/* 자동분류 섹션 툴바: 아이템을 아래쪽으로 정렬 */
+#classify .head .toolbar {
+  display: flex;          /* 확실히 flex로 */
+  align-items: flex-end;  /* 하단 맞춤 */
+  gap: 8px;
+}
+
+/* 버튼 안의 아이콘/텍스트는 수평 중앙 정렬 유지 */
+#classify .head .toolbar .btn {
+  display: inline-flex;
+  align-items: center;
+}
+
+/* '마지막 분류' 라벨: 행간 여백 제거 + 살짝 내림 */
+#last-run-at {
+  display: inline-flex;
+  align-items: flex-end;  /* 라벨 텍스트도 하단 기준 */
+  line-height: 1;
+  padding-bottom: 2px;    /* 필요 시 0~3px 사이로 미세 조정 */
+}
+
+/* 3×2 레이아웃:
+   cat | channels
+   rely| channels
+   tickets (두 칸 가로로) */
+.classify-grid{
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: auto auto auto;
+  gap:16px;
+  grid-template-areas:
+    "cat channels"
+    "rely channels"
+    "tickets tickets";
+}
+
+/* 각 카드 위치 고정 */
+.card--category   { grid-area: cat; }
+.card--channels   { grid-area: channels; display:flex; flex-direction:column; }
+.card--reliability{ grid-area: rely; }
+.card--tickets    { grid-area: tickets; }
+
+/* 채널 영역 - 상단 범례 고정 + 내부 스크롤 */
+.channels-head { display:flex; justify-content:space-between; align-items:center; }
+.legend { display:flex; gap:10px; flex-wrap:wrap; }
+.legend .item { display:inline-flex; align-items:center; gap:6px; font-size:12px; color:var(--muted,#6b7280); }
+.legend .dot { width:10px; height:10px; border-radius:50%; display:inline-block; }
+
+.channel-grid {
+  display:grid; grid-template-columns: repeat(3, 1fr); gap:12px;
+  margin-top:8px;
+}
+.scroll-y { overflow-y:auto; max-height: 460px; } /* 필요 시 높이 조정 */
+
+/* 도움 유틸 */
+.right { text-align:right; }
+.chart-box.tall { height:260px; }
+.center { display:flex; align-items:center; justify-content:center; }
+
+/* 실행 버튼 상태(파랑→진녹) */
+#btn-run-classify.active { filter: brightness(0.92); }
+
 /* 리포트 관련 스타일 */
 .loading-indicator {
     position: absolute;

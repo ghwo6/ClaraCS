@@ -152,51 +152,85 @@
     </section>
 
     <!-- 자동 분류 -->
-    <section class="section" id="classify">
-      <div class="head">
-        <h2>자동 분류 (샘플 화면)</h2>
-        <div class="toolbar">
-          <button class="btn">규칙 편집</button>
-          <button class="btn">모델 교체</button>
-          <button class="btn primary">분류 실행</button>
-        </div>
+<section class="section" id="classify">
+  <div class="head">
+    <h2>자동 분류</h2>
+    <div class="toolbar">
+      <!-- <button class="btn">규칙 편집</button> -->
+      <!-- <button class="btn">모델 교체</button> -->
+      <!-- 마지막 분류 시각 표시 -->
+      <span id="last-run-at" class="small muted" style="margin-left:8px;">
+       마지막 분류 : -
+      </span>
+      <button id="btn-reset-classify" class="btn ghost" onclick="window.resetClassification && window.resetClassification()">
+        초기화
+      </button>
+      <!-- 버튼에 id 부여: JS가 클릭 이벤트를 바인딩 -->
+      <button id="btn-run-classify" class="btn primary" onclick="window.runClassification && window.runClassification()">
+        분류 실행
+      </button>
+    </div>
+  </div>
+
+  <div class="body">
+    <!-- 여기부터 그리드 컨테이너 -->
+    <div class="classify-grid">
+      
+      <!-- 1x1 : 카테고리별 분류 결과 -->
+      <div class="card card--category">
+        <strong>카테고리별 분류 결과</strong>
+        <table class="table" style="margin-top:8px;">
+          <thead>
+            <tr><th>카테고리</th><th class="right">건수</th><th class="right">비율</th><th>예시 키워드</th></tr>
+          </thead>
+          <tbody id="categoryTableBody">
+            <tr><td colspan="4">[분류 실행]을 눌러 데이터를 불러오세요</td></tr>
+          </tbody>
+        </table>
       </div>
-      <div class="body">
-        <div class="grid cols-2">
-          <div class="card">
-            <strong>분류 결과 요약</strong>
-            <table class="table" style="margin-top:8px;">
-              <thead><tr><th>카테고리</th><th>건수</th><th>비율</th><th>예시 키워드</th></tr></thead>
-              <tbody>
-                <tr><td>배송</td><td>4,210</td><td>33.7%</td><td>지연, 택배, 배송상태</td></tr>
-                <tr><td>환불/취소</td><td>2,890</td><td>23.1%</td><td>환불, 취소, 결제오류</td></tr>
-                <tr><td>품질/하자</td><td>2,031</td><td>16.3%</td><td>불량, 파손, 오작동</td></tr>
-                <tr><td>AS/설치</td><td>1,504</td><td>12.0%</td><td>기사, 방문, 설치</td></tr>
-                <tr><td>기타</td><td>1,848</td><td>14.9%</td><td>문의, 확인, 안내</td></tr>
-              </tbody>
-            </table>
-          </div>
-          <div class="card">
-            <strong>정확도/신뢰도(샘플)</strong>
-            <div class="chart-box" style="height:260px;">차트 영역 (바/레이더)</div>
-            <p class="tip" style="margin-top:8px;">샘플 지표: Macro-F1, Precision, Recall</p>
+
+      <!-- 1x2 + 2x2 : 채널별 분류 결과(오른쪽 열 전체를 세로로 차지) -->
+      <div class="card card--channels">
+        <div class="channels-head">
+          <strong>채널별 분류 결과</strong>
+          <div class="legend sticky">
+            <div class="item"><span class="dot" style="background:#ff4d4f"></span>배송</div>
+            <div class="item"><span class="dot" style="background:#ffa940"></span>환불/취소</div>
+            <div class="item"><span class="dot" style="background:#3ddc97"></span>품질/하자</div>
+            <div class="item"><span class="dot" style="background:#ffd666"></span>AS/설치</div>
+            <div class="item"><span class="dot" style="background:#9aa0a6"></span>기타</div>
           </div>
         </div>
-        <div class="card" style="margin-top:16px;">
-          <strong>티켓 목록(상위 10건 샘플)</strong>
-          <table class="table" style="margin-top:8px;">
-            <thead><tr><th>접수일</th><th>채널</th><th>제목</th><th>예측 카테고리</th><th>우선순위</th><th>요약</th></tr></thead>
-            <tbody>
-              <tr><td>2025-08-03</td><td>이메일</td><td>배송이 너무 늦어요</td><td><span class="badge">배송</span></td><td><span class="badge warn">중</span></td><td>주문 배송 지연 관련 문의</td></tr>
-              <tr><td>2025-08-03</td><td>챗봇</td><td>환불 진행 상황</td><td><span class="badge">환불/취소</span></td><td><span class="badge ok">하</span></td><td>결제 환불 상태 문의</td></tr>
-              <tr><td>2025-08-02</td><td>전화</td><td>제품 도착 시 파손</td><td><span class="badge danger">품질/하자</span></td><td><span class="badge danger">상</span></td><td>파손 수령으로 교환 요청</td></tr>
-              <tr><td>2025-08-02</td><td>SNS</td><td>색상이 사진과 달라요</td><td><span class="badge">품질/하자</span></td><td><span class="badge warn">중</span></td><td>색상 불일치 불만</td></tr>
-              <tr><td>2025-08-02</td><td>이메일</td><td>설치 일정 문의</td><td><span class="badge">AS/설치</span></td><td><span class="badge ok">하</span></td><td>방문 설치 일정 확인</td></tr>
-            </tbody>
-          </table>
-        </div>
+        <div id="channelCards" class="channel-grid scroll-y"><!-- JS가 카드 렌더링 --></div>
       </div>
-    </section>
+
+      <!-- 2x1 : 자동 분류 정확도/신뢰도 -->
+      <div class="card card--reliability">
+        <strong>자동 분류 정확도/신뢰도</strong>
+        <div id="reliabilityBox" class="chart-box tall center">-</div>
+        <p class="tip" style="margin-top:8px;">train/val/test, Macro-F1, Micro-F1, Accuracy</p>
+      </div>
+
+      <!-- 3x1 + 3x2 : 티켓 목록(하단 전체 폭) -->
+      <div class="card card--tickets">
+        <strong>티켓 목록</strong>
+        <table class="table" style="margin-top:8px;">
+          <thead>
+            <tr>
+              <th>접수일</th><th>채널</th><th>내용</th><th>카테고리</th><th>키워드</th><th class="right">중요도</th>
+            </tr>
+          </thead>
+          <tbody id="ticketTableBody">
+            <tr><td colspan="6">-</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+    <!-- 그리드 끝 -->
+     
+  </div>
+</section>
 
     <!-- 분석 리포트 -->
     <section class="section" id="report">
@@ -308,5 +342,6 @@
 <script type="text/javascript" src="{{ url_for('static', filename='js/common.js') }}"></script>
 <script type="text/javascript" src="{{ url_for('static', filename='js/upload.js') }}"></script>
 <script type="text/javascript" src="{{ url_for('static', filename='js/report.js') }}"></script>
+<script type="text/javascript" src="{{ url_for('static', filename='js/auto_classify.js') }}"></script>
 </body>
 </html>
