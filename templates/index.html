@@ -158,8 +158,17 @@
     <div class="toolbar">
       <!-- <button class="btn">규칙 편집</button> -->
       <!-- <button class="btn">모델 교체</button> -->
-      <!-- 버튼에 id 부여: JS가 클릭 이벤트를 바인딩합니다 -->
-      <button id="btn-run-classify" class="btn primary">분류 실행</button>
+      <!-- 마지막 분류 시각 표시 -->
+      <span id="last-run-at" class="small muted" style="margin-left:8px;">
+       마지막 분류 : -
+      </span>
+      <button id="btn-reset-classify" class="btn ghost" onclick="window.resetClassification && window.resetClassification()">
+        초기화
+      </button>
+      <!-- 버튼에 id 부여: JS가 클릭 이벤트를 바인딩 -->
+      <button id="btn-run-classify" class="btn primary" onclick="window.runClassification && window.runClassification()">
+        분류 실행
+      </button>
     </div>
   </div>
 
@@ -333,5 +342,6 @@
 <script type="text/javascript" src="{{ url_for('static', filename='js/common.js') }}"></script>
 <script type="text/javascript" src="{{ url_for('static', filename='js/upload.js') }}"></script>
 <script type="text/javascript" src="{{ url_for('static', filename='js/report.js') }}"></script>
+<script type="text/javascript" src="{{ url_for('static', filename='js/auto_classify.js') }}"></script>
 </body>
 </html>

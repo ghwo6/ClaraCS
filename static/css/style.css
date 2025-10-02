@@ -74,6 +74,31 @@ a { color: inherit; text-decoration: none; }
 /* 부드러운 앵커 스크롤 (#classify 이동용) */
 html { scroll-behavior: smooth; }
 
+/*분류 시점 작은글씨, 회색*/
+.small { font-size: 11.5px; }
+.muted { color: var(--muted, #6b7280); }
+
+/* 자동분류 섹션 툴바: 아이템을 아래쪽으로 정렬 */
+#classify .head .toolbar {
+  display: flex;          /* 확실히 flex로 */
+  align-items: flex-end;  /* 하단 맞춤 */
+  gap: 8px;
+}
+
+/* 버튼 안의 아이콘/텍스트는 수평 중앙 정렬 유지 */
+#classify .head .toolbar .btn {
+  display: inline-flex;
+  align-items: center;
+}
+
+/* '마지막 분류' 라벨: 행간 여백 제거 + 살짝 내림 */
+#last-run-at {
+  display: inline-flex;
+  align-items: flex-end;  /* 라벨 텍스트도 하단 기준 */
+  line-height: 1;
+  padding-bottom: 2px;    /* 필요 시 0~3px 사이로 미세 조정 */
+}
+
 /* 3×2 레이아웃:
    cat | channels
    rely| channels

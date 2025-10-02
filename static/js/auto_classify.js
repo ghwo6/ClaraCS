@@ -1,4 +1,19 @@
-// static/js/auto_classify.js  (전체 교체본)
+// ---- 마지막 분류 시각 표시 유틸 ----
+function nowStringKST() {
+  const parts = new Intl.DateTimeFormat("ko-KR", {
+    timeZone: "Asia/Seoul",
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", hour12: false
+  }).formatToParts(new Date());
+  const get = t => parts.find(p => p.type === t)?.value || "";
+  const y = get("year"), m = get("month"), d = get("day");
+  const hh = get("hour"), mm = get("minute");
+  return `${y}-${m}-${d} ${hh}:${mm}`;
+}
+function setLastRunLabel(ts) {
+  const el = document.getElementById("last-run-at");
+  if (el) el.textContent = `마지막 분류 : ${ts}`;
+}
 
 // ---------- 유틸 ----------
 function truncate15(s) {
@@ -110,10 +125,11 @@ function renderTicketTableFromTop3(top3_by_category) {
 }
 
 // ---------- 실행 ----------
-async function runClassification() {
+window.runClassification = async function runClassification() {
   const btn = document.getElementById("btn-run-classify");
-  btn.classList.add("active");
-  btn.disabled = true;
+  btn?.classList.add("active");
+  if (btn) btn.disabled = true;
+
   try {
     const res = await fetch("/api/classifications/run", {
       method: "POST",
@@ -121,37 +137,73 @@ async function runClassification() {
       body: JSON.stringify({ user_id: 1, file_id: 123 })
     });
     if (!res.ok) throw new Error("HTTP " + res.status);
-    const data = await res.json();
-    console.log("[auto] API result:", data);
 
+    const data = await res.json();
+    // --- 기존 렌더링 ---
     renderCategoryTable(data.category_info || []);
     renderChannelCards(data.channel_info || []);
     renderReliability(data.reliability_info || {}, data.ui || {});
-    // 새로운 스키마(tickets.top3_by_category)에 맞춰 렌더
-    if (data.tickets && data.tickets.top3_by_category) {
+    if (data.tickets?.top3_by_category) {
       renderTicketTableFromTop3(data.tickets.top3_by_category);
-    } else if (Array.isArray(data.ticket_info)) {
-      // 구 스키마가 올 경우를 위한 하위호환(필드 매핑)
-      const tbody = document.getElementById("ticketTableBody");
-      tbody.innerHTML = data.ticket_info.map(t => `
-        <tr>
-          <td>${t.created_at || "-"}</td>
-          <td>${t.channel || "-"}</td>
-          <td>${truncate15(t.title || t.content || "")}</td>
-          <td>${t.category || "-"}</td>
-          <td>${joinKeywords(t.keywords || [])}</td>
-          <td class="right">${t.reliability ? (t.reliability*100).toFixed(1)+"%" : (t.importance || "-")}</td>
-        </tr>
-      `).join("");
     }
+
+    // --- 여기서만(성공 시) 마지막 분류 시각 갱신 & 저장 ---
+    const ts = nowStringKST();
+    setLastRunLabel(ts);
+    localStorage.setItem("autoclass:last_run_at", ts);
+    // (선택) 결과 데이터도 계속 저장
+    localStorage.setItem("autoclass:last", JSON.stringify(data));
   } catch (e) {
     console.error(e);
     alert("분류 요청 실패: " + e.message);
   } finally {
-    btn.classList.remove("active");
-    btn.disabled = false;
+    btn?.classList.remove("active");
+    if (btn) btn.disabled = false;
   }
+};
+
+// 초기화 함수 추가
+function clearUIToInitial() {
+  const cat = document.getElementById("categoryTableBody");
+  const ch  = document.getElementById("channelCards");
+  const rel = document.getElementById("reliabilityBox");
+  const tik = document.getElementById("ticketTableBody");
+  if (cat) cat.innerHTML = `<tr><td colspan="4">[분류 실행]을 눌러 데이터를 불러오세요</td></tr>`;
+  if (ch)  ch.innerHTML  = "";
+  if (rel) rel.innerHTML = `-`;
+  if (tik) tik.innerHTML = `<tr><td colspan="6">-</td></tr>`;
+  setLastRunLabel("-"); // 라벨도 초기화
 }
+
+window.resetClassification = function resetClassification() {
+  // 로컬 저장 제거
+  localStorage.removeItem("autoclass:last");
+  localStorage.removeItem("autoclass:last_run_at");
+  // 화면 초기화
+  clearUIToInitial();
+};
+
+(function restoreLastState() {
+  try {
+    const ts = localStorage.getItem("autoclass:last_run_at");
+    if (ts) setLastRunLabel(ts);
+
+    const raw = localStorage.getItem("autoclass:last");
+    if (raw) {
+      const data = JSON.parse(raw);
+      renderCategoryTable(data.category_info || []);
+      renderChannelCards(data.channel_info || []);
+      renderReliability(data.reliability_info || {}, data.ui || {});
+      if (data.tickets?.top3_by_category) {
+        renderTicketTableFromTop3(data.tickets.top3_by_category);
+      }
+    } else {
+      // 완전 초기 상태 보장
+      clearUIToInitial();
+    }
+  } catch { /* 무시 */ }
+})();
+
 
 // ---------- 클릭 바인딩(안전) ----------
 (function bindRunButton() {
@@ -165,4 +217,11 @@ async function runClassification() {
   } else {
     bind();
   }
+})();
+
+
+// 페이지 로드 시 마지막 분류 시각 복원
+(function restoreLastRunAt() {
+  const saved = localStorage.getItem("autoclass:last_run_at");
+  if (saved) setLastRunLabel(saved);
 })();
