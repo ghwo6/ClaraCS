@@ -1,48 +1,11 @@
 # 필요한 라이브러리들을 가져옵니다.
 from reportlab.pdfgen import canvas
-from reportlab.lib.pagesizes import letter,A4
+from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
-from reportlab.lib.units import inch, cm, mm
+from reportlab.lib.units import cm, mm, inch
 from reportlab.platypus import Table, TableStyle
-
-# 정규화
-# import re
-from datetime import datetime
-
-# --- (필수) 한글 폰트 설정 ---
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
-
-# def sanitize_filename(text):
-#     """
-#     파일명에 사용할 수 없는 특수문자를 제거하고, 공백을 언더스코어(_)로 바꿉니다.
-#     """
-#     # 파일명으로 부적합한 문자 제거 (정규표현식 사용)
-#     text = re.sub(r'[\\/*?:"<>|]', "", text)
-#     # 공백을 언더스코어로 변경
-#     text = text.replace(" ", "_")
-#     return text
-
-# def create_normalized_filename(company_name, category, report_type="분석리포트"):
-#     """
-#     정규화된 PDF 파일 이름을 생성합니다.
-#     """
-#     # 1. 필요한 데이터 가져오기
-#     service_name = "ClaraCS"
-#     today_date = datetime.now().strftime("%Y-%m-%d") # "YYYY-MM-DD" 형식
-
-#     # 2. 각 구성요소를 안전하게 만들기 (Sanitize)
-#     safe_company = sanitize_filename(company_name)
-#     safe_category = sanitize_filename(category)
-#     safe_report_type = sanitize_filename(report_type)
-
-#     # 3. 구조에 맞춰 파일 이름 조합
-#     filename = f"{service_name}_{"AI분석리포트"}_{safe_company}_{safe_category}_{today_date}.pdf"
-#     # filename = f"{"AI분석리포트"}_{safe_company}_{today_date}.pdf"
-    
-#     return filename
-
-# 아직 파일이름과 pdf와 연결하지 아니함
 
 # 'malgun.ttf' 폰트 파일을 코드와 같은 경로에 준비해야 합니다.
 try:
@@ -57,9 +20,9 @@ except:
 # -----------------------------
 
 
-def create_prototype_report(filename="Clara_CS_Prototype_Report.pdf"):
-    """SB 5페이지 레이아웃에 맞춰 프로토타입 PDF 리포트를 생성합니다."""
-    
+def create_prototype_report(filename, report_data):
+    """전달받은 데이터를 기반으로 동적 PDF 리포트를 생성합니다."""
+
     # 1. 도화지(Canvas)를 준비합니다.
     c = canvas.Canvas(filename, pagesize=A4)
     width, height = A4  # 페이지 크기 (가로, 세로)
@@ -71,8 +34,12 @@ def create_prototype_report(filename="Clara_CS_Prototype_Report.pdf"):
     c.setFont(FONT_NAME_BOLD, 14)
     c.drawCentredString(width/2, height - 1 * cm, "Clara CS 분석 리포트")
     
+    company_name = report_data.get("company_name", "회사명 없음")
+    report_date = report_data.get("date", "날짜 없음")
+    
     c.setFont(FONT_NAME, 10)
-    c.drawRightString(right_margin, height - 1 * cm, "2025.09.30") # 오늘 날짜로 변경
+    c.drawCentredString(width/2, height - 1.5 * cm, company_name)
+    c.drawRightString(right_margin, height - 1 * cm, report_date)
 
     # --- 왼쪽 컬럼: 분석 데이터 정보 ---
     c.setFont(FONT_NAME_BOLD, 16)
@@ -164,6 +131,10 @@ def create_prototype_report(filename="Clara_CS_Prototype_Report.pdf"):
     print(f"'{filename}' 파일이 성공적으로 생성되었습니다.")
 
 
-# --- 함수 실행 ---
+# --- [수정] 함수를 직접 테스트할 때도 임시 데이터를 넣어줍니다 ---
 if __name__ == "__main__":
-    create_prototype_report()
+    test_data = {
+        "company_name": "XX(주)",
+        "date": "2025.10.03"
+    }
+    create_prototype_report("test_report.pdf", test_data)
