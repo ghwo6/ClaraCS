@@ -263,9 +263,6 @@
           </ul>
         </div>
       </div>
-      <div style="text-align: center;">
-      <button class="btn primary">리포트 내보내기(pdf)</button>
-      </div>
     </section>
 
     <!-- 내보내기/공유 -->
@@ -273,33 +270,7 @@
       <div class="head">
         <h2>리포트 내보내기 · 공유</h2>
         <div class="toolbar">
-          <button class="btn">CSV</button>
-          <button class="btn">PDF</button>
-          <button class="btn">PPT</button>
-          <button class="btn primary">대시보드 공유 링크 생성</button>
-        </div>
-      </div>
-      <div class="body">
-        <div class="grid cols-2">
-          <div class="card">
-            <strong>내보내기 프리셋</strong>
-            <ul class="subtle">
-              <li>경영진용: 요약 + 핵심 지표 5개 + 권고안</li>
-              <li>운영팀용: 카테고리 상세 + 티켓 샘플 100건</li>
-              <li>개발/품질팀용: 루트코즈 + SKU/지역 매핑</li>
-            </ul>
-          </div>
-          <div class="card">
-            <strong>버전/이력</strong>
-            <table class="table" style="margin-top:8px;">
-              <thead><tr><th>버전</th><th>생성일</th><th>생성자</th><th>설명</th></tr></thead>
-              <tbody>
-                <tr><td>v0.3</td><td>2025-08-05</td><td>KMH</td><td>권고안 섹션 추가</td></tr>
-                <tr><td>v0.2</td><td>2025-08-02</td><td>KMH</td><td>카테고리 추이 업데이트</td></tr>
-                <tr><td>v0.1</td><td>2025-08-01</td><td>KMH</td><td>초기 템플릿</td></tr>
-              </tbody>
-            </table>
-          </div>
+          <button class="btn primary" id="btn-export-pdf">pdf</button>
         </div>
       </div>
     </section>
@@ -346,5 +317,6 @@
 <script type="text/javascript" src="{{ url_for('static', filename='js/upload.js') }}"></script>
 <script type="text/javascript" src="{{ url_for('static', filename='js/report.js') }}"></script>
 <script type="text/javascript" src="{{ url_for('static', filename='js/auto_classify.js') }}"></script>
+<script type="text/javascript" src="{{ url_for('static', filename='js/pdf_export.js') }}"></script>
 </body>
 </html>
