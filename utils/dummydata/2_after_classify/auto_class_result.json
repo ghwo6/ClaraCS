@@ -1,0 +1,703 @@
+{
+  "return_code": 1,
+  "class_result_id": 24093001,
+  "period": {
+    "from": "2025-09-01",
+    "to": "2025-09-29"
+  },
+  "ui": {
+    "legend_order": [
+      "배송",
+      "환불/취소",
+      "품질/하자",
+      "AS/설치",
+      "기타"
+    ],
+    "colors": {
+      "배송": "#ff4d4f",
+      "환불/취소": "#ffa940",
+      "품질/하자": "#3ddc97",
+      "AS/설치": "#ffd666",
+      "기타": "#9aa0a6"
+    },
+    "accuracy_color_thresholds": {
+      "good": 0.95,
+      "warn": 0.9
+    },
+    "sticky_legend": true,
+    "channel_scroll_axis": "y"
+  },
+  "category_info": [
+    {
+      "category": "배송",
+      "count": 4210,
+      "ratio": 0.337259,
+      "keywords": [
+        "지연",
+        "택배",
+        "반품",
+        "배송상태"
+      ]
+    },
+    {
+      "category": "환불/취소",
+      "count": 2890,
+      "ratio": 0.231515,
+      "keywords": [
+        "환불",
+        "취소",
+        "승인",
+        "결제오류"
+      ]
+    },
+    {
+      "category": "품질/하자",
+      "count": 2031,
+      "ratio": 0.162701,
+      "keywords": [
+        "불량",
+        "파손",
+        "오작동"
+      ]
+    },
+    {
+      "category": "AS/설치",
+      "count": 1504,
+      "ratio": 0.120484,
+      "keywords": [
+        "기사",
+        "방문",
+        "설치"
+      ]
+    },
+    {
+      "category": "기타",
+      "count": 1848,
+      "ratio": 0.148041,
+      "keywords": [
+        "문의",
+        "확인",
+        "안내"
+      ]
+    }
+  ],
+  "channel_info": [
+    {
+      "channel": "1:1 게시판",
+      "count": 3120,
+      "ratio": 0.24994,
+      "by_category": {
+        "배송": 1280,
+        "환불/취소": 910,
+        "품질/하자": 520,
+        "AS/설치": 210,
+        "기타": 200
+      }
+    },
+    {
+      "channel": "챗봇 문의",
+      "count": 2045,
+      "ratio": 0.163823,
+      "by_category": {
+        "배송": 820,
+        "환불/취소": 510,
+        "품질/하자": 360,
+        "AS/설치": 150,
+        "기타": 205
+      }
+    },
+    {
+      "channel": "전화 상담",
+      "count": 1800,
+      "ratio": 0.144196,
+      "by_category": {
+        "배송": 690,
+        "환불/취소": 500,
+        "품질/하자": 310,
+        "AS/설치": 160,
+        "기타": 140
+      }
+    },
+    {
+      "channel": "이메일상담",
+      "count": 1500,
+      "ratio": 0.120163,
+      "by_category": {
+        "배송": 560,
+        "환불/취소": 390,
+        "품질/하자": 270,
+        "AS/설치": 110,
+        "기타": 170
+      }
+    },
+    {
+      "channel": "SNS 상담",
+      "count": 2000,
+      "ratio": 0.160218,
+      "by_category": {
+        "배송": 760,
+        "환불/취소": 580,
+        "품질/하자": 360,
+        "AS/설치": 130,
+        "기타": 170
+      }
+    },
+    {
+      "channel": "자문게시판",
+      "count": 2018,
+      "ratio": 0.16166,
+      "by_category": {
+        "배송": 100,
+        "환불/취소": 0,
+        "품질/하자": 211,
+        "AS/설치": 744,
+        "기타": 963
+      }
+    }
+  ],
+  "reliability_info": {
+    "split": {
+      "train": 70,
+      "val": 15,
+      "test": 15
+    },
+    "macro_f1": 0.942,
+    "micro_f1": 0.956,
+    "accuracy": 0.951,
+    "calibration": {
+      "bin_edges": [
+        0.0,
+        0.1,
+        0.2,
+        0.3,
+        0.4,
+        0.5,
+        0.6,
+        0.7,
+        0.8,
+        0.9,
+        1.0
+      ],
+      "prob_pred": [
+        0.05,
+        0.15,
+        0.25,
+        0.35,
+        0.45,
+        0.55,
+        0.65,
+        0.75,
+        0.85,
+        0.95
+      ],
+      "prob_true": [
+        0.04,
+        0.13,
+        0.23,
+        0.33,
+        0.43,
+        0.53,
+        0.64,
+        0.74,
+        0.84,
+        0.93
+      ]
+    }
+  },
+  "tickets": {
+    "top3_by_category": {
+      "배송": [
+        {
+          "received_at": "2025-09-25",
+          "channel": "게시판",
+          "content": "배송이 너무 늦어요",
+          "preview": "배송이 너무 늦...",
+          "category": "배송",
+          "keywords": [
+            "배송",
+            "늦음"
+          ],
+          "importance": "중"
+        },
+        {
+          "received_at": "2025-09-22",
+          "channel": "전화상담",
+          "content": "택배가 중간에 멈춤",
+          "preview": "택배가 중간에...",
+          "category": "배송",
+          "keywords": [
+            "택배",
+            "지연"
+          ],
+          "importance": "중"
+        },
+        {
+          "received_at": "2025-09-21",
+          "channel": "챗봇",
+          "content": "배송상태 확인 바랍니다",
+          "preview": "배송상태 확인 ...",
+          "category": "배송",
+          "keywords": [
+            "배송상태",
+            "확인"
+          ],
+          "importance": "하"
+        }
+      ],
+      "환불/취소": [
+        {
+          "received_at": "2025-09-24",
+          "channel": "챗봇",
+          "content": "카드 환불이 아직 안돼요",
+          "preview": "카드 환불이 아...",
+          "category": "환불/취소",
+          "keywords": [
+            "환불",
+            "카드"
+          ],
+          "importance": "상"
+        },
+        {
+          "received_at": "2025-09-24",
+          "channel": "전화상담",
+          "content": "단순변심 환불하고 싶어요",
+          "preview": "단순변심 환불...",
+          "category": "환불/취소",
+          "keywords": [
+            "취소",
+            "환불"
+          ],
+          "importance": "중"
+        },
+        {
+          "received_at": "2025-09-23",
+          "channel": "챗봇",
+          "content": "결제 취소 요청합니다",
+          "preview": "결제 취소 요청...",
+          "category": "환불/취소",
+          "keywords": [
+            "결제",
+            "취소"
+          ],
+          "importance": "중"
+        }
+      ],
+      "품질/하자": [
+        {
+          "received_at": "2025-09-25",
+          "channel": "게시판",
+          "content": "제품이 와서 보니 파손",
+          "preview": "제품이 와서 보...",
+          "category": "품질/하자",
+          "keywords": [
+            "파손",
+            "교환"
+          ],
+          "importance": "상"
+        },
+        {
+          "received_at": "2025-09-22",
+          "channel": "전화상담",
+          "content": "색상이 사진과 달라요",
+          "preview": "색상이 사진과...",
+          "category": "품질/하자",
+          "keywords": [
+            "색상",
+            "불만"
+          ],
+          "importance": "중"
+        },
+        {
+          "received_at": "2025-09-21",
+          "channel": "게시판",
+          "content": "작동 중간에 멈춰요",
+          "preview": "작동 중간에 멈...",
+          "category": "품질/하자",
+          "keywords": [
+            "오작동"
+          ],
+          "importance": "상"
+        }
+      ],
+      "AS/설치": [
+        {
+          "received_at": "2025-09-23",
+          "channel": "이메일",
+          "content": "설치 일정 확인 바랍니다",
+          "preview": "설치 일정 확...",
+          "category": "AS/설치",
+          "keywords": [
+            "설치",
+            "일정"
+          ],
+          "importance": "하"
+        },
+        {
+          "received_at": "2025-09-22",
+          "channel": "전화상담",
+          "content": "방문 AS 접수하고 싶어요",
+          "preview": "방문 AS 접수...",
+          "category": "AS/설치",
+          "keywords": [
+            "AS",
+            "방문"
+          ],
+          "importance": "중"
+        },
+        {
+          "received_at": "2025-09-20",
+          "channel": "게시판",
+          "content": "기사님 연락이 없어요",
+          "preview": "기사님 연락이...",
+          "category": "AS/설치",
+          "keywords": [
+            "기사",
+            "연락"
+          ],
+          "importance": "중"
+        }
+      ],
+      "기타": [
+        {
+          "received_at": "2025-09-26",
+          "channel": "SNS",
+          "content": "이벤트 안내 문의합니다",
+          "preview": "이벤트 안내 문...",
+          "category": "기타",
+          "keywords": [
+            "이벤트",
+            "안내"
+          ],
+          "importance": "하"
+        },
+        {
+          "received_at": "2025-09-24",
+          "channel": "게시판",
+          "content": "계약 관련해서 질문",
+          "preview": "계약 관련해서...",
+          "category": "기타",
+          "keywords": [
+            "계약",
+            "질문"
+          ],
+          "importance": "중"
+        },
+        {
+          "received_at": "2025-09-22",
+          "channel": "이메일",
+          "content": "요금제 비교 알려주세요",
+          "preview": "요금제 비교 알...",
+          "category": "기타",
+          "keywords": [
+            "요금",
+            "안내"
+          ],
+          "importance": "중"
+        }
+      ]
+    },
+    "all_by_category": {
+      "배송": [
+        {
+          "received_at": "2025-09-25",
+          "channel": "게시판",
+          "content": "배송이 너무 늦어요",
+          "preview": "배송이 너무 늦...",
+          "category": "배송",
+          "keywords": [
+            "배송",
+            "늦음"
+          ],
+          "importance": "중"
+        },
+        {
+          "received_at": "2025-09-24",
+          "channel": "SNS",
+          "content": "배송 지연 보상 문의",
+          "preview": "배송 지연 보상...",
+          "category": "배송",
+          "keywords": [
+            "배송",
+            "보상"
+          ],
+          "importance": "중"
+        },
+        {
+          "received_at": "2025-09-22",
+          "channel": "전화상담",
+          "content": "택배가 중간에 멈춤",
+          "preview": "택배가 중간에...",
+          "category": "배송",
+          "keywords": [
+            "택배",
+            "지연"
+          ],
+          "importance": "중"
+        },
+        {
+          "received_at": "2025-09-21",
+          "channel": "챗봇",
+          "content": "배송상태 확인 바랍니다",
+          "preview": "배송상태 확인 ...",
+          "category": "배송",
+          "keywords": [
+            "배송상태",
+            "확인"
+          ],
+          "importance": "하"
+        },
+        {
+          "received_at": "2025-09-20",
+          "channel": "이메일",
+          "content": "분실 처리 어떻게 해요",
+          "preview": "분실 처리 어떻...",
+          "category": "배송",
+          "keywords": [
+            "분실"
+          ],
+          "importance": "상"
+        }
+      ],
+      "환불/취소": [
+        {
+          "received_at": "2025-09-24",
+          "channel": "챗봇",
+          "content": "카드 환불이 아직 안돼요",
+          "preview": "카드 환불이 아...",
+          "category": "환불/취소",
+          "keywords": [
+            "환불",
+            "카드"
+          ],
+          "importance": "상"
+        },
+        {
+          "received_at": "2025-09-24",
+          "channel": "전화상담",
+          "content": "단순변심 환불하고 싶어요",
+          "preview": "단순변심 환불...",
+          "category": "환불/취소",
+          "keywords": [
+            "취소",
+            "환불"
+          ],
+          "importance": "중"
+        },
+        {
+          "received_at": "2025-09-23",
+          "channel": "챗봇",
+          "content": "결제 취소 요청합니다",
+          "preview": "결제 취소 요청...",
+          "category": "환불/취소",
+          "keywords": [
+            "결제",
+            "취소"
+          ],
+          "importance": "중"
+        },
+        {
+          "received_at": "2025-09-22",
+          "channel": "이메일",
+          "content": "환불 승인까지 며칠?",
+          "preview": "환불 승인까지 ...",
+          "category": "환불/취소",
+          "keywords": [
+            "승인"
+          ],
+          "importance": "하"
+        },
+        {
+          "received_at": "2025-09-20",
+          "channel": "게시판",
+          "content": "부분 취소 가능한가요",
+          "preview": "부분 취소 가능...",
+          "category": "환불/취소",
+          "keywords": [
+            "부분취소"
+          ],
+          "importance": "하"
+        }
+      ],
+      "품질/하자": [
+        {
+          "received_at": "2025-09-25",
+          "channel": "게시판",
+          "content": "제품이 와서 보니 파손",
+          "preview": "제품이 와서 보...",
+          "category": "품질/하자",
+          "keywords": [
+            "파손",
+            "교환"
+          ],
+          "importance": "상"
+        },
+        {
+          "received_at": "2025-09-22",
+          "channel": "전화상담",
+          "content": "색상이 사진과 달라요",
+          "preview": "색상이 사진과...",
+          "category": "품질/하자",
+          "keywords": [
+            "색상",
+            "불만"
+          ],
+          "importance": "중"
+        },
+        {
+          "received_at": "2025-09-21",
+          "channel": "게시판",
+          "content": "작동 중간에 멈춰요",
+          "preview": "작동 중간에 멈...",
+          "category": "품질/하자",
+          "keywords": [
+            "오작동"
+          ],
+          "importance": "상"
+        },
+        {
+          "received_at": "2025-09-20",
+          "channel": "이메일",
+          "content": "봉제선이 터져 있어요",
+          "preview": "봉제선이 터져 ...",
+          "category": "품질/하자",
+          "keywords": [
+            "불량"
+          ],
+          "importance": "중"
+        },
+        {
+          "received_at": "2025-09-19",
+          "channel": "SNS",
+          "content": "소음이 너무 커요",
+          "preview": "소음이 너무 커...",
+          "category": "품질/하자",
+          "keywords": [
+            "소음"
+          ],
+          "importance": "하"
+        }
+      ],
+      "AS/설치": [
+        {
+          "received_at": "2025-09-23",
+          "channel": "이메일",
+          "content": "설치 일정 확인 바랍니다",
+          "preview": "설치 일정 확...",
+          "category": "AS/설치",
+          "keywords": [
+            "설치",
+            "일정"
+          ],
+          "importance": "하"
+        },
+        {
+          "received_at": "2025-09-22",
+          "channel": "전화상담",
+          "content": "방문 AS 접수하고 싶어요",
+          "preview": "방문 AS 접수...",
+          "category": "AS/설치",
+          "keywords": [
+            "AS",
+            "방문"
+          ],
+          "importance": "중"
+        },
+        {
+          "received_at": "2025-09-20",
+          "channel": "게시판",
+          "content": "기사님 연락이 없어요",
+          "preview": "기사님 연락이...",
+          "category": "AS/설치",
+          "keywords": [
+            "기사",
+            "연락"
+          ],
+          "importance": "중"
+        },
+        {
+          "received_at": "2025-09-19",
+          "channel": "SNS",
+          "content": "벽면 설치 위치 상담",
+          "preview": "벽면 설치 위...",
+          "category": "AS/설치",
+          "keywords": [
+            "설치",
+            "상담"
+          ],
+          "importance": "하"
+        },
+        {
+          "received_at": "2025-09-18",
+          "channel": "게시판",
+          "content": "케이블 정리 요청",
+          "preview": "케이블 정리 요...",
+          "category": "AS/설치",
+          "keywords": [
+            "정리"
+          ],
+          "importance": "하"
+        }
+      ],
+      "기타": [
+        {
+          "received_at": "2025-09-26",
+          "channel": "SNS",
+          "content": "이벤트 안내 문의합니다",
+          "preview": "이벤트 안내 문...",
+          "category": "기타",
+          "keywords": [
+            "이벤트",
+            "안내"
+          ],
+          "importance": "하"
+        },
+        {
+          "received_at": "2025-09-24",
+          "channel": "게시판",
+          "content": "계약 관련해서 질문",
+          "preview": "계약 관련해서...",
+          "category": "기타",
+          "keywords": [
+            "계약",
+            "질문"
+          ],
+          "importance": "중"
+        },
+        {
+          "received_at": "2025-09-22",
+          "channel": "이메일",
+          "content": "요금제 비교 알려주세요",
+          "preview": "요금제 비교 알...",
+          "category": "기타",
+          "keywords": [
+            "요금",
+            "안내"
+          ],
+          "importance": "중"
+        },
+        {
+          "received_at": "2025-09-21",
+          "channel": "전화상담",
+          "content": "영업시간 문의 드려요",
+          "preview": "영업시간 문의...",
+          "category": "기타",
+          "keywords": [
+            "영업시간"
+          ],
+          "importance": "하"
+        },
+        {
+          "received_at": "2025-09-19",
+          "channel": "게시판",
+          "content": "회원등급 조건 확인",
+          "preview": "회원등급 조건 ...",
+          "category": "기타",
+          "keywords": [
+            "회원등급"
+          ],
+          "importance": "하"
+        }
+      ]
+    }
+  }
+}
