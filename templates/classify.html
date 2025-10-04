@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="ko">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta property="og:title" content="ClaraCS" />
+    <meta property="og:description" content="ClaraCS의 메인 페이지입니다." />
+    <meta property="og:image" content="" />
+    <title>ClaraCS – 지능형 CS 데이터 분석·인사이트 플랫폼</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/classify.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+<div class="app">
+  <!-- 사이드바 -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="logo"></div>
+      <h1>ClaraCS – 데이터 인텔리전스</h1>
+    </div>
+    <nav class="nav">
+      <a href="/"><span class="dot"></span><span>대시보드</span><span class="badge ok">Home</span></a>
+      <a href="/upload"><span class="dot"></span><span>데이터 업로드</span><span></span></a>
+      <a href="/classify" class="active"><span class="dot"></span><span>자동 분류</span><span></span></a>
+      <a href="/report"><span class="dot"></span><span>분석 리포트</span><span></span></a>
+      <a href="/settings"><span class="dot"></span><span>설정 · 도움말</span><span></span></a>
+    </nav>
+    <div class="helper">
+      <div><strong>프로젝트명</strong><br/><br/>INTELLIGENT CS DATA ANALYSIS & INSIGHT PLATFORM</div>
+      <br/>
+      <button class="CTA-button" id="getCTABtn">
+          Get Your AI Report&nbsp;&rarr;
+      </button>
+      <br/>
+      <br/>
+    </div>
+  </aside>
+
+  <!-- 메인 -->
+  <main class="main">
+
+    <!-- 자동 분류 -->
+<section class="section" id="classify">
+  <div class="head">
+    <h2>자동 분류</h2>
+    <div class="toolbar">
+      <!-- <button class="btn">규칙 편집</button> -->
+      <!-- <button class="btn">모델 교체</button> -->
+      <!-- 마지막 분류 시각 표시 -->
+      <span id="last-run-at" class="small muted" style="margin-left:8px;">
+       마지막 분류 : -
+      </span>
+      <button id="btn-reset-classify" class="btn ghost" onclick="window.resetClassification && window.resetClassification()">
+        초기화
+      </button>
+      <!-- 버튼에 id 부여: JS가 클릭 이벤트를 바인딩 -->
+      <button id="btn-run-classify" class="btn primary" onclick="window.runClassification && window.runClassification()">
+        분류 실행
+      </button>
+    </div>
+  </div>
+
+  <div class="body">
+    <!-- 여기부터 그리드 컨테이너 -->
+    <div class="classify-grid">
+      
+      <!-- 1x1 : 카테고리별 분류 결과 -->
+      <div class="card card--category" id="catCard"> <!--id="catCard" 추가함(new)-->
+        <strong>카테고리별 분류 결과</strong>
+        <table class="table" style="margin-top:8px;">
+          <thead>
+            <tr><th>카테고리</th><th class="right">건수</th><th class="right">비율</th><th>예시 키워드</th></tr>
+          </thead>
+          <tbody id="categoryTableBody">
+            <tr><td colspan="4">[분류 실행]을 눌러 데이터를 불러오세요</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- 1x2 + 2x2 : 채널별 분류 결과(오른쪽 열 전체를 세로로 차지) --> 
+      <div class="card card--channels" id="channelsCard"> <!--id="channelsCard" 추가함(new)-->
+        <div class="channels-head">
+          <strong>채널별 분류 결과</strong>
+          <div class="legend sticky">
+            <div class="item"><span class="dot" style="background:#ff4d4f"></span>배송</div>
+            <div class="item"><span class="dot" style="background:#ffa940"></span>환불/취소</div>
+            <div class="item"><span class="dot" style="background:#3ddc97"></span>품질/하자</div>
+            <div class="item"><span class="dot" style="background:#ffd666"></span>AS/설치</div>
+            <div class="item"><span class="dot" style="background:#9aa0a6"></span>기타</div>
+          </div>
+        </div>
+        <div id="channelCards" class="channel-grid scroll-y"><!-- JS가 카드 렌더링 --></div>
+      </div>
+
+      <!-- 2x1 : 자동 분류 정확도/신뢰도 -->
+      <div class="card card--reliability" id="reliabilityCard"> <!--id="reliabilityCard" 추가함(new)-->
+        <strong>자동 분류 정확도/신뢰도</strong>
+        <div id="reliabilityBox" class="chart-box tall center">-</div>
+        <p class="tip" style="margin-top:8px;">train/val/test, Macro-F1, Micro-F1, Accuracy</p>
+      </div>
+
+      <!-- 3x1 + 3x2 : 티켓 목록(하단 전체 폭) -->
+      <div class="card card--tickets">
+        <strong>티켓 목록</strong>
+        <table class="table" style="margin-top:8px;">
+          <thead>
+            <tr>
+              <th>접수일</th><th>채널</th><th>내용</th><th>카테고리</th><th>키워드</th><th class="right">중요도</th>
+            </tr>
+          </thead>
+          <tbody id="ticketTableBody">
+            <tr><td colspan="6">-</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+    <!-- 그리드 끝 -->
+     
+  </div>
+</section>
+
+  </main>
+</div>
+<script type="text/javascript" src="{{ url_for('static', filename='js/sidebar.js') }}"></script>
+<script type="text/javascript" src="{{ url_for('static', filename='js/common.js') }}"></script>
+<script type="text/javascript" src="{{ url_for('static', filename='js/auto_classify.js') }}"></script>
+</body>
+</html>

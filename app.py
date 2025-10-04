@@ -1,7 +1,7 @@
 from flask import Flask, send_file, jsonify,request
 from flasgger import Swagger
-from routes.mapping import mapping_bp
-from routes.mapping import mapping_bp
+from controllers.mapping import mapping_bp
+from controllers.export_to_pdf import create_prototype_report
 import os
 import datetime
 import re
