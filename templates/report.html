@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="ko">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta property="og:title" content="ClaraCS" />
+    <meta property="og:description" content="ClaraCS의 메인 페이지입니다." />
+    <meta property="og:image" content="" />
+    <title>ClaraCS – 지능형 CS 데이터 분석·인사이트 플랫폼</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/report.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+<div class="app">
+  <!-- 사이드바 -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="logo"></div>
+      <h1>ClaraCS – 데이터 인텔리전스</h1>
+    </div>
+    <nav class="nav">
+      <a href="/"><span class="dot"></span><span>대시보드</span><span class="badge ok">Home</span></a>
+      <a href="/upload"><span class="dot"></span><span>데이터 업로드</span><span></span></a>
+      <a href="/classify"><span class="dot"></span><span>자동 분류</span><span></span></a>
+      <a href="/report" class="active"><span class="dot"></span><span>분석 리포트</span><span></span></a>
+      <a href="/settings"><span class="dot"></span><span>설정 · 도움말</span><span></span></a>
+    </nav>
+    <div class="helper">
+      <div><strong>프로젝트명</strong><br/><br/>INTELLIGENT CS DATA ANALYSIS & INSIGHT PLATFORM</div>
+      <br/>
+      <button class="CTA-button" id="getCTABtn">
+          Get Your AI Report&nbsp;&rarr;
+      </button>
+      <br/>
+      <br/>
+    </div>
+  </aside>
+
+  <!-- 메인 -->
+  <main class="main">
+
+    <!-- 분석 리포트 -->
+    <section class="section" id="report">
+      <div class="head">
+        <h2>분석 리포트 (요약/인사이트)</h2>
+        <div class="toolbar">
+          <button class="btn" id="btn-template-select">템플릿 선택</button>
+          <button class="btn save" id="btn-generate-report">리포트 생성</button>
+        </div>
+      </div>
+      <div class="body grid cols-2">
+        <div class="card">
+          <strong>채널별 추이</strong>
+          <div class="chart-box">차트 영역 (스택 바)</div>
+        </div>
+        <div class="card">
+          <strong>데이터 요약</strong>
+          <ul class="subtle">
+          </ul>
+        </div>
+        <div class="card">
+          <strong>인사이트 도출</strong>
+          <ol class="subtle">
+          </ol>
+        </div>
+        <div class="card">
+          <strong>솔루션 제안</strong>
+          <ul class="subtle">
+            <!-- 솔루션이 여기에 동적으로 생성됩니다 -->
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- 내보내기/공유 -->
+    <section class="section" id="export">
+      <div class="head">
+        <h2>리포트 내보내기 · 공유</h2>
+        <div class="toolbar">
+          <button class="btn primary" id="btn-export-pdf">PDF 다운로드</button>
+        </div>
+      </div>
+      <div class="body">
+        <div class="card">
+          <strong>리포트 내보내기</strong>
+          <p class="subtle">생성된 리포트를 PDF 형식으로 다운로드할 수 있습니다.</p>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+<script type="text/javascript" src="{{ url_for('static', filename='js/sidebar.js') }}"></script>
+<script type="text/javascript" src="{{ url_for('static', filename='js/common.js') }}"></script>
+<script type="text/javascript" src="{{ url_for('static', filename='js/report.js') }}"></script>
+<script type="text/javascript" src="{{ url_for('static', filename='js/pdf_export.js') }}"></script>
+</body>
+</html>

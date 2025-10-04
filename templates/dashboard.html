@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="ko">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta property="og:title" content="ClaraCS" />
+    <meta property="og:description" content="ClaraCS의 메인 페이지입니다." />
+    <meta property="og:image" content="" />
+    <title>ClaraCS – 지능형 CS 데이터 분석·인사이트 플랫폼</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+<div class="app">
+  <!-- 사이드바 -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="logo"></div>
+      <h1>ClaraCS – 데이터 인텔리전스</h1>
+    </div>
+    <nav class="nav">
+      <a href="/" class="active"><span class="dot"></span><span>대시보드</span><span class="badge ok">Home</span></a>
+      <a href="/upload"><span class="dot"></span><span>데이터 업로드</span><span></span></a>
+      <a href="/classify"><span class="dot"></span><span>자동 분류</span><span></span></a>
+      <a href="/report"><span class="dot"></span><span>분석 리포트</span><span></span></a>
+      <a href="/settings"><span class="dot"></span><span>설정 · 도움말</span><span></span></a>
+    </nav>
+    <div class="helper">
+      <div><strong>프로젝트명</strong><br/><br/>INTELLIGENT CS DATA ANALYSIS & INSIGHT PLATFORM</div>
+      <br/>
+      <button class="CTA-button" id="getCTABtn">
+          Get Your AI Report&nbsp;&rarr;
+      </button>
+      <br/>
+      <br/>
+    </div>
+  </aside>
+
+  <!-- 메인 -->
+  <main class="main">
+
+    <!-- 대시보드 -->
+    <section class="section" id="dashboard">
+      <div class="head">
+        <h2>대시보드</h2>
+        <div class="toolbar" id="period-filters">
+          <button class="btn ghost active">7일</button>
+          <button class="btn ghost">1달</button>
+          <button class="btn ghost">3달</button>
+          <button class="btn ghost">이번 분기</button>
+          <button class="btn ghost">기간 설정</button>
+        </div>
+      </div>
+      <div class="body">
+        <div class="grid cols-2">
+          <div class="card kpi">
+            <div class="label">처리 완료 건수</div>
+            <div class="value" id="completed-count">133건</div>
+          </div>
+
+          <div class="card kpi">
+            <div class="label">미처리 건수</div>
+            <div class="value" id="pending-count">13건</div>
+          </div>
+        </div>
+
+    <div class="grid cols-2" style="margin-top:16px;">
+      <div class="grid-vertical">
+        <div class="card">
+          <strong>주요 문의 카테고리 TOP 3</strong>
+          <table class="table" style="margin-top:8px;">
+            <thead>
+              <tr>
+                <th>순위</th>
+                <th>카테고리</th>
+                <th class="right">건수</th>
+              </tr>
+            </thead>
+            <tbody id="top-categories-table">
+              <tr><td colspan="3">데이터를 불러오는 중입니다...</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="card" style="margin-top:16px;">
+          <strong>카테고리별 문의 비율</strong>
+          <div class="chart-box">
+            <canvas id="category-pie-chart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <strong>인사이트 도출</strong>
+        <div id="generated-insights" style="margin-top: 8px;">
+          <p class="subtle">분석 리포트가 생성되면<br>AI가 핵심 인사이트를 여기에 표시합니다.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+  </main>
+</div>
+<script type="text/javascript" src="{{ url_for('static', filename='js/sidebar.js') }}"></script>
+<script type="text/javascript" src="{{ url_for('static', filename='js/common.js') }}"></script>
+<script type="text/javascript" src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+</body>
+</html>
