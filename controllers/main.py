@@ -14,7 +14,20 @@ main_bp = Blueprint("main", __name__)
     }
 })
 def dashboard():
-    return render_template("dashboard.html")
+    return render_template("index.html")
+
+# @main_bp.route("/")
+# @swag_from({
+#     'tags': ['Main'],
+#     'description': '대시보드 페이지 반환',
+#     'responses': {
+#         200: {
+#             'description': 'response OK'
+#         }
+#     }
+# })
+# def dashboard():
+#     return render_template("dashboard.html")
 
 @main_bp.route("/upload")
 @swag_from({
