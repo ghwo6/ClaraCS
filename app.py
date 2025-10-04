@@ -1,8 +1,5 @@
 from flask import Flask, send_file, jsonify,request
 from flasgger import Swagger
-from routes.main import main_bp
-from routes.report import report_bp
-from routes.auto_classify import auto_bp
 from routes.export_to_pdf import create_prototype_report 
 import os
 import datetime
