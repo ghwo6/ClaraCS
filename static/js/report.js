@@ -1,10 +1,11 @@
 /**
- * 분석 리포트 기능 JavaScript
+ * 분석 리포트 기능 JavaScript (실제 스키마 기반)
  */
 
 class ReportManager {
     constructor() {
-        this.currentUserId = 'user_001'; // 기본 사용자 ID
+        this.currentFileId = 1; // 기본 파일 ID (실제로는 선택된 파일 ID 사용)
+        this.currentUserId = 1; // 기본 사용자 ID
         this.isGenerating = false;
         this.chartInstances = {};
         
@@ -42,7 +43,7 @@ class ReportManager {
         try {
             console.log('리포트 생성 시작...');
             
-            // 1. 리포트 생성 API 호출
+            // 1. 리포트 생성 API 호출 (file_id 기반)
             const reportData = await this.callGenerateReportAPI();
             
             // 2. 각 섹션별 데이터 렌더링
@@ -51,7 +52,7 @@ class ReportManager {
             await this.renderInsights(reportData.insights);
             await this.renderSolutions(reportData.solutions);
             
-            this.showMessage('리포트가 성공적으로 생성되었습니다.', 'success');
+            this.showMessage(`리포트가 성공적으로 생성되었습니다. (Report ID: ${reportData.report_id})`, 'success');
             
         } catch (error) {
             console.error('리포트 생성 실패:', error);
@@ -69,6 +70,7 @@ class ReportManager {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
+                file_id: this.currentFileId,  // user_id 대신 file_id 사용
                 user_id: this.currentUserId
             })
         });
@@ -94,6 +96,12 @@ class ReportManager {
         
         // 기존 차트 제거
         container.innerHTML = '';
+        
+        // 채널 데이터가 없는 경우
+        if (!channelTrends || Object.keys(channelTrends).length === 0) {
+            container.innerHTML = '<p style="text-align:center; color: var(--muted);">채널별 데이터가 없습니다.</p>';
+            return;
+        }
         
         // 각 채널별로 차트 생성
         for (const [channel, data] of Object.entries(channelTrends)) {
@@ -131,7 +139,7 @@ class ReportManager {
         const container = document.getElementById(containerId);
         if (!container) return;
         
-        const maxValue = Math.max(...data.series.flatMap(s => s.data));
+        const maxValue = Math.max(...data.series.flatMap(s => s.data), 1);
         const chartHeight = 200;
         
         let chartHTML = '<div class="simple-chart">';
@@ -164,11 +172,17 @@ class ReportManager {
     
     getCategoryColor(category) {
         const colors = {
+            '배송': '#ff6b6b',
             '배송지연': '#ff6b6b',
-            '상품상태': '#4ecdc4',
-            '환불문의': '#45b7d1',
+            '환불': '#4ecdc4',
+            '환불문의': '#4ecdc4',
+            '품질': '#45b7d1',
+            '품질불만': '#45b7d1',
+            'AS': '#96ceb4',
             'AS요청': '#96ceb4',
-            '기타문의': '#feca57'
+            '기타': '#feca57',
+            '기타문의': '#feca57',
+            '미분류': '#95a5a6'
         };
         return colors[category] || '#95a5a6';
     }
@@ -179,11 +193,15 @@ class ReportManager {
         const container = document.querySelector('#report .card:nth-child(2) .subtle');
         if (!container) return;
         
+        const channelList = Object.entries(summary.channels || {})
+            .map(([channel, count]) => `${channel} (${count}건)`)
+            .join(', ') || 'N/A';
+        
         container.innerHTML = `
-            <li>총 접수 건수: <b>${summary.total_tickets.toLocaleString()}건</b></li>
-            <li>자동 분류 정확도: <b>${(summary.classification_accuracy * 100).toFixed(1)}%</b></li>
-            <li>평균 해결 시간: <b>${summary.avg_resolution_time ? summary.avg_resolution_time.toFixed(1) + '시간' : 'N/A'}</b></li>
-            <li>주요 채널: <b>${Object.keys(summary.channels)[0]}</b> (${Object.values(summary.channels)[0]}건)</li>
+            <li>총 티켓 수: <b>${summary.total_tickets.toLocaleString()}건</b></li>
+            <li>분류 정확도: <b>${(summary.classification_accuracy * 100).toFixed(1)}%</b></li>
+            <li>주요 채널: <b>${channelList}</b></li>
+            <li>상태별 분포: <b>${JSON.stringify(summary.status_distribution || {})}</b></li>
         `;
     }
     
@@ -206,7 +224,7 @@ class ReportManager {
                 `;
             });
         } else {
-            insightsHTML = '<li>인사이트 분석 중...</li>';
+            insightsHTML = '<li>AI 인사이트 분석 중...</li>';
         }
         
         container.innerHTML = insightsHTML;
@@ -250,7 +268,6 @@ class ReportManager {
         
         if (show) {
             reportSection.classList.add('loading');
-            // 로딩 인디케이터 추가
             const loadingDiv = document.createElement('div');
             loadingDiv.className = 'loading-indicator';
             loadingDiv.innerHTML = '<div class="spinner"></div><p>리포트 생성 중...</p>';
@@ -293,7 +310,7 @@ class ReportManager {
         // 리포트 섹션이 로드될 때 초기화
         const reportSection = document.querySelector('#report');
         if (reportSection) {
-            console.log('리포트 섹션 로드됨');
+            console.log('리포트 섹션 로드됨 (file_id 기반)');
         }
     }
 }
