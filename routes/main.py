@@ -1,5 +1,7 @@
-from flask import Blueprint, render_template
+from flask import Blueprint, render_template, Flask
 from flasgger.utils import swag_from
+from .mapping import mapping_bp
+
 
 main_bp = Blueprint("main", __name__)
 
@@ -15,3 +17,10 @@ main_bp = Blueprint("main", __name__)
 })
 def index():
     return render_template("index.html")
+
+app = Flask(__name__)
+app.register_blueprint(main_bp)   
+app.register_blueprint(mapping_bp)  
+
+if __name__ == "__main__":
+    app.run(debug=True)
