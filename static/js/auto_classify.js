@@ -46,6 +46,7 @@ function flatTop3ByCategory(top3_by_category) {
   return rows;
 }
 
+
 // ---------- 렌더 ----------
 function renderCategoryTable(rows) {
   const tbody = document.getElementById("categoryTableBody");
@@ -59,26 +60,6 @@ function renderCategoryTable(rows) {
     </tr>
   `).join("");
 }
-
-/* new _ 10_04_*/
-// function renderChannelCards(items) {
-//   const wrap = document.getElementById("channelCards");
-//   if (!wrap) return;
-//   wrap.innerHTML = items.map(x => {
-//     const total = x.count || 0;
-//     const cats = x.by_category || {};
-//     const catList = Object.entries(cats).map(([k,v]) =>
-//       `<li>${k}: ${v.toLocaleString()} (${(v/total*100).toFixed(1)}%)</li>`
-//     ).join("");
-//     return `
-//       <div class="channel-card">
-//         <div class="title">${x.channel}</div>
-//         <div class="big">${total.toLocaleString()}</div>
-//         <ul class="mini">${catList}</ul>
-//       </div>
-//     `;
-//   }).join("");
-// }
 
 // 채널 도넛 색상/순서
 const CHANNEL_CATEGORY_ORDER = ["배송","환불/취소","품질/하자","AS/설치","기타"];
@@ -119,24 +100,100 @@ function renderChannelCards(items){
     return `
       <div class="channel-card">
         <!-- 1) 채널명(맨 위, 가운데) -->
-        <div class="ch-title">${x.channel}</div>
+          <div class="ch-title">${x.channel}</div>
         <!-- 2) 건수/퍼센트(작은 글자, 연한 색) -->
-        <div class="ch-sub">${total.toLocaleString()}건 · ${pct}%</div>
+          <div class="ch-sub">${total.toLocaleString()}건 · ${pct}%</div>
         <!-- 3) 도넛(가운데) -->
-        <div class="donut" style="background:${bg}">
-          <div class="hole">
-            <div class="pct-inside">${pct}%</div>   <!-- 도넛 중앙 퍼센트 -->
+          <div class="donut" style="background:${bg}">
+            <div class="labels"></div>   <!-- ⬅ 라벨를 올릴 레이어 -->
+            <div class="hole"></div>     <!-- ⬅ 가운데는 비워둠(중앙 % 제거) -->
+             
           </div>
-        </div>
       </div>
     `;
   }).join("");
+
+// 라벨 배치
+  const cards = Array.from(wrap.querySelectorAll('.channel-card'));
+  cards.forEach((card, i) => {
+    const donut = card.querySelector('.donut');
+    const info  = items[i] || {};
+    placeDonutLabels(donut, info.by_category || {}, info.count || 0);
+  });
+
+  // 리사이즈 대응 위해 데이터 저장 + 재계산 훅
+  window.__lastChannelInfo = items;
+  if (!window.__relabelBound) {
+    window.__relabelBound = true;
+    window.addEventListener('resize', () => {
+      clearTimeout(window.__relabelTimer);
+      window.__relabelTimer = setTimeout(() => {
+        const donuts = document.querySelectorAll('#channelCards .channel-card');
+        const data = window.__lastChannelInfo || [];
+        donuts.forEach((card, i) => {
+          const donut = card.querySelector('.donut');
+          const info  = data[i] || {};
+          placeDonutLabels(donut, info.by_category || {}, info.count || 0);
+        });
+      }, 120);
+    });
+  }
+
 
   // 높이 동기화 유지
   if (typeof adjustChannelsPanelHeight === "function") {
     requestAnimationFrame(adjustChannelsPanelHeight);
   }
 }
+
+// === 라벨 배치 설정값(원하는 대로 조절) ===
+const LABEL_PCT_MIN = 1.0;    // 이 % 미만 조각은 라벨 생략
+const LABEL_OFFSET_PX = 10;    // 도넛 외곽선에서 바깥쪽으로 얼마나 띄울지(px)
+
+// byCategory: { "배송":123, ... }, total: 수치 합
+function placeDonutLabels(el, byCategory, total) {
+  if (!el) return;
+  const layer = el.querySelector('.labels');
+  if (!layer) return;
+
+  layer.innerHTML = '';
+  if (!total) return;
+
+  const size = el.clientWidth;        // 도넛 실제 렌더 폭
+  const R = size / 2;                 // 반지름
+  const labelR = R + LABEL_OFFSET_PX; // 라벨 반경(도넛 바깥)
+
+  let startDeg = 0;
+  CHANNEL_CATEGORY_ORDER.forEach(cat => {
+    const v = (byCategory?.[cat] || 0);
+    if (v <= 0) return;
+
+    const ratio = v / total;
+    const deg   = ratio * 360;
+    const mid   = startDeg + deg / 2;
+
+    // CSS conic-gradient 기준(우측 = 0deg) → 수학각도로 변환(위쪽= -90 보정)
+    const rad = (mid - 90) * Math.PI / 180;
+
+    // 퍼센트 문자열
+    const pctStr = (ratio * 100).toFixed(1) + '%';
+    if (ratio * 100 < LABEL_PCT_MIN) { startDeg += deg; return; } // 너무 작은 조각은 생략
+
+    // 위치: 중심(50%, 50%)에서 labelR만큼 이동 → % 좌표로 환산
+    const x = 50 + (labelR / size * 100) * Math.cos(rad);
+    const y = 50 + (labelR / size * 100) * Math.sin(rad);
+
+    const span = document.createElement('span');
+    span.className = 'slice-label';
+    span.style.left = x + '%';
+    span.style.top  = y + '%';
+    span.textContent = pctStr;        // 필요하면 `${pctStr}` 대신 `${cat} ${pctStr}`
+
+    layer.appendChild(span);
+    startDeg += deg;
+  });
+}
+
 
 // 좌측 합계 높이 = 우측(채널) 카드 높이로 정확히 동기화
 function syncChannelsHeight() {
@@ -172,9 +229,6 @@ if (!window.__syncResizeBound) {               // 중복 바인딩 방지(스크
   });
 }
 
-/*여기까지 10_04*/
-
-
 function renderReliability(r, ui) {
   const box = document.getElementById("reliabilityBox");
   if (!box) return;
@@ -185,7 +239,7 @@ function renderReliability(r, ui) {
   if (acc >= th.good) state = "good";
   else if (acc >= th.warn) state = "warn";
 
-  // 상태 뱃지 색상은 기존 CSS 배지 스타일 활용(없으면 텍스트만 출력됩니다)
+  // 상태 뱃지 색상은 기존 CSS 배지 스타일 활용(없으면 텍스트만 출력)
   const badge =
     state === "good" ? `<span class="badge ok">정확도 양호</span>` :
     state === "warn" ? `<span class="badge warn">주의</span>` :
@@ -317,9 +371,3 @@ window.resetClassification = function resetClassification() {
   }
 })();
 
-
-// 없애도 될 듯 // 페이지 로드 시 마지막 분류 시각 복원
-// (function restoreLastRunAt() {
-//   const saved = localStorage.getItem("autoclass:last_run_at");
-//   if (saved) setLastRunLabel(saved);
-// })();
