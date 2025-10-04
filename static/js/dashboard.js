@@ -60,8 +60,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 plugins: {
                     legend: {
                         position: 'right',
-                        labels: { color: '#ffffff', boxWidth: 12, padding: 15 }
+                        labels: { color: '#ffffff', boxWidth: 12, padding: 15 },
+                        onClick: null
                     }
+
                 }
             }
         });

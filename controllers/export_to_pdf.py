@@ -6,6 +6,7 @@ from reportlab.lib.units import cm, mm, inch
 from reportlab.platypus import Table, TableStyle
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
+from io import BytesIO
 
 # 'malgun.ttf' 폰트 파일을 코드와 같은 경로에 준비해야 합니다.
 try:
@@ -20,11 +21,11 @@ except:
 # -----------------------------
 
 
-def create_prototype_report(filename, report_data):
+def create_prototype_report(buffer, report_data):
     """전달받은 데이터를 기반으로 동적 PDF 리포트를 생성합니다."""
 
     # 1. 도화지(Canvas)를 준비합니다.
-    c = canvas.Canvas(filename, pagesize=A4)
+    c = canvas.Canvas(buffer, pagesize=A4)
     width, height = A4  # 페이지 크기 (가로, 세로)
     
     right_margin = width - (1 * cm)
@@ -128,7 +129,7 @@ def create_prototype_report(filename, report_data):
 
     # 2. 작업을 모두 마치고 파일을 저장합니다.
     c.save()
-    print(f"'{filename}' 파일이 성공적으로 생성되었습니다.")
+    print(f"'{buffer}' 파일이 성공적으로 생성되었습니다.")
 
 
 # --- [수정] 함수를 직접 테스트할 때도 임시 데이터를 넣어줍니다 ---

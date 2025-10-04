@@ -1,12 +1,10 @@
-from flask import Flask, send_file, jsonify,request,after_this_request
+from flask import Flask, send_file, jsonify,request
 from flasgger import Swagger
 from controllers.mapping import mapping_bp
 from controllers.export_to_pdf import create_prototype_report
-import os
 import datetime
-import re
+import io
 from urllib.parse import quote
-import pandas as pd
 from dotenv import load_dotenv
 from controllers.main import main_bp
 from controllers.report import report_bp
@@ -87,33 +85,26 @@ def create_app():
                 "company_name": "XX(주)",
                 "date": datetime.date.today().strftime("%Y.%m.%d")
             }
+
             download_filename = f"AI분석리포트_{report_data['company_name']}_{report_data['date']}.pdf"
-            save_dir = os.path.join(app.root_path, 'temp_reports_folder')
-            os.makedirs(save_dir, exist_ok=True)
-            temp_filename = f"AI분석리포트_{file_id}_{report_data['date']}.pdf"
-            filename = re.sub(r'[\\\\/*?:"<>|]', "_", temp_filename)
-            file_path = os.path.join(save_dir, filename)
             
-            # 2. PDF 리포트 생성
-            create_prototype_report(file_path, report_data)
+            # 1. PDF 데이터를 담을 메모리 버퍼를 생성합니다.
+            buffer = io.BytesIO()
 
-            # 3. 파일 전송이 끝난 후 실행될 삭제 작업을 예약
-            @after_this_request
-            def remove_file(response):
-                try:
-                    os.remove(file_path)
-                    print(f"임시 파일 삭제 완료: {file_path}")
-                except Exception as error:
-                    print(f"임시 파일 삭제 실패: {error}")
-                return response
+            # 2. 버퍼에 PDF 데이터를 생성하도록 함수를 호출합니다.
+            create_prototype_report(buffer, report_data)
 
-            # 4. 생성된 PDF 파일을 클라이언트에 전송
+            # 3. 버퍼의 맨 처음으로 커서를 이동시켜 읽을 준비를 합니다.
+            buffer.seek(0)
+
+            # 4. 파일이 아닌, 메모리 버퍼의 내용을 직접 전송합니다.
             return send_file(
-                file_path,
+                buffer,
                 as_attachment=True,
-                download_name=quote(download_filename)
+                download_name=quote(download_filename),
+                mimetype='application/pdf' # PDF 파일임을 명시
             )
-
+        
         except Exception as e:
             # PDF 생성이나 파일 전송 등 모든 과정에서 발생하는 오류를 처리
             print(f"PDF 다운로드 처리 중 오류 발생: {e}")
