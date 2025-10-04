@@ -4,7 +4,7 @@
     --panel-2: #0f131b;     /* 서브 패널 */
     --text: #e7eef7;        /* 기본 텍스트 */
     --muted: #a6b0c2;       /* 보조 텍스트 */
-    --line: #242b36;        /* 경계선 */
+    --line: #151e30;        /* 경계선 */
     --brand: #5b8cff;       /* 포인트 */
     --ok: #3ddc97;
     --warn: #ffb020;
@@ -15,7 +15,7 @@
 * { box-sizing: border-box; }
 html, body { height: 100%; }
 body {
-    margin: 0; color: var(--text); background: linear-gradient(160deg, #0a0e14 0%, #0d1520 100%);
+    margin: 0; color: var(--text); background: linear-gradient(160deg, #101025);
     font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans KR", Arial, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
     line-height: 1.5;
 }
@@ -26,7 +26,7 @@ a { color: inherit; text-decoration: none; }
 /* 사이드바 */
 .sidebar {
     position: sticky; top: 0; align-self: start; height: 100dvh; overflow-y: auto;
-    background: rgba(21,25,34,.8); backdrop-filter: blur(8px);
+    background: rgba(17, 17, 40, 0.879); backdrop-filter: blur(8px);
     border-right: 1px solid var(--line); padding: 20px; display: flex; flex-direction: column; gap: 16px;
 }
 .brand { display:flex; align-items:center; gap:10px; }
@@ -42,7 +42,28 @@ a { color: inherit; text-decoration: none; }
 .nav a .dot { width: 8px; height: 8px; border-radius: 999px; background: var(--line); }
 .nav a.active { background: linear-gradient(180deg, rgba(91,140,255,.12), rgba(91,140,255,.06)); border-color: rgba(91,140,255,.25); color: var(--text); }
 
-.helper { margin-top: auto; font-size: 12px; color: var(--muted); border-top: 1px dashed var(--line); padding-top: 14px; }
+.helper { margin-top: auto; font-size: 13px; color: var(--muted); border-top: 1px dashed var(--line); padding-top: 14px; display: flex; flex-direction: column; align-items: center;}
+.CTA-button {
+    /* 버튼의 기본적인 외형 */
+    display: flex;
+    align-items: center; /* 텍스트와 화살표를 수직 중앙 정렬 */
+    justify-content: center; /* 텍스트와 화살표를 수평 중앙 정렬 (선택 사항) */
+    padding: 18px 30px; /* 상하좌우 패딩 */
+    width: 228px; /* 원하는 너비로 설정 (예시 값) */
+    border: none; /* 기본 테두리 제거 */
+    border-radius: 8px; /* 모서리를 둥글게 */
+    
+    /* 글꼴 스타일 */
+    color: white; 
+    font-size: 16.5px; 
+    font-family: 'Inter', sans-serif; 
+    font-weight: 550;
+    cursor: pointer;
+    background: linear-gradient(to right,#e348fa, #6f07d1); 
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+    transition: background 0.3s ease, box-shadow 0.3s ease;
+}
+.gradient-button:hover {background: linear-gradient(to left, #8a2be2, #ff00ff); box-shadow: 0 6px 15px rgba(0, 0, 0, 0.3);}
 
 /* 데이터 업로드 관련 스타일 */
 .toolbar label {font-size: 15px; color: var(--muted); user-select: none;}
@@ -60,15 +81,84 @@ a { color: inherit; text-decoration: none; }
 .upload-summary {margin-top: 12px; font-size: 14px; color: var(--muted);}
 
 /* 컬럼 매핑 관련 스타일 */
-#column_setting {float: right; margin-top: -4px; margin-left: 10px; }
-#column_reset {float: right; margin-top: -4px;  }
 .table thead th {text-align: center !important;}
-.table tbody td {
-    text-align: center !important;
-    padding-left: 10px !important; 
-    padding-right: 10px !important; 
-    padding-top: 8px !important;
-    padding-bottom: 8px !important;
+.table tbody td {text-align: center !important; padding-left: 10px !important; padding-right: 10px !important; padding-top: 8px !important; padding-bottom: 8px !important;}
+
+.tip {text-align: right; padding-top: 14px;}
+
+.toggle-input {display: none;}
+.toggle-label {position: relative; display: block; width: 50px; height: 25px; background-color: #ccc; border-radius: 12px; cursor: pointer; transition: background-color 0.3s ease;}
+.toggle-label::before {content: ""; position: absolute; top: 2.5px; left: 2.5px; width: 20px; height: 20px; background-color: white; border-radius: 50%; transition: transform 0.3s ease;}
+.toggle-input:checked + .toggle-label {background-color: #4caf50;}
+.toggle-input:checked + .toggle-label::before {transform: translateX(24px);}
+
+.button-mapping-group {display: flex; justify-content: flex-end; gap: 10px; align-items: center;}
+.btn.edit.active {background-color: var(--primary); color: white;}
+.btn.edit {padding: 6px 12px; border: 1px solid #ccc; border-radius: 4px; background-color: #9300FF; cursor: pointer; transition: background-color 0.2s ease, border-color 0.2s ease; margin-right: 4px;}
+
+.add-btn-container {width: 20px; flex-shrink: 0; visibility: hidden; opacity: 0; transition: visibility 0.2s, opacity 0.2s;}
+.add-btn-container.active {visibility: visible; opacity: 1;}
+.btn.add-row-btn {
+    background: #02d409; 
+    width: 30px; 
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none; 
+    color: #fff; 
+    font-weight: 600;
+    font-size: 25px;
+    border-radius: 10px;
+    padding: 0;
+    cursor: pointer;
+    transition: background 0.2s ease, transform 0.1s ease, color 0.2s ease;
+}
+.btn.add-row-btn.editing:hover {background: #01b904; transform: scale(1.05);}
+.delete-btn-container {width: 20px; flex-shrink: 0; visibility: hidden; opacity: 0; transition: visibility 0.2s, opacity 0.2s;}
+.mapping-grid .btn.delete-row-btn {
+    background: #e6352c !important; 
+    color: white; 
+    border: none !important; 
+    border-radius: 50% !important; 
+    width: 24px !important; 
+    height: 24px !important;
+    line-height: 1; 
+    display: flex;
+    align-items: center; 
+    justify-content: center; 
+    font-size: 20px;
+    font-weight: 600;
+    padding: 0; 
+    cursor: pointer;
+    transition: background-color 0.2s ease, transform 0.1s ease;
+}
+.mapping-grid .btn.delete-row-btn:hover {background: #c62929 !important; box-shadow: none !important; transform: scale(1.05);}
+.mapping-grid.enabled {opacity: 1;}
+.mapping-grid.disabled {opacity: 0.5;}
+.mapping-grid.disabled input.input,.mapping-grid.disabled select.select {color: #999; pointer-events: none}
+.mapping-grid.enabled input.input, .mapping-grid.enabled select.select {color: #ffffff; pointer-events: auto}
+
+.popup-success, .popup-error {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+    padding: 12px 20px;
+    border-radius: 8px;
+    color: white;
+    font-size: 14px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    animation: fadeInOut 3s ease forwards;
+}
+.popup-success { background: #4caf50; }
+.popup-error { background: #f44336; }
+
+@keyframes fadeInOut {
+    0% { opacity: 0; transform: translateY(-10px); }
+    10% { opacity: 1; transform: translateY(0); }
+    90% { opacity: 1; transform: translateY(0); }
+    100% { opacity: 0; transform: translateY(-10px); }
 }
 
 /* 부드러운 앵커 스크롤 (#classify 이동용) */
@@ -482,8 +572,8 @@ html { scroll-behavior: smooth; }
 .kpi .trend { font-size: 12px; color: var(--ok); }
 
 .btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 14px; border-radius: 12px; border: 1px solid var(--line); color: var(--text); background: linear-gradient(180deg, #182033, #131a29); cursor: pointer; }
-.btn.save { display: inline-flex; align-items: center; gap: 8px; padding: 10px 14px; border-radius: 12px; border: 1px solid var(--line); color: var(--text); background: linear-gradient(180deg, #5b8cff, #3a65c9); cursor: pointer; }
-.btn:hover { border-color: rgba(91,140,255,.35); box-shadow: 0 6px 18px rgba(91,140,255,.15) inset; }
+.btn.save { display: inline-flex; align-items: center; gap: 8px; padding: 10px 14px; border-radius: 12px; border: 1px solid var(--line); color: var(--text); background: linear-gradient(180deg, #9300FF, #4D0099); cursor: pointer; }
+.btn:hover { border-color: rgba(147, 0, 255, .35); box-shadow: 0 6px 18px rgba(147, 0, 255, .15) inset; }
 .btn.primary { background: linear-gradient(180deg, #5b8cff, #3f6ee8); border-color: rgba(91,140,255,.55); }
 .btn.ghost { background: transparent; }
 
@@ -499,7 +589,7 @@ html { scroll-behavior: smooth; }
 .badge.warn { color: var(--warn); border-color: rgba(255,176,32,.35); }
 .badge.danger { color: var(--danger); border-color: rgba(255,107,107,.35); }
 
-.uploader { border: 1.5px dashed rgba(91,140,255,.35); border-radius: 14px; padding: 24px; display: grid; place-items: center; text-align: center; background: rgba(91,140,255,.06); }
+.uploader { border: 1.5px dashed rgba(71, 77, 90, 0.35); border-radius: 14px; padding: 24px; display: grid; place-items: center; text-align: center; background: rgba(91,140,255,.06); }
 .uploader .title { font-weight: 700; }
 .uploader .desc { color: var(--muted); font-size: 13px; }
 
