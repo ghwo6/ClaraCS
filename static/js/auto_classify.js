@@ -60,24 +60,120 @@ function renderCategoryTable(rows) {
   `).join("");
 }
 
-function renderChannelCards(items) {
+/* new _ 10_04_*/
+// function renderChannelCards(items) {
+//   const wrap = document.getElementById("channelCards");
+//   if (!wrap) return;
+//   wrap.innerHTML = items.map(x => {
+//     const total = x.count || 0;
+//     const cats = x.by_category || {};
+//     const catList = Object.entries(cats).map(([k,v]) =>
+//       `<li>${k}: ${v.toLocaleString()} (${(v/total*100).toFixed(1)}%)</li>`
+//     ).join("");
+//     return `
+//       <div class="channel-card">
+//         <div class="title">${x.channel}</div>
+//         <div class="big">${total.toLocaleString()}</div>
+//         <ul class="mini">${catList}</ul>
+//       </div>
+//     `;
+//   }).join("");
+// }
+
+// 채널 도넛 색상/순서
+const CHANNEL_CATEGORY_ORDER = ["배송","환불/취소","품질/하자","AS/설치","기타"];
+const CHANNEL_CATEGORY_COLORS = {
+  "배송": "#ef4444",        // 빨강
+  "환불/취소": "#f59e0b",   // 주황
+  "품질/하자": "#10b981",   // 초록
+  "AS/설치": "#3b82f6",     // 파랑
+  "기타": "#9ca3af"        // 회색
+};
+
+// conic-gradient 백그라운드 생성
+function donutBackground(byCategory, total){
+  let start = 0, segs = [];
+  CHANNEL_CATEGORY_ORDER.forEach(cat=>{
+    const v = (byCategory?.[cat] || 0);
+    const deg = total ? (v/total)*360 : 0;
+    if(deg>0) segs.push(`${CHANNEL_CATEGORY_COLORS[cat]} ${start}deg ${start+deg}deg`);
+    start += deg;
+  });
+  return segs.length ? `conic-gradient(${segs.join(",")})` : "#1f2937";
+}
+
+function renderChannelCards(items){
   const wrap = document.getElementById("channelCards");
-  if (!wrap) return;
-  wrap.innerHTML = items.map(x => {
+  if(!wrap) return;
+
+  // 채널별 총합 대비 비율(상단 '건수/퍼센트'에 사용+ 중앙 표기에도 사용)
+  const grandTotal = items.reduce((acc,cur)=> acc + (cur.count||0), 0) || 1;
+
+  wrap.innerHTML = items.map(x=>{
     const total = x.count || 0;
-    const cats = x.by_category || {};
-    const catList = Object.entries(cats).map(([k,v]) =>
-      `<li>${k}: ${v.toLocaleString()} (${(v/total*100).toFixed(1)}%)</li>`
-    ).join("");
+    const cats  = x.by_category || {};
+    const pct   = ((total / grandTotal) * 100).toFixed(1);
+    const bg    = donutBackground(cats, total);
+
+
     return `
       <div class="channel-card">
-        <div class="title">${x.channel}</div>
-        <div class="big">${total.toLocaleString()}</div>
-        <ul class="mini">${catList}</ul>
+        <!-- 1) 채널명(맨 위, 가운데) -->
+        <div class="ch-title">${x.channel}</div>
+        <!-- 2) 건수/퍼센트(작은 글자, 연한 색) -->
+        <div class="ch-sub">${total.toLocaleString()}건 · ${pct}%</div>
+        <!-- 3) 도넛(가운데) -->
+        <div class="donut" style="background:${bg}">
+          <div class="hole">
+            <div class="pct-inside">${pct}%</div>   <!-- 도넛 중앙 퍼센트 -->
+          </div>
+        </div>
       </div>
     `;
   }).join("");
+
+  // 높이 동기화 유지
+  if (typeof adjustChannelsPanelHeight === "function") {
+    requestAnimationFrame(adjustChannelsPanelHeight);
+  }
 }
+
+// 좌측 합계 높이 = 우측(채널) 카드 높이로 정확히 동기화
+function syncChannelsHeight() {
+  const grid = document.querySelector("#classify .classify-grid");
+  const left1 = document.getElementById("catCard");
+  const left2 = document.getElementById("reliabilityCard");
+  const right = document.getElementById("channelsCard");
+  const body = document.getElementById("channelCards");
+  if (!grid || !left1 || !left2 || !right || !body) return;
+
+  const rowGap = parseFloat(getComputedStyle(grid).rowGap || "0");  // 좌측 두 카드 사이 간격
+  const targetH = left1.offsetHeight + rowGap + left2.offsetHeight;
+
+  // 우측 카드 패딩/보더/헤더 높이 반영
+  const cs = getComputedStyle(right);
+  const padV = parseFloat(cs.paddingTop || "0") + parseFloat(cs.paddingBottom || "0");
+  const brdV = parseFloat(cs.borderTopWidth || "0") + parseFloat(cs.borderBottomWidth || "0");
+  const head = right.querySelector(".channels-head");
+  const headH = head ? head.offsetHeight : 0;
+  const headMB = head ? parseFloat(getComputedStyle(head).marginBottom || "0") : 0; // new!
+
+  // 우측 전체 높이 + 본문 스크롤 높이
+  right.style.height = targetH + "px";
+  const bodyH = Math.max(0, targetH - padV - brdV - headH - headMB); // new!!
+  body.style.height = bodyH + "px";
+}
+
+if (!window.__syncResizeBound) {               // 중복 바인딩 방지(스크립트 재로딩 대비)
+  window.__syncResizeBound = true;
+  window.addEventListener("resize", () => {
+    clearTimeout(window.__syncTimer);
+    window.__syncTimer = setTimeout(syncChannelsHeight, 120);
+  });
+}
+
+/*여기까지 10_04*/
+
 
 function renderReliability(r, ui) {
   const box = document.getElementById("reliabilityBox");
@@ -146,6 +242,7 @@ window.runClassification = async function runClassification() {
     if (data.tickets?.top3_by_category) {
       renderTicketTableFromTop3(data.tickets.top3_by_category);
     }
+    requestAnimationFrame(syncChannelsHeight);
 
     // --- 여기서만(성공 시) 마지막 분류 시각 갱신 & 저장 ---
     const ts = nowStringKST();
@@ -197,6 +294,7 @@ window.resetClassification = function resetClassification() {
       if (data.tickets?.top3_by_category) {
         renderTicketTableFromTop3(data.tickets.top3_by_category);
       }
+      requestAnimationFrame(syncChannelsHeight); //new!
     } else {
       // 완전 초기 상태 보장
       clearUIToInitial();
@@ -220,8 +318,8 @@ window.resetClassification = function resetClassification() {
 })();
 
 
-// 페이지 로드 시 마지막 분류 시각 복원
-(function restoreLastRunAt() {
-  const saved = localStorage.getItem("autoclass:last_run_at");
-  if (saved) setLastRunLabel(saved);
-})();
+// 없애도 될 듯 // 페이지 로드 시 마지막 분류 시각 복원
+// (function restoreLastRunAt() {
+//   const saved = localStorage.getItem("autoclass:last_run_at");
+//   if (saved) setLastRunLabel(saved);
+// })();
