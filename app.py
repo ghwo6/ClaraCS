@@ -9,6 +9,13 @@ import datetime
 import re
 from urllib.parse import quote
 import pandas as pd # 예시를 위해 pandas 사용
+from dotenv import load_dotenv
+from controllers.main import main_bp
+from controllers.report import report_bp
+from controllers.auto_classify import auto_bp
+
+# .env 파일 로드
+load_dotenv()
 
 def create_app():
     app = Flask(__name__)
