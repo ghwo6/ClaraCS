@@ -71,9 +71,19 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
 
             // 삭제 버튼 이벤트
+            const deleteContainer = newRow.querySelector('.delete-btn-container');
             newRow.querySelector('.delete-row-btn').addEventListener('click', e => {
                 e.target.closest('.mapping-grid').remove();
             });
+
+            // 현재 편집 모드(isEditMode)에 따라 삭제 버튼 표시 즉시 반영
+            if (isEditMode) {
+                deleteContainer.style.visibility = 'visible';
+                deleteContainer.style.opacity = '1';
+            } else {
+                deleteContainer.style.visibility = 'hidden';
+                deleteContainer.style.opacity = '0';
+            }
 
             // toggle 이벤트
             const toggleEl = newRow.querySelector('.toggle-input');
@@ -106,7 +116,14 @@ document.addEventListener('DOMContentLoaded', () => {
             cardGrid.appendChild(newRow);
         });
     }
-
+    document.querySelectorAll('.mapping-grid').forEach(row => {
+        const toggleEl = row.querySelector('.toggle-input');
+        if (toggleEl) {
+            set_row_state(row, toggleEl.checked);
+            // 토글 이벤트 연결 (기존 행에도 필요)
+            toggleEl.addEventListener('change', () => set_row_state(row, toggleEl.checked));
+        }
+    });
     // 서버에서 마지막 매핑 가져오기 → 자동 적용
     fetch('/api/mapping/last')
         .then(res => res.json())
@@ -149,17 +166,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // 기존 함수 그대로
 function collect_mappings() {
-    return Array.from(document.querySelectorAll('.mapping-grid')).map(row => {
-        const toggle = row.querySelector('.toggle-input').checked;
-        if (!toggle) return null;
-        return {
-            original_column: row.querySelector('.input').value,
-            mapping_code_id: parseInt(row.querySelector('.select').value) || null,
-            file_id: 1,
-            is_activate: toggle,
-            created_at: new Date().toISOString()
-        };
-    }).filter(item => item !== null);
+    return Array.from(document.querySelectorAll('.mapping-grid'))
+        .map(row => {
+            const toggle = row.querySelector('.toggle-input').checked;
+            const original = row.querySelector('.input').value.trim();
+            const selectEl = row.querySelector('.select');
+            const mappingCodeValue = selectEl.value.trim();
+
+            // 비활성화 또는 값 없는 경우 제외
+            if (!toggle || !original || !mappingCodeValue) return null;
+
+            // mapping_code_id가 INT가 아니라면 null 처리
+            const mapping_code_id = /^\d+$/.test(mappingCodeValue) 
+                ? parseInt(mappingCodeValue) 
+                : null;
+
+            return {
+                original_column: original,
+                mapping_code_id,
+                file_id: 1,
+                is_activate: true,
+                created_at: new Date().toISOString()
+            };
+        })
+        .filter(item => item !== null);
 }
 
 function apply_mappings(mappings) {
