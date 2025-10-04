@@ -18,13 +18,13 @@ class ReportManager {
     
     bindEvents() {
         // 리포트 생성 버튼 이벤트
-        const generateBtn = document.querySelector('#report .btn.primary');
+        const generateBtn = document.querySelector('#btn-generate-report');
         if (generateBtn) {
             generateBtn.addEventListener('click', () => this.generateReport());
         }
         
         // 템플릿 선택 버튼 이벤트
-        const templateBtn = document.querySelector('#report .btn:not(.primary)');
+        const templateBtn = document.querySelector('#btn-template-select');
         if (templateBtn) {
             templateBtn.addEventListener('click', () => this.showTemplateSelector());
         }
@@ -305,17 +305,10 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// 사이드바 네비게이션 시 리포트 섹션 활성화
+// 페이지 로드 시 자동으로 섹션 표시
 document.addEventListener('DOMContentLoaded', function() {
-    const reportLink = document.querySelector('a[href="#report"]');
-    if (reportLink) {
-        reportLink.addEventListener('click', function(e) {
-            e.preventDefault();
-            // 리포트 섹션으로 스크롤
-            const reportSection = document.querySelector('#report');
-            if (reportSection) {
-                reportSection.scrollIntoView({ behavior: 'smooth' });
-            }
-        });
+    const reportSection = document.querySelector('#report');
+    if (reportSection) {
+        console.log('리포트 페이지가 로드되었습니다.');
     }
 });

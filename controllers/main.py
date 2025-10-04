@@ -14,7 +14,7 @@ main_bp = Blueprint("main", __name__)
     }
 })
 def dashboard():
-    return render_template("index.html")
+    return render_template("dashboard.html")
 
 # @main_bp.route("/")
 # @swag_from({

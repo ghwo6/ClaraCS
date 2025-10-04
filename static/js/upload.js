@@ -37,7 +37,7 @@ uploader.addEventListener('drop', (e) => {
     });
     const invalid_files = files.filter(file => !valid_files.includes(file));
     if (invalid_files.length > 0) {
-        alert('허용되는 파일 형식은 .csv, .xlsx, .xls 입니다.');
+        alert('⚠️ 제한 : 허용되는 파일 형식은 .csv, .xlsx, .xls 입니다.');
         console.log('Invalid files filtered out:', invalid_files.map(f => f.name));
     }
         if (valid_files.length > 0) {
@@ -51,18 +51,19 @@ uploader.addEventListener('dragleave', (e) => {
     console.log('Files removed from drag area');
 });
 
-function formatSize(bytes) {
+function format_size(bytes) {
     if (bytes < 1024) return bytes + ' B';
     if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
     return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
 }
-function updateSummary() {
+function display_upload_summary() {
     const summary = document.getElementById('upload_summary');
     if (!summary) return;
-    const totalFiles = all_files.length;
-    const totalSize = all_files.reduce((sum, f) => sum + (f.size || 0), 0);
-    summary.textContent = `총 ${totalFiles}개의 파일이 있습니다. (${formatSize(totalSize)})`;
+    const total_count = all_files.length;
+    const total_size = all_files.reduce((sum, file) => sum + (file.size || 0), 0);
+    summary.textContent = `총 ${total_count}개의 파일이 있습니다. (${format_size(total_size)})`;
 }
+
 function handle_files(files) {
     all_files = all_files.concat(Array.from(files));
 
@@ -110,6 +111,28 @@ function handle_files(files) {
     console.log('Files handled, total files:', all_files.map(f => f.name));
 } 
 
+let fileId = null;
+let createdAt = null;
+function uploadFiles(file) {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    fetch('/api/upload', {
+        method: 'POST',
+        body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            fileId = data.file_id;
+            createdAt = data.created_at;
+        } 
+    })
+    .catch(() => {
+        console.error('서버 오류 발생');
+    });
+}
+
 select_all.addEventListener('change', () => {
     const checkboxes = file_list.querySelectorAll('input[type="checkbox"]');
     checkboxes.forEach(cb => {
@@ -145,3 +168,4 @@ delete_files.addEventListener('click', () => {
     }
     console.log('Delete button clicked, remaining files:', all_files.map(f => f.name));
 });
+

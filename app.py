@@ -1,6 +1,7 @@
 from flask import Flask, send_file, jsonify,request,after_this_request
 from flasgger import Swagger
-from routes.export_to_pdf import create_prototype_report 
+from controllers.mapping import mapping_bp
+from controllers.export_to_pdf import create_prototype_report
 import os
 import datetime
 import re
@@ -120,6 +121,7 @@ def create_app():
 
     app.register_blueprint(main_bp)
     app.register_blueprint(report_bp)
+    app.register_blueprint(mapping_bp)
     app.register_blueprint(auto_bp)
 
     return app
