@@ -205,7 +205,7 @@
     <div class="classify-grid">
       
       <!-- 1x1 : 카테고리별 분류 결과 -->
-      <div class="card card--category">
+      <div class="card card--category" id="catCard"> <!--id="catCard" 추가함(new)-->
         <strong>카테고리별 분류 결과</strong>
         <table class="table" style="margin-top:8px;">
           <thead>
@@ -217,8 +217,8 @@
         </table>
       </div>
 
-      <!-- 1x2 + 2x2 : 채널별 분류 결과(오른쪽 열 전체를 세로로 차지) -->
-      <div class="card card--channels">
+      <!-- 1x2 + 2x2 : 채널별 분류 결과(오른쪽 열 전체를 세로로 차지) --> 
+      <div class="card card--channels" id="channelsCard"> <!--id="channelsCard" 추가함(new)-->
         <div class="channels-head">
           <strong>채널별 분류 결과</strong>
           <div class="legend sticky">
@@ -233,7 +233,7 @@
       </div>
 
       <!-- 2x1 : 자동 분류 정확도/신뢰도 -->
-      <div class="card card--reliability">
+      <div class="card card--reliability" id="reliabilityCard"> <!--id="reliabilityCard" 추가함(new)-->
         <strong>자동 분류 정확도/신뢰도</strong>
         <div id="reliabilityBox" class="chart-box tall center">-</div>
         <p class="tip" style="margin-top:8px;">train/val/test, Macro-F1, Micro-F1, Accuracy</p>

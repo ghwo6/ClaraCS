@@ -1,7 +1,6 @@
 from flask import Blueprint, request, jsonify
 from flasgger.utils import swag_from
-from utils.database import data_repository
-from utils.ai_service import ai_service
+from services.report import ReportService
 from utils.logger import get_logger
 import json
 
@@ -88,34 +87,9 @@ def generate_report():
         
         logger.info(f"사용자 {user_id}의 리포트 생성 시작")
         
-        # 1. 채널별 추이 데이터 생성
-        logger.info("채널별 추이 데이터 생성 중...")
-        channel_trends = data_repository.get_channel_trend_data(user_id)
-        
-        # 2. 데이터 요약 생성
-        logger.info("데이터 요약 생성 중...")
-        summary = data_repository.get_summary_data(user_id)
-        
-        # 3. AI 분석용 데이터 준비
-        logger.info("AI 분석 데이터 준비 중...")
-        ai_analysis_data = data_repository.get_ai_analysis_data(user_id)
-        
-        # 4. AI 인사이트 분석
-        logger.info("AI 인사이트 분석 중...")
-        insights = ai_service.analyze_cs_insights(ai_analysis_data)
-        
-        # 5. 솔루션 제안 생성
-        logger.info("솔루션 제안 생성 중...")
-        solutions = ai_service.generate_solution_recommendations(insights)
-        
-        # 6. 응답 데이터 구성
-        report_data = {
-            'channel_trends': channel_trends,
-            'summary': summary,
-            'insights': insights,
-            'solutions': solutions,
-            'generated_at': data_repository._get_current_timestamp()
-        }
+        # 서비스를 통한 리포트 생성
+        report_service = ReportService()
+        report_data = report_service.generate_report(user_id, start_date, end_date)
         
         logger.info(f"사용자 {user_id}의 리포트 생성 완료")
         
@@ -164,7 +138,8 @@ def get_channel_trends():
         
         logger.info(f"사용자 {user_id}의 채널별 추이 데이터 조회")
         
-        channel_trends = data_repository.get_channel_trend_data(user_id)
+        report_service = ReportService()
+        channel_trends = report_service.get_channel_trends(user_id)
         
         return jsonify({
             'success': True,
@@ -211,7 +186,8 @@ def get_summary():
         
         logger.info(f"사용자 {user_id}의 데이터 요약 조회")
         
-        summary = data_repository.get_summary_data(user_id)
+        report_service = ReportService()
+        summary = report_service.get_summary(user_id)
         
         return jsonify({
             'success': True,
@@ -258,11 +234,8 @@ def get_insights():
         
         logger.info(f"사용자 {user_id}의 AI 인사이트 분석")
         
-        # AI 분석용 데이터 준비
-        ai_analysis_data = data_repository.get_ai_analysis_data(user_id)
-        
-        # AI 인사이트 분석
-        insights = ai_service.analyze_cs_insights(ai_analysis_data)
+        report_service = ReportService()
+        insights = report_service.get_insights(user_id)
         
         return jsonify({
             'success': True,
@@ -317,13 +290,8 @@ def get_solutions():
         
         logger.info(f"사용자 {user_id}의 솔루션 제안 생성")
         
-        # 인사이트가 제공되지 않은 경우 새로 생성
-        if not insights:
-            ai_analysis_data = data_repository.get_ai_analysis_data(user_id)
-            insights = ai_service.analyze_cs_insights(ai_analysis_data)
-        
-        # 솔루션 제안 생성
-        solutions = ai_service.generate_solution_recommendations(insights)
+        report_service = ReportService()
+        solutions = report_service.get_solutions(user_id, insights)
         
         return jsonify({
             'success': True,

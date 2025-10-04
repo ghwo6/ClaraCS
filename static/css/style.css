@@ -127,10 +127,9 @@ html { scroll-behavior: smooth; }
 .legend .dot { width:10px; height:10px; border-radius:50%; display:inline-block; }
 
 .channel-grid {
-  display:grid; grid-template-columns: repeat(3, 1fr); gap:12px;
-  margin-top:8px;
+  display:grid; grid-template-columns: repeat(2, 1fr); gap:12px;
 }
-.scroll-y { overflow-y:auto; max-height: 460px; } /* 필요 시 높이 조정 */
+.scroll-y { overflow-y:auto; } 
 
 /* 도움 유틸 */
 .right { text-align:right; }
@@ -139,6 +138,125 @@ html { scroll-behavior: smooth; }
 
 /* 실행 버튼 상태(파랑→진녹) */
 #btn-run-classify.active { filter: brightness(0.92); }
+
+/* new_10_04_15시 */
+/* === 채널별 분류 결과(오른쪽 카드 내부만) ================== */
+#channelsCard { display: flex; flex-direction: column; }
+#channelsCard .channels-head{
+  position: sticky; top: 0; background: var(--bg, #0b1220);
+  z-index: 1; padding-bottom: 6px; margin-bottom: 8px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+
+/* 스크롤 영역(우측 카드 본문) - 높이는 기존 JS(있다면) 그대로 사용 */
+#channelCards.channels-body { overflow-y: auto; }
+
+/* 3x2 고정 그리드
+#channelCards{
+  display: grid;
+  grid-template-columns: repeat(3, minmax(220px, 1fr));
+  gap: 16px; 지우기!!! */
+
+/* 자동분류 본문 그리드: 좌 4.5 : 우 5.5 */
+#classify .classify-grid {
+  display: grid;
+  grid-template-columns: 4.5fr 5.5fr; /* ← 비율 고정 */
+  gap: 16px;
+  align-items: start;
+}
+
+/* 배치 고정 */
+#catCard         { grid-column: 1; grid-row: 1; }
+#reliabilityCard { grid-column: 1; grid-row: 2; }
+#channelsCard    { grid-column: 2; grid-row: 1 / span 2;
+                   display: flex; flex-direction: column; 
+                   height: 100%; min-height:0; /* flex 오버플로우 방지 */
+                }
+
+/* 우측 카드 내부: 본문 스크롤 높이 자동 */
+#channelCards.channels-body,
+#channelCards.scroll-y { flex: 1 1 auto; min-height:0; overflow-y: auto; }
+
+/* 우측 채널 카드 그리드: 2 × 3 고정 */
+#channelCards {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);  /* ← 2열 */
+  grid-auto-rows: 1fr;
+  gap: 16px;
+}
+
+/* 우측 채널 카드의 높이 계산을 border-box 기준으로 */
+#channelsCard { box-sizing: border-box; }
+
+/*여기까지 수정*/
+
+/* 개별 채널 칸(끝 둥근 모서리 + 중간 정렬) */
+.channel-card {
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 14px;
+  padding: 12px;
+  text-align: center;
+  display: flex; flex-direction: column; align-items: center;
+  background: rgba(255,255,255,0.03);
+}
+
+/* 1) 채널명(맨 위, 가운데) */
+.channel-card .ch-title{
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+
+/* 2) 건수/퍼센트(그 아래, 작은 글자 + 연한 색) */
+.channel-card .ch-sub{
+  font-size: 12px;
+  color: var(--muted, #8893a7);
+  margin-bottom: 16px;
+}
+
+/* 3) 도넛(가운데) */
+.channel-card .donut{
+  --size: 150px; --thickness: 45px;
+  width: var(--size); height: var(--size);
+  border-radius: 50%;
+  position: relative; margin: 0 auto px auto;
+  background: #1f2937; /* 데이터 없을 때 백업 색 */
+}
+.channel-card .donut .hole{
+  position: absolute; inset: calc(var(--thickness));
+  background: var(--bg, #0b1220);
+  border-radius: 50%;
+  display:flex; align-items:center; justify-content:center;
+}
+/* 중앙 통계 텍스트 */
+.channel-card .donut .center-stats{
+  text-align:center; line-height:1.1;
+}
+.channel-card .donut .center-stats .count{
+  font-weight:700; font-size:16px;  /* 건수 */
+}
+.channel-card .donut .center-stats .pct{
+  font-size:12px; color: var(--muted, #8893a7);  /* 퍼센트 */
+}
+/* (선택) 카드 높이 확보가 필요하면 최소 높이 부여 */
+.channel-card { min-height: 260px; }
+
+/* 도트(범례/텍스트) 색 클래스 */
+.dot { width:10px; height:10px; border-radius:50%; display:inline-block; }
+.dot-배송   { background:#ef4444; } /* 빨강 */
+.dot-환불   { background:#f59e0b; } /* 주황 */
+.dot-품질   { background:#10b981; } /* 초록 */
+.dot-AS설치 { background:#3b82f6; } /* 파랑 */
+.dot-기타   { background:#9ca3af; } /* 회색 */
+
+/* 하단 카테고리 소문구(원하면 유지) */
+.channel-card .mini { list-style:none; padding:0; margin:6px 0 0 0; font-size:12px; color:var(--muted, #8893a7); }
+.channel-card .mini li{ display:flex; gap:6px; align-items:center; justify-content:center; }
+/*여기까지 10_04_15시*/
+
+
+
+
+
 
 /* 리포트 관련 스타일 */
 .loading-indicator {
