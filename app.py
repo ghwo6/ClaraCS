@@ -96,7 +96,11 @@ def create_app():
             file_path = os.path.join(save_dir,filename)
             
             #2. PDF 리포트를 생성합니다.
-            create_prototype_report(file_path,report_data)
+            try:
+                create_prototype_report(file_path,report_data)
+            except Exception as e:
+                print(f"PDF 생성 중 오류: {e}")
+                return jsonify({"error": "PDF 파일을 생성하는 중 오류가 발생했습니다."}), 500
 
             #3. 생성된 PDF 파일을 클라이언트에 전송합니다.
             return send_file(file_path,
