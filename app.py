@@ -1,11 +1,11 @@
-from flask import Flask, send_file, jsonify,request
+from flask import Flask, send_file, jsonify,request,after_this_request
 from flasgger import Swagger
 from routes.export_to_pdf import create_prototype_report 
 import os
 import datetime
 import re
 from urllib.parse import quote
-import pandas as pd # 예시를 위해 pandas 사용
+import pandas as pd
 from dotenv import load_dotenv
 from controllers.main import main_bp
 from controllers.report import report_bp
@@ -74,46 +74,49 @@ def create_app():
 
         return jsonify(response_data)
 
-
-    @app.route('/download-pdf', methods=["GET"])
-    def download_pdf_report():
-        """PDF 리포트를 생성하고 다운로드 합니다."""
+    @app.route('/download-pdf', methods=['GET'])
+    def download_pdf_file():
         try:
-            #1. PDF 파일을 저장할 임시 경로를 지정합니다.
             file_id = request.args.get('file_id')
             if not file_id:
                 return jsonify({"error": "file_id 파라미터가 필요합니다."}), 400
-            
-            # 오늘 날짜를 'YYYYMMDD'형식의 문자열로 만듭니다.
+        
+            # 1. 파일 이름 및 경로 설정
             report_data = {
                 "company_name": "XX(주)",
-                "date":datetime.date.today().strftime("%Y.%m.%d")
+                "date": datetime.date.today().strftime("%Y.%m.%d")
             }
-            # 최종 다운로드 파일 이름을 조합한다.
             download_filename = f"AI분석리포트_{report_data['company_name']}_{report_data['date']}.pdf"
-
-            save_dir = os.path.join(app.root_path,'temp_reports_folder')
-            os.makedirs(save_dir,exist_ok=True) # 폴더가 없으면 생성
-            # 서버에 저장되는 임시 파일 이름
+            save_dir = os.path.join(app.root_path, 'temp_reports_folder')
+            os.makedirs(save_dir, exist_ok=True)
             temp_filename = f"AI분석리포트_{file_id}_{report_data['date']}.pdf"
-            filename = re.sub(r'[\\/*?:"<>|]',"_",temp_filename) # 파일명에 특수문자 제거
-            file_path = os.path.join(save_dir,filename)
+            filename = re.sub(r'[\\\\/*?:"<>|]', "_", temp_filename)
+            file_path = os.path.join(save_dir, filename)
             
-            #2. PDF 리포트를 생성합니다.
-            try:
-                create_prototype_report(file_path,report_data)
-            except Exception as e:
-                print(f"PDF 생성 중 오류: {e}")
-                return jsonify({"error": "PDF 파일을 생성하는 중 오류가 발생했습니다."}), 500
+            # 2. PDF 리포트 생성
+            create_prototype_report(file_path, report_data)
 
-            #3. 생성된 PDF 파일을 클라이언트에 전송합니다.
-            return send_file(file_path,
-                            as_attachment=True,
-                            download_name=quote(download_filename))
+            # 3. 파일 전송이 끝난 후 실행될 삭제 작업을 예약
+            @after_this_request
+            def remove_file(response):
+                try:
+                    os.remove(file_path)
+                    print(f"임시 파일 삭제 완료: {file_path}")
+                except Exception as error:
+                    print(f"임시 파일 삭제 실패: {error}")
+                return response
+
+            # 4. 생성된 PDF 파일을 클라이언트에 전송
+            return send_file(
+                file_path,
+                as_attachment=True,
+                download_name=quote(download_filename)
+            )
+
         except Exception as e:
-            print(f"PDF 생성 오류 : {e}")
-            return jsonify({"error": "PDF 파일을 생성하는 중 오류가 발생했습니다."}), 500
-    
+            # PDF 생성이나 파일 전송 등 모든 과정에서 발생하는 오류를 처리
+            print(f"PDF 다운로드 처리 중 오류 발생: {e}")
+            return jsonify({"error": "리포트를 처리하는 중 서버에서 오류가 발생했습니다."}), 500
 
     app.register_blueprint(main_bp)
     app.register_blueprint(report_bp)
