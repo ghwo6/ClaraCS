@@ -8,6 +8,8 @@
     <meta property="og:image" content="" />
     <title>ClaraCS – 지능형 CS 데이터 분석·인사이트 플랫폼</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
 <div class="app">
@@ -35,40 +37,66 @@
   <!-- 메인 -->
   <main class="main">
 
-    <!-- 대시보드 개요 -->
+    <!-- 대시보드 -->
     <section class="section" id="dashboard">
       <div class="head">
-        <h2>대시보드 개요</h2>
-        <div class="toolbar">
-          <button class="btn ghost">기간: 최근 30일</button>
-          <button class="btn">필터</button>
-          <button class="btn primary">새 보고서 생성</button>
+        <h2>대시보드</h2>
+        <div class="toolbar" id="period-filters">
+          <button class="btn ghost active">7일</button>
+          <button class="btn ghost">1달</button>
+          <button class="btn ghost">3달</button>
+          <button class="btn ghost">이번 분기</button>
+          <button class="btn ghost">기간 설정</button>
         </div>
       </div>
       <div class="body">
-        <div class="grid cols-3">
-          <div class="card kpi"><div class="label">총 접수 건수</div><div class="value">12,483</div><div class="trend">▲ 8.2% (전월 대비)</div></div>
-          <div class="card kpi"><div class="label">자동 분류 정확도(샘플)</div><div class="value">92.4%</div><div class="trend" style="color:var(--warn)">→ 모델 재학습 권장</div></div>
-          <div class="card kpi"><div class="label">재문의율(샘플)</div><div class="value">7.3%</div><div class="trend">▼ 1.1%p</div></div>
-        </div>
-        <div class="grid cols-2" style="margin-top:16px;">
-          <div class="card">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-              <strong>유형별 발생 추이(샘플)</strong>
-              <div class="legend"><div class="item"><span class="dot"></span>배송</div><div class="item"><span class="dot" style="background:#3ddc97"></span>환불</div><div class="item"><span class="dot" style="background:#ffb020"></span>품질</div></div>
-            </div>
-            <div class="chart-box">차트 영역 (라인)</div>
+        <div class="grid cols-2">
+          <div class="card kpi">
+            <div class="label">처리 완료 건수</div>
+            <div class="value" id="completed-count">133건</div>
           </div>
-          <div class="card">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-              <strong>우선순위 분포(샘플)</strong>
-              <span class="badge warn">업데이트 필요</span>
-            </div>
-            <div class="chart-box">차트 영역 (도넛)</div>
+
+          <div class="card kpi">
+            <div class="label">미처리 건수</div>
+            <div class="value" id="pending-count">13건</div>
+          </div>
+        </div>
+
+    <div class="grid cols-2" style="margin-top:16px;">
+      <div class="grid-vertical">
+        <div class="card">
+          <strong>주요 문의 카테고리 TOP 3</strong>
+          <table class="table" style="margin-top:8px;">
+            <thead>
+              <tr>
+                <th>순위</th>
+                <th>카테고리</th>
+                <th class="right">건수</th>
+              </tr>
+            </thead>
+            <tbody id="top-categories-table">
+              <tr><td colspan="3">데이터를 불러오는 중입니다...</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="card" style="margin-top:16px;">
+          <strong>카테고리별 문의 비율</strong>
+          <div class="chart-box">
+            <canvas id="category-pie-chart"></canvas>
           </div>
         </div>
       </div>
-    </section>
+
+      <div class="card">
+        <strong>인사이트 도출</strong>
+        <div id="generated-insights" style="margin-top: 8px;">
+          <p class="subtle">분석 리포트가 생성되면<br>AI가 핵심 인사이트를 여기에 표시합니다.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
 
     <!-- 업로드 -->
     <section class="section" id="upload">
@@ -314,6 +342,7 @@
 </div>
 <script type="text/javascript" src="{{ url_for('static', filename='js/sidebar.js') }}"></script>
 <script type="text/javascript" src="{{ url_for('static', filename='js/common.js') }}"></script>
+<script type="text/javascript" src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
 <script type="text/javascript" src="{{ url_for('static', filename='js/upload.js') }}"></script>
 <script type="text/javascript" src="{{ url_for('static', filename='js/report.js') }}"></script>
 <script type="text/javascript" src="{{ url_for('static', filename='js/auto_classify.js') }}"></script>
