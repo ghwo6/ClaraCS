@@ -37,11 +37,29 @@ if (column_edit) {
 }
 
 let mappingData = []; // 전역 저장용
+let mappingCodes = []; // DB에서 가져온 매핑 코드들
 
-document.addEventListener('DOMContentLoaded', () => {
+// 기본 8개 매핑 항목
+const defaultMappings = [
+    { original_column: 'created_at', code_name: '접수일' },
+    { original_column: 'customer_id', code_name: '고객ID' },
+    { original_column: 'channel', code_name: '채널' },
+    { original_column: 'product_code', code_name: '상품코드' },
+    { original_column: 'inquiry_type', code_name: '문의 유형' },
+    { original_column: 'body', code_name: '본문' },
+    { original_column: 'assignee', code_name: '담당자' },
+    { original_column: 'status', code_name: '처리 상태' }
+];
+
+document.addEventListener('DOMContentLoaded', async () => {
     const add_column = document.querySelector('#btn-add-row');
-    const saveBtn = document.querySelector('#column_setting');
-    const maxRows = 9;
+    const maxRows = 15;
+    
+    // 1. 매핑 코드 로드
+    await loadMappingCodes();
+    
+    // 2. DB에서 마지막 매핑 불러오기 (없으면 기본 8개)
+    await loadLastMappingsOrDefault();
 
     // 행 추가
     if (add_column) {
@@ -54,115 +72,116 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            const newRow = document.createElement('div');
-            newRow.className = 'mapping-grid';
-            newRow.style.cssText = 'display: flex; align-items: center; gap: 10px;';
-            newRow.innerHTML = `
-                <div class="delete-btn-container">
-                    <button class="btn delete-row-btn">&minus;</button>
-                </div>
-                <input class="input" value="원본 컬럼을 입력하세요." />
-                <span style="text-align:center; color:var(--muted)">→</span>
-                <select class="select"><option value="">선택</option><option value="custom">사용자 지정</option></select>
-                <div class="toggle-switch">
-                    <input type="checkbox" class="toggle-input" id="toggle-new-${currentRows+1}" checked />
-                    <label class="toggle-label" for="toggle-new-${currentRows+1}"></label>
-                </div>
-            `;
-
-            // 삭제 버튼 이벤트
-            const deleteContainer = newRow.querySelector('.delete-btn-container');
-            newRow.querySelector('.delete-row-btn').addEventListener('click', e => {
-                e.target.closest('.mapping-grid').remove();
-            });
-
-            // 현재 편집 모드(isEditMode)에 따라 삭제 버튼 표시 즉시 반영
-            if (isEditMode) {
-                deleteContainer.style.visibility = 'visible';
-                deleteContainer.style.opacity = '1';
-            } else {
-                deleteContainer.style.visibility = 'hidden';
-                deleteContainer.style.opacity = '0';
-            }
-
-            // toggle 이벤트
-            const toggleEl = newRow.querySelector('.toggle-input');
-            toggleEl.addEventListener('change', () => set_row_state(newRow, toggleEl.checked));
-            set_row_state(newRow, toggleEl.checked);
-
-            // select 사용자 지정
-            const select = newRow.querySelector('.select');
-            select.addEventListener('change', () => {
-                if (select.value === 'custom') {
-                    const userValue = prompt('[사용자 지정] 매핑 컬럼을 입력하세요.');
-                    if (userValue && userValue.trim() !== '') {
-                        const existingOption = Array.from(select.options).find(o => o.value === userValue.trim());
-                        if (!existingOption) {
-                            const newOption = document.createElement('option');
-                            newOption.value = userValue.trim();
-                            newOption.text = userValue.trim();
-                            newOption.selected = true;
-                            select.add(newOption);
-                        } else {
-                            existingOption.selected = true;
-                        }
-                        select.value = userValue.trim();
-                    } else {
-                        select.value = '';
-                    }
-                }
-            });
+            const newRow = createMappingRow({
+                original_column: '원본 컬럼을 입력하세요.',
+                code_name: '',
+                is_activate: true
+            }, currentRows + 1);
 
             cardGrid.appendChild(newRow);
         });
     }
-    document.querySelectorAll('.mapping-grid').forEach(row => {
-        const toggleEl = row.querySelector('.toggle-input');
-        if (toggleEl) {
-            set_row_state(row, toggleEl.checked);
-            // 토글 이벤트 연결 (기존 행에도 필요)
-            toggleEl.addEventListener('change', () => set_row_state(row, toggleEl.checked));
-        }
-    });
-    // 서버에서 마지막 매핑 가져오기 → 자동 적용
-    fetch('/api/mapping/last')
-        .then(res => res.json())
-        .then(data => {
-            if (!data.mappings) return;
-            apply_mappings(data.mappings);
-        });
-
-    // 컬럼 저장 버튼 클릭 → 서버 전송
-    if (saveBtn) {
-        saveBtn.addEventListener('click', async () => {
-            const mappings = collect_mappings();
-            if (!mappings.length) {
-                showPopup('❌ 저장할 매핑 데이터가 없습니다.', 'error');
-                return;
-            }
-            mappingData = mappings;
-
-            try {
-                const res = await fetch('/api/mapping/save', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ mappings: mappingData })
-                });
-                const data = await res.json();
-                console.log("서버 응답:", data);
-
-                if (data.status === 'success') {
-                    showPopup('✅ 컬럼이 저장되었습니다.\n저장된 컬럼은 다음 업로드 시 자동 적용됩니다.', 'success');
-                } else {
-                    showPopup(`❌ 컬럼 저장 실패: ${data.msg}`, 'error');
-                }
-            } catch (err) {
-                console.error(err);
-                showPopup('❌ 서버 요청 에러가 발생했습니다.', 'error');
-            }
-        });
-    }
 });
+
+// 매핑 코드를 서버에서 로드
+async function loadMappingCodes() {
+    try {
+        const response = await fetch('/api/mapping/codes');
+        const data = await response.json();
+        if (data.success) {
+            mappingCodes = data.data;
+            console.log('매핑 코드 로드 완료:', mappingCodes);
+        }
+    } catch (error) {
+        console.error('매핑 코드 로드 실패:', error);
+    }
+}
+
+// 기본 8개 매핑 초기화
+function initializeDefaultMappings() {
+    const container = document.getElementById('mapping-grid-container');
+    if (!container) return;
+    
+    container.innerHTML = ''; // 기존 내용 초기화
+    
+    defaultMappings.forEach((mapping, index) => {
+        const row = createMappingRow(mapping, index + 1);
+        container.appendChild(row);
+    });
+}
+
+// DB에서 마지막 매핑 불러오기 또는 기본값 사용
+async function loadLastMappingsOrDefault() {
+    try {
+        const response = await fetch('/api/mapping/last');
+        const data = await response.json();
+        
+        if (data.success && data.mappings && data.mappings.length > 0) {
+            // DB에 저장된 매핑이 있으면 사용
+            console.log('DB에서 매핑 불러오기:', data.mappings);
+            apply_mappings(data.mappings);
+        } else {
+            // 없으면 기본 8개 사용
+            console.log('기본 매핑 사용');
+            initializeDefaultMappings();
+        }
+    } catch (error) {
+        console.error('매핑 불러오기 실패, 기본값 사용:', error);
+        initializeDefaultMappings();
+    }
+}
+
+// 매핑 행 생성 함수
+function createMappingRow(mapping, index) {
+    const row = document.createElement('div');
+    row.className = 'mapping-grid';
+    row.style.cssText = 'display: flex; align-items: center; gap: 10px;';
+    
+    // select 옵션 생성
+    let optionsHtml = '<option value="">선택</option>';
+    mappingCodes.forEach(code => {
+        const selected = code.code_name === mapping.code_name ? 'selected' : '';
+        optionsHtml += `<option value="${code.code_name}" ${selected}>${code.code_name}</option>`;
+    });
+    
+    row.innerHTML = `
+        <div class="delete-btn-container">
+            <button class="btn delete-row-btn">&minus;</button>
+        </div>
+        <input class="input" value="${mapping.original_column || ''}" />
+        <span style="text-align:center; color:var(--muted)">→</span>
+        <select class="select">
+            ${optionsHtml}
+        </select>
+        <div class="toggle-switch">
+            <input type="checkbox" class="toggle-input" id="toggle-${index}" ${mapping.is_activate !== false ? 'checked' : ''} />
+            <label class="toggle-label" for="toggle-${index}"></label>
+        </div>
+    `;
+    
+    // 삭제 버튼 이벤트
+    const deleteBtn = row.querySelector('.delete-row-btn');
+    const deleteContainer = row.querySelector('.delete-btn-container');
+    deleteBtn.addEventListener('click', () => {
+        row.remove();
+    });
+    
+    // 편집 모드에 따라 삭제 버튼 표시
+    if (isEditMode) {
+        deleteContainer.style.visibility = 'visible';
+        deleteContainer.style.opacity = '1';
+    } else {
+        deleteContainer.style.visibility = 'hidden';
+        deleteContainer.style.opacity = '0';
+    }
+    
+    // 토글 이벤트
+    const toggleEl = row.querySelector('.toggle-input');
+    toggleEl.addEventListener('change', () => set_row_state(row, toggleEl.checked));
+    set_row_state(row, toggleEl.checked);
+    
+    return row;
+}
 
 // 기존 함수 그대로
 function collect_mappings() {
@@ -176,34 +195,29 @@ function collect_mappings() {
             // 비활성화 또는 값 없는 경우 제외
             if (!toggle || !original || !mappingCodeValue) return null;
 
-            // mapping_code_id가 INT가 아니라면 null 처리
-            const mapping_code_id = /^\d+$/.test(mappingCodeValue) 
-                ? parseInt(mappingCodeValue) 
-                : null;
-
             return {
                 original_column: original,
-                mapping_code_id,
-                file_id: 1,
-                is_activate: true,
-                created_at: new Date().toISOString()
+                mapping_code_id: mappingCodeValue, // code_name을 그대로 전송 (서버에서 변환)
+                file_id: null, // 파일 업로드 시점에 설정될 예정
+                is_activate: true
             };
         })
         .filter(item => item !== null);
 }
 
 function apply_mappings(mappings) {
-    const gridRows = document.querySelectorAll('.mapping-grid');
+    const container = document.getElementById('mapping-grid-container');
+    if (!container) return;
+    
+    container.innerHTML = ''; // 기존 내용 초기화
+    
     mappings.forEach((map, index) => {
-        let row = gridRows[index] || add_new_row();
-        const inputEl = row.querySelector('.input');
-        const selectEl = row.querySelector('.select');
-        const toggleEl = row.querySelector('.toggle-input');
-
-        inputEl.value = map.original_column;
-        selectEl.value = map.mapping_code_id || '';
-        toggleEl.checked = map.is_activate !== false;
-        set_row_state(row, toggleEl.checked);
+        const row = createMappingRow({
+            original_column: map.original_column,
+            code_name: map.code_name,
+            is_activate: map.is_activate !== false
+        }, index + 1);
+        container.appendChild(row);
     });
 }
 

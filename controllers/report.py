@@ -14,11 +14,18 @@ report_bp = Blueprint("report", __name__)
     'description': '분석 리포트 생성',
     'parameters': [
         {
+            'name': 'file_id',
+            'in': 'body',
+            'type': 'integer',
+            'required': True,
+            'description': '파일 ID'
+        },
+        {
             'name': 'user_id',
             'in': 'body',
-            'type': 'string',
-            'required': True,
-            'description': '사용자 ID'
+            'type': 'integer',
+            'required': False,
+            'description': '사용자 ID (기본값 1)'
         },
         {
             'name': 'start_date',
@@ -45,6 +52,8 @@ report_bp = Blueprint("report", __name__)
                     'data': {
                         'type': 'object',
                         'properties': {
+                            'report_id': {'type': 'integer'},
+                            'file_id': {'type': 'integer'},
                             'channel_trends': {'type': 'object'},
                             'summary': {'type': 'object'},
                             'insights': {'type': 'object'},
@@ -63,7 +72,7 @@ report_bp = Blueprint("report", __name__)
     }
 })
 def generate_report():
-    """분석 리포트 생성 API"""
+    """분석 리포트 생성 API (실제 스키마 기반)"""
     try:
         logger.info("리포트 생성 요청 시작")
         
@@ -75,23 +84,24 @@ def generate_report():
                 'error': '요청 데이터가 없습니다.'
             }), 400
         
-        user_id = data.get('user_id')
-        if not user_id:
+        file_id = data.get('file_id')
+        if not file_id:
             return jsonify({
                 'success': False,
-                'error': 'user_id가 필요합니다.'
+                'error': 'file_id가 필요합니다.'
             }), 400
         
+        user_id = data.get('user_id', 1)  # 기본값 1
         start_date = data.get('start_date')
         end_date = data.get('end_date')
         
-        logger.info(f"사용자 {user_id}의 리포트 생성 시작")
+        logger.info(f"파일 {file_id}의 리포트 생성 시작 (user_id: {user_id})")
         
         # 서비스를 통한 리포트 생성
         report_service = ReportService()
-        report_data = report_service.generate_report(user_id, start_date, end_date)
+        report_data = report_service.generate_report(file_id, user_id, start_date, end_date)
         
-        logger.info(f"사용자 {user_id}의 리포트 생성 완료")
+        logger.info(f"파일 {file_id}의 리포트 생성 완료 (report_id: {report_data['report_id']})")
         
         return jsonify({
             'success': True,
@@ -111,11 +121,11 @@ def generate_report():
     'description': '채널별 추이 데이터 조회',
     'parameters': [
         {
-            'name': 'user_id',
+            'name': 'file_id',
             'in': 'body',
-            'type': 'string',
+            'type': 'integer',
             'required': True,
-            'description': '사용자 ID'
+            'description': '파일 ID'
         }
     ],
     'responses': {
@@ -128,18 +138,18 @@ def get_channel_trends():
     """채널별 추이 데이터 조회 API"""
     try:
         data = request.get_json()
-        user_id = data.get('user_id')
+        file_id = data.get('file_id')
         
-        if not user_id:
+        if not file_id:
             return jsonify({
                 'success': False,
-                'error': 'user_id가 필요합니다.'
+                'error': 'file_id가 필요합니다.'
             }), 400
         
-        logger.info(f"사용자 {user_id}의 채널별 추이 데이터 조회")
+        logger.info(f"파일 {file_id}의 채널별 추이 데이터 조회")
         
         report_service = ReportService()
-        channel_trends = report_service.get_channel_trends(user_id)
+        channel_trends = report_service.get_channel_trends(file_id)
         
         return jsonify({
             'success': True,
@@ -159,11 +169,11 @@ def get_channel_trends():
     'description': '데이터 요약 조회',
     'parameters': [
         {
-            'name': 'user_id',
+            'name': 'file_id',
             'in': 'body',
-            'type': 'string',
+            'type': 'integer',
             'required': True,
-            'description': '사용자 ID'
+            'description': '파일 ID'
         }
     ],
     'responses': {
@@ -176,18 +186,18 @@ def get_summary():
     """데이터 요약 조회 API"""
     try:
         data = request.get_json()
-        user_id = data.get('user_id')
+        file_id = data.get('file_id')
         
-        if not user_id:
+        if not file_id:
             return jsonify({
                 'success': False,
-                'error': 'user_id가 필요합니다.'
+                'error': 'file_id가 필요합니다.'
             }), 400
         
-        logger.info(f"사용자 {user_id}의 데이터 요약 조회")
+        logger.info(f"파일 {file_id}의 데이터 요약 조회")
         
         report_service = ReportService()
-        summary = report_service.get_summary(user_id)
+        summary = report_service.get_summary(file_id)
         
         return jsonify({
             'success': True,
@@ -207,11 +217,11 @@ def get_summary():
     'description': 'AI 인사이트 분석',
     'parameters': [
         {
-            'name': 'user_id',
+            'name': 'file_id',
             'in': 'body',
-            'type': 'string',
+            'type': 'integer',
             'required': True,
-            'description': '사용자 ID'
+            'description': '파일 ID'
         }
     ],
     'responses': {
@@ -224,18 +234,18 @@ def get_insights():
     """AI 인사이트 분석 API"""
     try:
         data = request.get_json()
-        user_id = data.get('user_id')
+        file_id = data.get('file_id')
         
-        if not user_id:
+        if not file_id:
             return jsonify({
                 'success': False,
-                'error': 'user_id가 필요합니다.'
+                'error': 'file_id가 필요합니다.'
             }), 400
         
-        logger.info(f"사용자 {user_id}의 AI 인사이트 분석")
+        logger.info(f"파일 {file_id}의 AI 인사이트 분석")
         
         report_service = ReportService()
-        insights = report_service.get_insights(user_id)
+        insights = report_service.get_insights(file_id)
         
         return jsonify({
             'success': True,
@@ -255,11 +265,11 @@ def get_insights():
     'description': '솔루션 제안 생성',
     'parameters': [
         {
-            'name': 'user_id',
+            'name': 'file_id',
             'in': 'body',
-            'type': 'string',
+            'type': 'integer',
             'required': True,
-            'description': '사용자 ID'
+            'description': '파일 ID'
         },
         {
             'name': 'insights',
@@ -279,19 +289,19 @@ def get_solutions():
     """솔루션 제안 생성 API"""
     try:
         data = request.get_json()
-        user_id = data.get('user_id')
+        file_id = data.get('file_id')
         insights = data.get('insights')
         
-        if not user_id:
+        if not file_id:
             return jsonify({
                 'success': False,
-                'error': 'user_id가 필요합니다.'
+                'error': 'file_id가 필요합니다.'
             }), 400
         
-        logger.info(f"사용자 {user_id}의 솔루션 제안 생성")
+        logger.info(f"파일 {file_id}의 솔루션 제안 생성")
         
         report_service = ReportService()
-        solutions = report_service.get_solutions(user_id, insights)
+        solutions = report_service.get_solutions(file_id, insights)
         
         return jsonify({
             'success': True,
