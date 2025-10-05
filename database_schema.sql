@@ -34,7 +34,10 @@ CREATE TABLE `tb_uploaded_file` (
   `is_deleted` BOOLEAN,
   `deleted_at` DATETIME,
   `created_at` DATETIME DEFAULT (NOW()),
-  `processed_at` DATETIME
+  `processed_at` DATETIME,
+  INDEX idx_uploaded_file_user_id (user_id),
+  INDEX idx_uploaded_file_status (status),
+  INDEX idx_uploaded_file_created_at (created_at)
 );
 
 CREATE TABLE `tb_column_mapping_code` (
@@ -69,21 +72,38 @@ CREATE TABLE `tb_ticket` (
   `customer_id` VARCHAR(128),
   `product_code` VARCHAR(128),
   `inquiry_type` VARCHAR(128),
+  `classified_category_id` INT COMMENT 'AI가 분류한 카테고리 ID',
+  `classification_confidence` FLOAT COMMENT '분류 신뢰도 (0.0~1.0)',
+  `classification_keywords` JSON COMMENT '추출된 키워드 배열',
+  `classified_at` DATETIME COMMENT '분류 수행 시각',
   `title` VARCHAR(1000),
   `body` TEXT,
   `assignee` VARCHAR(128),
   `status` VARCHAR(20) DEFAULT 'new',
   `created_at` DATETIME DEFAULT (NOW()),
   `updated_at` DATETIME,
-  `raw_data` JSON
+  `raw_data` JSON,
+  INDEX idx_ticket_file_id (file_id),
+  INDEX idx_ticket_user_id (user_id),
+  INDEX idx_ticket_received_at (received_at),
+  INDEX idx_ticket_channel (channel),
+  INDEX idx_ticket_classified_category (classified_category_id),
+  INDEX idx_ticket_status (status)
 );
 
 CREATE TABLE `tb_classification_result` (
-  `class_result_id` INT PRIMARY KEY AUTO_INCREMENT,
-  `ticket_id` INT,
-  `engine_name` VARCHAR(100),
-  `classified_at` DATETIME DEFAULT (NOW()),
-  `needs_review` BOOLEAN DEFAULT FALSE
+  `class_result_id` INT PRIMARY KEY AUTO_INCREMENT COMMENT '분류 결과 ID',
+  `file_id` INT NOT NULL COMMENT '분류 대상 파일 ID',
+  `user_id` INT NOT NULL COMMENT '분류 실행 사용자 ID',
+  `engine_name` VARCHAR(100) COMMENT 'AI 엔진 이름 (GPT-4, Claude 등)',
+  `total_tickets` INT COMMENT '분류된 총 티켓 수',
+  `period_from` DATE COMMENT '분석 기간 시작일',
+  `period_to` DATE COMMENT '분석 기간 종료일',
+  `classified_at` DATETIME DEFAULT (NOW()) COMMENT '분류 실행 시각',
+  `needs_review` BOOLEAN DEFAULT FALSE COMMENT '재검토 필요 여부',
+  INDEX idx_classification_file_id (file_id),
+  INDEX idx_classification_user_id (user_id),
+  INDEX idx_classification_date (classified_at)
 );
 
 CREATE TABLE `tb_classification_category_result` (
@@ -92,17 +112,19 @@ CREATE TABLE `tb_classification_category_result` (
   `category_id` INT,
   `count` INT DEFAULT 0,
   `ratio` FLOAT,
-  `example_keywords` JSON
+  `example_keywords` JSON,
+  INDEX idx_category_result_class_id (class_result_id),
+  INDEX idx_category_result_category_id (category_id)
 );
 
 CREATE TABLE `tb_classification_channel_result` (
-  `ch_result_id` INT AUTO_INCREMENT,
-  `channel` VARCHAR(64),
-  `class_result_id` INT,
-  `category_id` INT,
-  `count` INT DEFAULT 0,
-  `ratio` FLOAT,
-  PRIMARY KEY (`ch_result_id`, `channel`)
+  `ch_result_id` INT PRIMARY KEY AUTO_INCREMENT COMMENT '채널 결과 ID',
+  `class_result_id` INT COMMENT '분류 결과 ID',
+  `channel` VARCHAR(64) COMMENT '채널명',
+  `category_id` INT COMMENT '카테고리 ID',
+  `count` INT DEFAULT 0 COMMENT '해당 채널+카테고리 티켓 수',
+  `ratio` FLOAT COMMENT '비율',
+  INDEX idx_channel_result_class_id (class_result_id)
 );
 
 CREATE TABLE `tb_classification_reliability_result` (
@@ -111,7 +133,8 @@ CREATE TABLE `tb_classification_reliability_result` (
   `metric_name` VARCHAR(128),
   `metric_value` FLOAT,
   `details` JSON,
-  `created_at` DATETIME DEFAULT (NOW())
+  `created_at` DATETIME DEFAULT (NOW()),
+  INDEX idx_reliability_class_id (class_result_id)
 );
 
 CREATE TABLE `tb_analysis_report` (
@@ -123,7 +146,10 @@ CREATE TABLE `tb_analysis_report` (
   `status` VARCHAR(20) DEFAULT 'queued',
   `file_path` VARCHAR(1024),
   `created_at` DATETIME DEFAULT (NOW()),
-  `completed_at` DATETIME
+  `completed_at` DATETIME,
+  INDEX idx_report_file_id (file_id),
+  INDEX idx_report_created_by (created_by),
+  INDEX idx_report_status (status)
 );
 
 CREATE TABLE `tb_analysis_channel_snapshot` (
