@@ -24,6 +24,8 @@ numpy==1.26.4
 python-dateutil==2.9.0.post0
 pytz==2025.2
 tzdata==2025.2
+openpyxl==3.1.2  # Excel 파일 읽기 지원
+xlrd==2.0.1  # .xls 파일 읽기 지원
 
 # 데이터베이스 연결
 mysql-connector-python==8.0.33

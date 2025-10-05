@@ -1,106 +1,99 @@
 from flask import Blueprint, request, jsonify
-import mysql.connector
-from datetime import datetime
+from services.mapping import MappingService
+from utils.logger import get_logger
 
-mapping_bp = Blueprint("mapping", __name__, url_prefix="/api/mapping")
+logger = get_logger(__name__)
 
-DB_CONFIG = {
-    'host': 'localhost',
-    'user': 'root',
-    'password': 'wlsdud0802!!',  # 본인 MySQL 비밀번호
-    'database': 'clara_cs',
-    'auth_plugin': 'mysql_native_password'
-}
+mapping_bp = Blueprint("mapping", __name__)
 
-# ✅ 매핑 저장 API (안정화 버전)
-@mapping_bp.route("/save", methods=["POST"])
+@mapping_bp.route("/api/mapping/codes", methods=["GET"])
+def get_mapping_codes():
+    """컬럼 매핑 코드 조회 API"""
+    try:
+        mapping_service = MappingService()
+        codes = mapping_service.get_all_mapping_codes()
+        
+        return jsonify({
+            'success': True,
+            'data': codes
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"매핑 코드 조회 실패: {e}")
+        return jsonify({
+            'success': False,
+            'error': f'매핑 코드 조회 중 오류가 발생했습니다: {str(e)}'
+        }), 500
+
+
+@mapping_bp.route("/api/mapping/save", methods=["POST"])
 def save_mapping():
+    """컬럼 매핑 저장 API"""
     try:
-        data = request.get_json(force=True)
-        if not data or "mappings" not in data:
-            return jsonify({'status': 'error', 'message': '잘못된 요청입니다.'}), 400
-
-        conn = mysql.connector.connect(**DB_CONFIG)
-        cursor = conn.cursor(dictionary=True)
-
-        # ✅ INSERT 쿼리
-        insert_query = """
-            INSERT INTO tb_column_mapping (original_column, file_id, mapping_code_id, is_activate, created_at)
-            VALUES (%s, %s, %s, %s, %s)
-        """
-
-        for m in data.get('mappings', []):
-            original_column = m.get('original_column')
-            file_id = m.get('file_id')
-            mapping_code_id = m.get('mapping_code_id')
-            is_activate = m.get('is_activate', 1)
-            created_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-            # ✅ 필수값 체크
-            if not original_column or not file_id:
-                continue
-
-            cursor.execute(insert_query, (
-                original_column,
-                file_id,
-                mapping_code_id,
-                is_activate,
-                created_at
-            ))
-
-        conn.commit()
-
-        return jsonify({'status': 'success', 'message': 'Mapping saved successfully'}), 200
-
-    except mysql.connector.Error as db_err:
-        print("[MySQL Error]", db_err)
-        return jsonify({'status': 'error', 'message': f"MySQL 오류: {str(db_err)}"}), 500
-
+        data = request.get_json()
+        mappings = data.get('mappings', [])
+        file_id = data.get('file_id', None)
+        
+        if not mappings:
+            return jsonify({
+                'status': 'error',
+                'msg': '저장할 매핑 데이터가 없습니다.'
+            }), 400
+        
+        mapping_service = MappingService()
+        result = mapping_service.save_mappings(mappings, file_id)
+        
+        return jsonify({
+            'status': 'success',
+            'msg': '컬럼 매핑이 저장되었습니다.',
+            'data': result
+        }), 200
+        
     except Exception as e:
-        print("[Server Error]", e)
-        return jsonify({'status': 'error', 'message': f"서버 오류: {str(e)}"}), 500
-
-    finally:
-        try:
-            if 'cursor' in locals() and cursor:
-                cursor.close()
-            if 'conn' in locals() and conn.is_connected():
-                conn.close()
-        except Exception as close_err:
-            print("[Close Error]", close_err)
+        logger.error(f"매핑 저장 실패: {e}")
+        return jsonify({
+            'status': 'error',
+            'msg': f'매핑 저장 중 오류가 발생했습니다: {str(e)}'
+        }), 500
 
 
-# ✅ 마지막 매핑 가져오기 API
-@mapping_bp.route("/last", methods=['GET'])
+@mapping_bp.route("/api/mapping/last", methods=["GET"])
 def get_last_mapping():
-    conn = None
-    cursor = None
+    """마지막 컬럼 매핑 조회 API"""
     try:
-        conn = mysql.connector.connect(**DB_CONFIG)
-        cursor = conn.cursor(dictionary=True)
+        file_id = request.args.get('file_id', None)
         
-        # tb_column_mapping 테이블 존재 여부 체크
-        cursor.execute("""
-            SELECT COUNT(*) AS cnt 
-            FROM information_schema.tables 
-            WHERE table_schema=%s AND table_name='tb_column_mapping'
-        """, (DB_CONFIG['database'],))
-        table_exists = cursor.fetchone()[0] > 0
+        mapping_service = MappingService()
+        mappings = mapping_service.get_last_mappings(file_id)
         
-        if not table_exists:
-            print("테이블이 존재하지 않습니다: tb_column_mapping")
-            return jsonify({'mappings': [], 'msg': '테이블 없음'})
-
-        # 실제 매핑 데이터 조회
-        cursor.execute("SELECT * FROM tb_column_mapping ORDER BY created_at DESC")
-        rows = cursor.fetchall()  # dictionary=True이면 dict 반환
-
-        return jsonify({'mappings': rows})
-
+        return jsonify({
+            'success': True,
+            'mappings': mappings
+        }), 200
+        
     except Exception as e:
-        print("DB Error:", e)
-        return jsonify({'mappings': [], 'msg': str(e)})
-    
-    finally:
-        if cursor: cursor.close()
-        if conn: conn.close()
+        logger.error(f"마지막 매핑 조회 실패: {e}")
+        return jsonify({
+            'success': False,
+            'error': f'마지막 매핑 조회 중 오류가 발생했습니다: {str(e)}'
+        }), 500
+
+
+@mapping_bp.route("/api/mapping/by-file/<int:file_id>", methods=["GET"])
+def get_mapping_by_file(file_id):
+    """특정 파일의 컬럼 매핑 조회 API"""
+    try:
+        mapping_service = MappingService()
+        mappings = mapping_service.get_mappings_by_file(file_id)
+        
+        return jsonify({
+            'success': True,
+            'data': mappings
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"파일별 매핑 조회 실패: {e}")
+        return jsonify({
+            'success': False,
+            'error': f'매핑 조회 중 오류가 발생했습니다: {str(e)}'
+        }), 500
