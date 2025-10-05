@@ -47,12 +47,21 @@
   <div class="head">
     <h2>자동 분류</h2>
     <div class="toolbar">
-      <!-- <button class="btn">규칙 편집</button> -->
-      <!-- <button class="btn">모델 교체</button> -->
       <!-- 마지막 분류 시각 표시 -->
-      <span id="last-run-at" class="small muted" style="margin-left:8px;">
-       마지막 분류 : -
-      </span>
+      <span id="last-run-at" class="small muted"></span>
+      
+      <!-- 분류 엔진 선택 -->
+      <div class="engine-selector">
+        <label class="engine-option">
+          <input type="radio" name="classifier-engine" value="rule" checked>
+          <span class="engine-label">키워드 매칭</span>
+        </label>
+        <label class="engine-option">
+          <input type="radio" name="classifier-engine" value="ai">
+          <span class="engine-label">딥러닝 모델</span>
+        </label>
+      </div>
+      
       <button id="btn-reset-classify" class="btn ghost" onclick="window.resetClassification && window.resetClassification()">
         초기화
       </button>
@@ -85,11 +94,12 @@
         <div class="channels-head">
           <strong>채널별 분류 결과</strong>
           <div class="legend sticky">
-            <div class="item"><span class="dot" style="background:#ff4d4f"></span>배송</div>
-            <div class="item"><span class="dot" style="background:#ffa940"></span>환불/취소</div>
-            <div class="item"><span class="dot" style="background:#3ddc97"></span>품질/하자</div>
-            <div class="item"><span class="dot" style="background:#ffd666"></span>AS/설치</div>
-            <div class="item"><span class="dot" style="background:#9aa0a6"></span>기타</div>
+            <div class="item"><span class="dot" style="background:#ef4444"></span>배송 문의</div>
+            <div class="item"><span class="dot" style="background:#f59e0b"></span>환불/교환</div>
+            <div class="item"><span class="dot" style="background:#10b981"></span>상품 문의</div>
+            <div class="item"><span class="dot" style="background:#3b82f6"></span>기술 지원</div>
+            <div class="item"><span class="dot" style="background:#ff7875"></span>불만/클레임</div>
+            <div class="item"><span class="dot" style="background:#9ca3af"></span>기타</div>
           </div>
         </div>
         <div id="channelCards" class="channel-grid scroll-y"><!-- JS가 카드 렌더링 --></div>
@@ -97,9 +107,9 @@
 
       <!-- 2x1 : 자동 분류 정확도/신뢰도 -->
       <div class="card card--reliability" id="reliabilityCard"> <!--id="reliabilityCard" 추가함(new)-->
-        <strong>자동 분류 정확도/신뢰도</strong>
+        <strong>분류 신뢰도</strong>
         <div id="reliabilityBox" class="chart-box tall center">-</div>
-        <p class="tip" style="margin-top:8px;">train/val/test, Macro-F1, Micro-F1, Accuracy</p>
+        <p class="tip" style="margin-top:8px;">평균 신뢰도 및 재검토 필요 티켓 수</p>
       </div>
 
       <!-- 3x1 + 3x2 : 티켓 목록(하단 전체 폭) -->
