@@ -13,13 +13,13 @@ logger = get_logger(__name__)
 class AIClassifier(BaseClassifier):
     """Hugging Face Transformers 기반 AI 분류 엔진"""
     
-    def __init__(self, model_name: str = 'beomi/kcbert-base', category_mapping: Dict[int, str] = None):
+    def __init__(self, model_name: str = 'facebook/bart-large-mnli', category_mapping: Dict[int, str] = None):
         """
         Args:
             model_name: Hugging Face 모델 이름
-                - 'beomi/kcbert-base' (한국어 BERT, 추천)
-                - 'klue/bert-base' (KLUE BERT)
-                - 'snunlp/KR-FinBert-SC' (한국어 금융 BERT)
+                - 'facebook/bart-large-mnli' (영어, 메모리 효율적, 추천)
+                - 'MoritzLaurer/mDeBERTa-v3-base-xnli-multilingual-nli-2mil7' (다국어)
+                - 'joeddav/xlm-roberta-large-xnli' (다국어)
             category_mapping: {category_id: category_name} 딕셔너리
         """
         self.model_name = model_name
@@ -48,13 +48,15 @@ class AIClassifier(BaseClassifier):
             logger.info(f"Hugging Face 모델 로딩 중: {self.model_name}")
             
             # Zero-shot classification 사용 (레이블 학습 불필요)
+            # CPU 메모리 부족 방지를 위해 device=-1 (CPU 전용) 사용
             self.pipeline = pipeline(
                 "zero-shot-classification",
                 model=self.model_name,
-                device=0 if torch.cuda.is_available() else -1  # GPU 사용 가능하면 GPU
+                device=-1  # CPU 전용 (메모리 효율)
             )
             
             logger.info(f"모델 로딩 완료: {self.model_name}")
+            logger.info(f"디바이스: CPU (메모리 효율 모드)")
             
         except ImportError:
             logger.error("transformers 라이브러리가 설치되지 않았습니다.")
@@ -94,7 +96,7 @@ class AIClassifier(BaseClassifier):
             result = self.pipeline(
                 text,
                 candidate_labels=self.category_labels,
-                hypothesis_template="이 문의는 {}에 관한 것이다."  # 한국어 템플릿
+                hypothesis_template="This text is about {}."  # 영어 템플릿 (모델에 맞춤)
             )
             
             # 결과 파싱

@@ -41,11 +41,11 @@ class AutoClassifyService:
                 logger.info("🤖 AI 기반 분류 엔진 사용 (Hugging Face)")
                 try:
                     self.classifier = AIClassifier(
-                        model_name='beomi/kcbert-base',  # 한국어 BERT 모델
+                        model_name='facebook/bart-large-mnli',  # 경량화 모델 (메모리 효율적)
                         category_mapping=category_mapping
                     )
-                except ImportError:
-                    logger.error("transformers 라이브러리가 설치되지 않았습니다. 규칙 기반으로 대체합니다.")
+                except (ImportError, OSError) as e:
+                    logger.error(f"AI 모델 로딩 실패: {e}")
                     logger.info("📝 규칙 기반 분류 엔진으로 대체")
                     self.classifier = RuleBasedClassifier(category_mapping)
                     use_ai = False  # 실제로는 규칙 기반 사용

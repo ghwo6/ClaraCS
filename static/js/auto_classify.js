@@ -275,7 +275,7 @@ function renderTicketTableFromTop3(top3_by_category) {
   `).join("");
 }
 
-// ---------- 로딩 표시 ----------
+// ---------- 로딩 표시 (리포트와 동일한 UI) ----------
 function showClassifyLoading(show) {
   const section = document.getElementById("classify");
   if (!section) return;
@@ -287,9 +287,6 @@ function showClassifyLoading(show) {
     loadingDiv.innerHTML = `
       <div class="spinner"></div>
       <p>티켓 분류 중...</p>
-      <small style="opacity: 0.7; margin-top: 8px; display: block;">
-        AI 모델을 사용하는 경우 시간이 걸릴 수 있습니다.
-      </small>
     `;
     section.appendChild(loadingDiv);
   } else {
@@ -299,6 +296,7 @@ function showClassifyLoading(show) {
   }
 }
 
+// 메시지 토스트 (리포트와 동일한 UI)
 function showMessage(message, type = 'info') {
   const existingMessage = document.querySelector('.message-toast');
   if (existingMessage) existingMessage.remove();
@@ -314,7 +312,7 @@ function showMessage(message, type = 'info') {
   
   setTimeout(() => {
     if (messageDiv.parentElement) messageDiv.remove();
-  }, 5000);
+  }, 3000);  // 3초로 변경 (리포트와 동일)
 }
 
 // ---------- 실행 ----------
