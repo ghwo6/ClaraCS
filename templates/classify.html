@@ -47,8 +47,24 @@
   <div class="head">
     <h2>자동 분류</h2>
     <div class="toolbar">
-      <!-- <button class="btn">규칙 편집</button> -->
-      <!-- <button class="btn">모델 교체</button> -->
+      <!-- 분류 엔진 선택 -->
+      <div class="engine-selector">
+        <label class="engine-option">
+          <input type="radio" name="classifier-engine" value="rule" checked>
+          <span class="engine-label">
+            <span class="engine-name">규칙 기반</span>
+            <span class="engine-desc">빠름</span>
+          </span>
+        </label>
+        <label class="engine-option">
+          <input type="radio" name="classifier-engine" value="ai">
+          <span class="engine-label">
+            <span class="engine-name">AI 기반</span>
+            <span class="engine-desc">정확</span>
+          </span>
+        </label>
+      </div>
+      
       <!-- 마지막 분류 시각 표시 -->
       <span id="last-run-at" class="small muted" style="margin-left:8px;">
        마지막 분류 : -
@@ -85,11 +101,12 @@
         <div class="channels-head">
           <strong>채널별 분류 결과</strong>
           <div class="legend sticky">
-            <div class="item"><span class="dot" style="background:#ff4d4f"></span>배송</div>
-            <div class="item"><span class="dot" style="background:#ffa940"></span>환불/취소</div>
-            <div class="item"><span class="dot" style="background:#3ddc97"></span>품질/하자</div>
-            <div class="item"><span class="dot" style="background:#ffd666"></span>AS/설치</div>
-            <div class="item"><span class="dot" style="background:#9aa0a6"></span>기타</div>
+            <div class="item"><span class="dot" style="background:#ef4444"></span>배송 문의</div>
+            <div class="item"><span class="dot" style="background:#f59e0b"></span>환불/교환</div>
+            <div class="item"><span class="dot" style="background:#10b981"></span>상품 문의</div>
+            <div class="item"><span class="dot" style="background:#3b82f6"></span>기술 지원</div>
+            <div class="item"><span class="dot" style="background:#ff7875"></span>불만/클레임</div>
+            <div class="item"><span class="dot" style="background:#9ca3af"></span>기타</div>
           </div>
         </div>
         <div id="channelCards" class="channel-grid scroll-y"><!-- JS가 카드 렌더링 --></div>

@@ -61,14 +61,15 @@ function renderCategoryTable(rows) {
   `).join("");
 }
 
-// 채널 도넛 색상/순서
-const CHANNEL_CATEGORY_ORDER = ["배송","환불/취소","품질/하자","AS/설치","기타"];
+// 채널 도넛 색상/순서 (백엔드 카테고리명과 일치)
+const CHANNEL_CATEGORY_ORDER = ["배송 문의","환불/교환","상품 문의","기술 지원","불만/클레임","기타"];
 const CHANNEL_CATEGORY_COLORS = {
-  "배송": "#ef4444",        // 빨강
-  "환불/취소": "#f59e0b",   // 주황
-  "품질/하자": "#10b981",   // 초록
-  "AS/설치": "#3b82f6",     // 파랑
-  "기타": "#9ca3af"        // 회색
+  "배송 문의": "#ef4444",      // 빨강
+  "환불/교환": "#f59e0b",      // 주황
+  "상품 문의": "#10b981",      // 초록
+  "기술 지원": "#3b82f6",      // 파랑
+  "불만/클레임": "#ff7875",    // 분홍
+  "기타": "#9ca3af"           // 회색
 };
 
 // conic-gradient 백그라운드 생성
@@ -274,19 +275,77 @@ function renderTicketTableFromTop3(top3_by_category) {
   `).join("");
 }
 
+// ---------- 로딩 표시 ----------
+function showClassifyLoading(show) {
+  const section = document.getElementById("classify");
+  if (!section) return;
+  
+  if (show) {
+    section.classList.add('loading');
+    const loadingDiv = document.createElement('div');
+    loadingDiv.className = 'loading-indicator';
+    loadingDiv.innerHTML = `
+      <div class="spinner"></div>
+      <p>티켓 분류 중...</p>
+      <small style="opacity: 0.7; margin-top: 8px; display: block;">
+        AI 모델을 사용하는 경우 시간이 걸릴 수 있습니다.
+      </small>
+    `;
+    section.appendChild(loadingDiv);
+  } else {
+    section.classList.remove('loading');
+    const loadingDiv = section.querySelector('.loading-indicator');
+    if (loadingDiv) loadingDiv.remove();
+  }
+}
+
+function showMessage(message, type = 'info') {
+  const existingMessage = document.querySelector('.message-toast');
+  if (existingMessage) existingMessage.remove();
+  
+  const messageDiv = document.createElement('div');
+  messageDiv.className = `message-toast ${type}`;
+  messageDiv.innerHTML = `
+    <span>${message}</span>
+    <button onclick="this.parentElement.remove()">×</button>
+  `;
+  
+  document.body.appendChild(messageDiv);
+  
+  setTimeout(() => {
+    if (messageDiv.parentElement) messageDiv.remove();
+  }, 5000);
+}
+
 // ---------- 실행 ----------
 window.runClassification = async function runClassification() {
   const btn = document.getElementById("btn-run-classify");
   btn?.classList.add("active");
   if (btn) btn.disabled = true;
 
+  // 선택된 분류 엔진 확인
+  const selectedEngine = document.querySelector('input[name="classifier-engine"]:checked')?.value || 'rule';
+  const engineName = selectedEngine === 'ai' ? 'AI 기반' : '규칙 기반';
+  
+  // 로딩 표시
+  showClassifyLoading(true);
+
   try {
+    // 선택된 엔진과 함께 전송
     const res = await fetch("/api/classifications/run", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ user_id: 1, file_id: 123 })
+      body: JSON.stringify({ 
+        user_id: 1, 
+        file_id: 0,  // file_id: 0 → 최신 파일 자동 선택
+        engine: selectedEngine  // 'rule' 또는 'ai'
+      })
     });
-    if (!res.ok) throw new Error("HTTP " + res.status);
+    
+    if (!res.ok) {
+      const errorData = await res.json();
+      throw new Error(errorData.error || `HTTP ${res.status}`);
+    }
 
     const data = await res.json();
     // --- 기존 렌더링 ---
@@ -304,10 +363,18 @@ window.runClassification = async function runClassification() {
     localStorage.setItem("autoclass:last_run_at", ts);
     // (선택) 결과 데이터도 계속 저장
     localStorage.setItem("autoclass:last", JSON.stringify(data));
+    
+    // 성공 메시지
+    const totalTickets = data.meta?.total_tickets || 0;
+    const usedEngine = data.meta?.engine_name || engineName;
+    showMessage(`✓ ${totalTickets}건의 티켓 분류 완료 (${usedEngine})`, 'success');
+    
   } catch (e) {
     console.error(e);
-    alert("분류 요청 실패: " + e.message);
+    showMessage(`✗ 분류 실패: ${e.message}`, 'error');
   } finally {
+    // 로딩 종료
+    showClassifyLoading(false);
     btn?.classList.remove("active");
     if (btn) btn.disabled = false;
   }
