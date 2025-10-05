@@ -309,24 +309,49 @@ function renderTicketTableFromAll(all_by_category) {
   `).join("");
 }
 
-// ---------- 로딩 표시 (리포트와 동일한 UI) ----------
+// ---------- 로딩 표시 (body 영역 가운데) ----------
 function showClassifyLoading(show) {
   const section = document.getElementById("classify");
   if (!section) return;
   
+  const bodyDiv = section.querySelector('.body');
+  if (!bodyDiv) return;
+  
   if (show) {
-    section.classList.add('loading');
+    // 기존 로딩 인디케이터 제거
+    const existingLoading = bodyDiv.querySelector('.loading-indicator');
+    if (existingLoading) {
+      existingLoading.remove();
+    }
+    
+    // 1. 로딩 인디케이터 생성
     const loadingDiv = document.createElement('div');
     loadingDiv.className = 'loading-indicator';
     loadingDiv.innerHTML = `
       <div class="spinner"></div>
       <p>티켓 분류 중...</p>
     `;
-    section.appendChild(loadingDiv);
+    
+    // 2. body 영역에 추가
+    bodyDiv.appendChild(loadingDiv);
+    
+    // 3. 딤드 추가 (동시에)
+    section.classList.add('loading');
+    
+    // 4. 강제 리플로우로 즉시 렌더링
+    loadingDiv.offsetHeight;
+    
   } else {
+    // 동시에 제거
+    const loadingDiv = bodyDiv.querySelector('.loading-indicator');
+    
+    // 1. 로딩 인디케이터 제거
+    if (loadingDiv) {
+      loadingDiv.remove();
+    }
+    
+    // 2. 딤드 제거
     section.classList.remove('loading');
-    const loadingDiv = section.querySelector('.loading-indicator');
-    if (loadingDiv) loadingDiv.remove();
   }
 }
 
@@ -352,15 +377,21 @@ function showMessage(message, type = 'info') {
 // ---------- 실행 ----------
 window.runClassification = async function runClassification() {
   const btn = document.getElementById("btn-run-classify");
-  btn?.classList.add("active");
-  if (btn) btn.disabled = true;
-
+  if (!btn) return;
+  
   // 선택된 분류 엔진 확인
   const selectedEngine = document.querySelector('input[name="classifier-engine"]:checked')?.value || 'rule';
   const engineName = selectedEngine === 'ai' ? 'AI 기반' : '규칙 기반';
   
-  // 로딩 표시
+  // 버튼 비활성화
+  btn.classList.add("active");
+  btn.disabled = true;
+  
+  // 로딩 표시 (버튼 클릭 즉시)
   showClassifyLoading(true);
+  
+  // 약간의 딜레이를 주어 로딩 화면이 완전히 렌더링되도록 보장
+  await new Promise(resolve => setTimeout(resolve, 50));
 
   try {
     // 선택된 엔진과 함께 전송
@@ -380,7 +411,14 @@ window.runClassification = async function runClassification() {
     }
 
     const data = await res.json();
-    // --- 기존 렌더링 ---
+    
+    // 로딩 종료 (렌더링 전에)
+    showClassifyLoading(false);
+    
+    // 약간의 딜레이 후 렌더링 (로딩 해제 애니메이션 완료 대기)
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    // --- 결과 렌더링 ---
     renderCategoryTable(data.category_info || []);
     renderChannelCards(data.channel_info || []);
     renderReliability(data.reliability_info || {}, data.ui || {});
@@ -389,11 +427,10 @@ window.runClassification = async function runClassification() {
     }
     requestAnimationFrame(syncChannelsHeight);
 
-    // --- 여기서만(성공 시) 마지막 분류 시각 갱신 & 저장 ---
+    // --- 마지막 분류 시각 갱신 & 저장 ---
     const ts = nowStringKST();
     setLastRunLabel(ts);
     localStorage.setItem("autoclass:last_run_at", ts);
-    // (선택) 결과 데이터도 계속 저장
     localStorage.setItem("autoclass:last", JSON.stringify(data));
     
     // 성공 메시지
@@ -404,11 +441,12 @@ window.runClassification = async function runClassification() {
   } catch (e) {
     console.error(e);
     showMessage(`✗ 분류 실패: ${e.message}`, 'error');
-  } finally {
-    // 로딩 종료
+    // 에러 시에도 로딩 종료
     showClassifyLoading(false);
-    btn?.classList.remove("active");
-    if (btn) btn.disabled = false;
+  } finally {
+    // 버튼 활성화
+    btn.classList.remove("active");
+    btn.disabled = false;
   }
 };
 

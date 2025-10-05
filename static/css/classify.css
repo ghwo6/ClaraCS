@@ -46,16 +46,67 @@
   background: rgba(59, 130, 246, 0.1);
 }
 
-/* 로딩 표시 - style.css의 공통 스타일 사용 */
+/* 로딩 표시 - body 영역 기준 */
 #classify.loading {
-  position: relative;
   pointer-events: none;
 }
 
-/* 추가 스타일만 정의 (style.css 스타일 상속) */
-#classify .loading-indicator small {
-  display: block;
-  margin-top: 8px;
-  opacity: 0.7;
-  color: var(--muted);
+/* body 영역을 relative로 설정 (로딩 인디케이터 기준점) */
+#classify .body {
+  position: relative;
+}
+
+/* 로딩 오버레이 (딤드 효과) - body 영역만 */
+#classify.loading .body::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 999;
+  animation: fadeIn 0.15s ease;
+  border-radius: 8px;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* 로딩 인디케이터 - body 영역 정중앙 */
+#classify .body .loading-indicator {
+  position: absolute !important;
+  top: 50% !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%) !important;
+  z-index: 1000 !important;
+  background: rgba(21, 25, 34, 0.95) !important;
+  padding: 32px 48px !important;
+  border-radius: 12px !important;
+  text-align: center !important;
+  min-width: 300px !important;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3) !important;
+}
+
+#classify .body .loading-indicator .spinner {
+  width: 40px !important;
+  height: 40px !important;
+  border: 3px solid var(--line) !important;
+  border-top-color: var(--brand) !important;
+  border-radius: 50% !important;
+  animation: spin 1s linear infinite !important;
+  margin: 0 auto 16px !important;
+}
+
+#classify .body .loading-indicator p {
+  color: var(--text) !important;
+  font-size: 15px !important;
+  font-weight: 500 !important;
+  margin: 0 !important;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
