@@ -47,6 +47,9 @@
   <div class="head">
     <h2>자동 분류</h2>
     <div class="toolbar">
+      <!-- 마지막 분류 시각 표시 -->
+      <span id="last-run-at" class="small muted"></span>
+      
       <!-- 분류 엔진 선택 -->
       <div class="engine-selector">
         <label class="engine-option">
@@ -59,10 +62,6 @@
         </label>
       </div>
       
-      <!-- 마지막 분류 시각 표시 -->
-      <span id="last-run-at" class="small muted" style="margin-left:8px;">
-       마지막 분류 : -
-      </span>
       <button id="btn-reset-classify" class="btn ghost" onclick="window.resetClassification && window.resetClassification()">
         초기화
       </button>
@@ -108,9 +107,9 @@
 
       <!-- 2x1 : 자동 분류 정확도/신뢰도 -->
       <div class="card card--reliability" id="reliabilityCard"> <!--id="reliabilityCard" 추가함(new)-->
-        <strong>자동 분류 정확도/신뢰도</strong>
+        <strong>분류 신뢰도</strong>
         <div id="reliabilityBox" class="chart-box tall center">-</div>
-        <p class="tip" style="margin-top:8px;">train/val/test, Macro-F1, Micro-F1, Accuracy</p>
+        <p class="tip" style="margin-top:8px;">평균 신뢰도 및 재검토 필요 티켓 수</p>
       </div>
 
       <!-- 3x1 + 3x2 : 티켓 목록(하단 전체 폭) -->

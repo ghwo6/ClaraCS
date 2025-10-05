@@ -190,18 +190,38 @@ class AutoClassifyService:
         return results
     
     def _calculate_reliability_stats(self, classifications: List[Dict]) -> Dict[str, Any]:
-        """신뢰도 통계 계산 (규칙 기반이므로 평균 confidence 사용)"""
+        """신뢰도 통계 계산 (규칙 기반에 맞는 실제 지표)"""
         confidences = [item['classification']['confidence'] for item in classifications]
+        total = len(confidences)
         
-        avg_confidence = sum(confidences) / len(confidences) if confidences else 0.0
+        if total == 0:
+            return {
+                'total_tickets': 0,
+                'average_confidence': 0.0,
+                'high_confidence_count': 0,
+                'medium_confidence_count': 0,
+                'low_confidence_count': 0,
+                'needs_review_count': 0
+            }
         
-        # 규칙 기반이므로 가상의 메트릭 생성
+        # 평균 신뢰도
+        avg_confidence = sum(confidences) / total
+        
+        # 신뢰도 분포 계산
+        high_conf = sum(1 for c in confidences if c >= 0.8)      # 80% 이상: 높음
+        medium_conf = sum(1 for c in confidences if 0.7 <= c < 0.8)  # 70~80%: 중간
+        low_conf = sum(1 for c in confidences if c < 0.7)        # 70% 미만: 낮음
+        
         return {
-            'split': {'train': 70, 'val': 15, 'test': 15},
-            'accuracy': round(avg_confidence, 3),
-            'macro_f1': round(avg_confidence * 0.95, 3),  # 약간 낮게
-            'micro_f1': round(avg_confidence * 0.98, 3),  # accuracy와 비슷하게
-            'avg_confidence': round(avg_confidence, 3)
+            'total_tickets': total,
+            'average_confidence': round(avg_confidence, 3),
+            'high_confidence_count': high_conf,
+            'high_confidence_ratio': round(high_conf / total, 3),
+            'medium_confidence_count': medium_conf,
+            'medium_confidence_ratio': round(medium_conf / total, 3),
+            'low_confidence_count': low_conf,
+            'low_confidence_ratio': round(low_conf / total, 3),
+            'needs_review_count': low_conf  # 재검토 필요 (신뢰도 낮은 것)
         }
     
     def _build_response(self, class_result_id: int, user_id: int, file_id: int,
@@ -260,7 +280,7 @@ class AutoClassifyService:
             'channel_info': channel_info,
             'reliability_info': reliability_stats,
             'tickets': {
-                'top3_by_category': tickets_by_category
+                'all_by_category': tickets_by_category  # top3 → all로 변경
             }
         }
     
@@ -297,7 +317,7 @@ class AutoClassifyService:
     
     def _get_top_tickets_by_category(self, tickets: List[Dict], classifications: List[Dict],
                                      category_mapping: Dict[int, str]) -> Dict[str, List[Dict]]:
-        """카테고리별 상위 3개 티켓 추출"""
+        """카테고리별 모든 티켓 반환 (전체 표시)"""
         ticket_map = {t['ticket_id']: t for t in tickets}
         
         # 카테고리별 티켓 그룹화
@@ -322,10 +342,10 @@ class AutoClassifyService:
                 'importance': self._calculate_importance(cls['confidence'])
             })
         
-        # 각 카테고리별 상위 3개만 (confidence 높은 순)
+        # 모든 티켓 반환 (상위 3개 제한 제거)
         result = {}
         for cat_name, ticket_list in by_category.items():
-            result[cat_name] = ticket_list[:3]
+            result[cat_name] = ticket_list  # [:3] 제거 - 전체 표시
         
         return result
     

@@ -5,6 +5,14 @@
   display: inline-flex;
   gap: 6px;
   margin-right: 16px;
+  align-items: center;  /* 세로 중앙 정렬 */
+}
+
+/* 마지막 분류 시각 정렬 */
+#last-run-at {
+  margin-right: 16px;
+  align-self: center;  /* 세로 중앙 정렬 */
+  line-height: 1;
 }
 
 .engine-option {

@@ -12,7 +12,16 @@ function nowStringKST() {
 }
 function setLastRunLabel(ts) {
   const el = document.getElementById("last-run-at");
-  if (el) el.textContent = `마지막 분류 : ${ts}`;
+  if (!el) return;
+  
+  // 날짜가 없으면 텍스트도 숨김
+  if (!ts || ts === '-') {
+    el.textContent = '';
+    el.style.display = 'none';
+  } else {
+    el.textContent = `마지막 분류 : ${ts}`;
+    el.style.display = 'inline';
+  }
 }
 
 // ---------- 유틸 ----------
@@ -24,13 +33,13 @@ function joinKeywords(arr) {
   if (!Array.isArray(arr)) return "";
   return arr.join(", ");
 }
-function flatTop3ByCategory(top3_by_category) {
-  if (!top3_by_category) return [];
-  // 카테고리 5개 * 각 3건 = 최대 15건
-  const order = ["배송","환불/취소","품질/하자","AS/설치","기타"];
+function flatAllByCategory(all_by_category) {
+  if (!all_by_category) return [];
+  // 모든 카테고리의 모든 티켓 (제한 없음)
+  const order = ["배송 문의","환불/교환","상품 문의","기술 지원","불만/클레임","기타"];
   const rows = [];
   for (const cat of order) {
-    const items = top3_by_category[cat] || [];
+    const items = all_by_category[cat] || [];
     for (const it of items) {
       rows.push({
         received_at: it.received_at || "-",
@@ -233,36 +242,61 @@ if (!window.__syncResizeBound) {               // 중복 바인딩 방지(스크
 function renderReliability(r, ui) {
   const box = document.getElementById("reliabilityBox");
   if (!box) return;
-  const split = r.split || {};
-  const acc = r.accuracy ?? 0;
-  const th = (ui && ui.accuracy_color_thresholds) || { good: 0.95, warn: 0.90 };
+  
+  const total = r.total_tickets || 0;
+  const avgConf = r.average_confidence ?? 0;
+  const highCount = r.high_confidence_count || 0;
+  const lowCount = r.low_confidence_count || 0;
+  const needsReview = r.needs_review_count || 0;
+  
+  // 신뢰도 기준 상태 판단
+  const th = (ui && ui.accuracy_color_thresholds) || { good: 0.90, warn: 0.75 };
   let state = "bad";
-  if (acc >= th.good) state = "good";
-  else if (acc >= th.warn) state = "warn";
+  if (avgConf >= th.good) state = "good";
+  else if (avgConf >= th.warn) state = "warn";
 
-  // 상태 뱃지 색상은 기존 CSS 배지 스타일 활용(없으면 텍스트만 출력)
+  // 상태 뱃지
   const badge =
-    state === "good" ? `<span class="badge ok">정확도 양호</span>` :
-    state === "warn" ? `<span class="badge warn">주의</span>` :
-                       `<span class="badge danger">개선 필요</span>`;
+    state === "good" ? `<span class="badge ok">신뢰도 높음</span>` :
+    state === "warn" ? `<span class="badge warn">보통</span>` :
+                       `<span class="badge danger">재검토 필요</span>`;
+
+  // 신뢰도 퍼센트 표시
+  const avgPercent = (avgConf * 100).toFixed(1);
+  const highPercent = total > 0 ? ((highCount / total) * 100).toFixed(1) : 0;
+  const lowPercent = total > 0 ? ((lowCount / total) * 100).toFixed(1) : 0;
 
   box.innerHTML = `
-    <div style="text-align:center">
-      <div style="margin-bottom:6px">${badge}</div>
-      <div>train/val/test = ${split.train || 0} / ${split.val || 0} / ${split.test || 0} (%)</div>
-      <div style="margin-top:4px">
-        macro-F1: <b>${(r.macro_f1 || 0).toFixed(3)}</b> · 
-        micro-F1: <b>${(r.micro_f1 || 0).toFixed(3)}</b> · 
-        acc: <b>${acc.toFixed(3)}</b>
+    <div style="text-align:center; padding: 12px 0;">
+      <div style="margin-bottom:12px">${badge}</div>
+      
+      <div style="font-size: 28px; font-weight: 700; color: var(--brand); margin-bottom: 8px;">
+        ${avgPercent}%
+      </div>
+      <div style="font-size: 13px; color: var(--muted); margin-bottom: 16px;">
+        평균 신뢰도
+      </div>
+      
+      <div style="display: flex; justify-content: space-around; gap: 16px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line);">
+        <div style="text-align: center;">
+          <div style="font-size: 20px; font-weight: 600; color: #10b981;">${highCount}</div>
+          <div style="font-size: 11px; color: var(--muted); margin-top: 4px;">높은 신뢰도</div>
+          <div style="font-size: 10px; color: var(--muted);">(${highPercent}%)</div>
+        </div>
+        <div style="text-align: center;">
+          <div style="font-size: 20px; font-weight: 600; color: #ef4444;">${needsReview}</div>
+          <div style="font-size: 11px; color: var(--muted); margin-top: 4px;">재검토 필요</div>
+          <div style="font-size: 10px; color: var(--muted);">(${lowPercent}%)</div>
+        </div>
       </div>
     </div>
   `;
 }
 
-function renderTicketTableFromTop3(top3_by_category) {
+function renderTicketTableFromAll(all_by_category) {
   const tbody = document.getElementById("ticketTableBody");
   if (!tbody) return;
-  const rows = flatTop3ByCategory(top3_by_category); // 최대 15건
+  const rows = flatAllByCategory(all_by_category); // 전체 티켓
   tbody.innerHTML = rows.map(t => `
     <tr>
       <td>${t.received_at}</td>
@@ -350,8 +384,8 @@ window.runClassification = async function runClassification() {
     renderCategoryTable(data.category_info || []);
     renderChannelCards(data.channel_info || []);
     renderReliability(data.reliability_info || {}, data.ui || {});
-    if (data.tickets?.top3_by_category) {
-      renderTicketTableFromTop3(data.tickets.top3_by_category);
+    if (data.tickets?.all_by_category) {
+      renderTicketTableFromAll(data.tickets.all_by_category);
     }
     requestAnimationFrame(syncChannelsHeight);
 
@@ -410,8 +444,8 @@ window.resetClassification = function resetClassification() {
       renderCategoryTable(data.category_info || []);
       renderChannelCards(data.channel_info || []);
       renderReliability(data.reliability_info || {}, data.ui || {});
-      if (data.tickets?.top3_by_category) {
-        renderTicketTableFromTop3(data.tickets.top3_by_category);
+      if (data.tickets?.all_by_category) {
+        renderTicketTableFromAll(data.tickets.all_by_category);
       }
       requestAnimationFrame(syncChannelsHeight); //new!
     } else {
