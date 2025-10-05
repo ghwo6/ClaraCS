@@ -108,8 +108,8 @@ class UploadDB:
             query = """
                 INSERT INTO tb_ticket 
                 (file_id, user_id, received_at, channel, customer_id, 
-                 product_code, inquiry_type, title, body, status, raw_data, created_at)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                 product_code, inquiry_type, title, body, assignee, status, raw_data, created_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """
             
             inserted_count = 0
@@ -124,6 +124,7 @@ class UploadDB:
                     ticket.get('inquiry_type'),
                     ticket.get('title'),
                     ticket.get('body'),
+                    ticket.get('assignee'),
                     ticket.get('status', 'new'),
                     ticket.get('raw_data'),
                     datetime.now()

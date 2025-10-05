@@ -71,6 +71,7 @@ CREATE TABLE `tb_ticket` (
   `inquiry_type` VARCHAR(128),
   `title` VARCHAR(1000),
   `body` TEXT,
+  `assignee` VARCHAR(128),
   `status` VARCHAR(20) DEFAULT 'new',
   `created_at` DATETIME DEFAULT (NOW()),
   `updated_at` DATETIME,

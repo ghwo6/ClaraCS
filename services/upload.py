@@ -139,8 +139,9 @@ class UploadService:
                     'customer_id': self._get_mapped_value(row, case_insensitive_reverse, '고객ID'),
                     'product_code': self._get_mapped_value(row, case_insensitive_reverse, '상품코드'),
                     'inquiry_type': self._get_mapped_value(row, case_insensitive_reverse, '문의 유형'),
-                    'title': None,  # 제목이 있으면 별도 매핑 필요
+                    'title': self._get_mapped_value(row, case_insensitive_reverse, '제목'),  # 제목 매핑 추가
                     'body': self._get_mapped_value(row, case_insensitive_reverse, '본문'),
+                    'assignee': self._get_mapped_value(row, case_insensitive_reverse, '담당자'),  # 담당자 추가
                     'status': self._get_mapped_value(row, case_insensitive_reverse, '처리 상태', default='new'),
                     'raw_data': row.to_json()
                 }
