@@ -12,7 +12,16 @@ function nowStringKST() {
 }
 function setLastRunLabel(ts) {
   const el = document.getElementById("last-run-at");
-  if (el) el.textContent = `마지막 분류 : ${ts}`;
+  if (!el) return;
+  
+  // 날짜가 없으면 텍스트도 숨김
+  if (!ts || ts === '-') {
+    el.textContent = '';
+    el.style.display = 'none';
+  } else {
+    el.textContent = `마지막 분류 : ${ts}`;
+    el.style.display = 'inline';
+  }
 }
 
 // ---------- 유틸 ----------
@@ -24,13 +33,13 @@ function joinKeywords(arr) {
   if (!Array.isArray(arr)) return "";
   return arr.join(", ");
 }
-function flatTop3ByCategory(top3_by_category) {
-  if (!top3_by_category) return [];
-  // 카테고리 5개 * 각 3건 = 최대 15건
-  const order = ["배송","환불/취소","품질/하자","AS/설치","기타"];
+function flatAllByCategory(all_by_category) {
+  if (!all_by_category) return [];
+  // 모든 카테고리의 모든 티켓 (제한 없음)
+  const order = ["배송 문의","환불/교환","상품 문의","기술 지원","불만/클레임","기타"];
   const rows = [];
   for (const cat of order) {
-    const items = top3_by_category[cat] || [];
+    const items = all_by_category[cat] || [];
     for (const it of items) {
       rows.push({
         received_at: it.received_at || "-",
@@ -46,6 +55,7 @@ function flatTop3ByCategory(top3_by_category) {
   return rows;
 }
 
+
 // ---------- 렌더 ----------
 function renderCategoryTable(rows) {
   const tbody = document.getElementById("categoryTableBody");
@@ -60,34 +70,15 @@ function renderCategoryTable(rows) {
   `).join("");
 }
 
-/* new _ 10_04_*/
-// function renderChannelCards(items) {
-//   const wrap = document.getElementById("channelCards");
-//   if (!wrap) return;
-//   wrap.innerHTML = items.map(x => {
-//     const total = x.count || 0;
-//     const cats = x.by_category || {};
-//     const catList = Object.entries(cats).map(([k,v]) =>
-//       `<li>${k}: ${v.toLocaleString()} (${(v/total*100).toFixed(1)}%)</li>`
-//     ).join("");
-//     return `
-//       <div class="channel-card">
-//         <div class="title">${x.channel}</div>
-//         <div class="big">${total.toLocaleString()}</div>
-//         <ul class="mini">${catList}</ul>
-//       </div>
-//     `;
-//   }).join("");
-// }
-
-// 채널 도넛 색상/순서
-const CHANNEL_CATEGORY_ORDER = ["배송","환불/취소","품질/하자","AS/설치","기타"];
+// 채널 도넛 색상/순서 (백엔드 카테고리명과 일치)
+const CHANNEL_CATEGORY_ORDER = ["배송 문의","환불/교환","상품 문의","기술 지원","불만/클레임","기타"];
 const CHANNEL_CATEGORY_COLORS = {
-  "배송": "#ef4444",        // 빨강
-  "환불/취소": "#f59e0b",   // 주황
-  "품질/하자": "#10b981",   // 초록
-  "AS/설치": "#3b82f6",     // 파랑
-  "기타": "#9ca3af"        // 회색
+  "배송 문의": "#ef4444",      // 빨강
+  "환불/교환": "#f59e0b",      // 주황
+  "상품 문의": "#10b981",      // 초록
+  "기술 지원": "#3b82f6",      // 파랑
+  "불만/클레임": "#ff7875",    // 분홍
+  "기타": "#9ca3af"           // 회색
 };
 
 // conic-gradient 백그라운드 생성
@@ -119,24 +110,100 @@ function renderChannelCards(items){
     return `
       <div class="channel-card">
         <!-- 1) 채널명(맨 위, 가운데) -->
-        <div class="ch-title">${x.channel}</div>
+          <div class="ch-title">${x.channel}</div>
         <!-- 2) 건수/퍼센트(작은 글자, 연한 색) -->
-        <div class="ch-sub">${total.toLocaleString()}건 · ${pct}%</div>
+          <div class="ch-sub">${total.toLocaleString()}건 · ${pct}%</div>
         <!-- 3) 도넛(가운데) -->
-        <div class="donut" style="background:${bg}">
-          <div class="hole">
-            <div class="pct-inside">${pct}%</div>   <!-- 도넛 중앙 퍼센트 -->
+          <div class="donut" style="background:${bg}">
+            <div class="labels"></div>   <!-- ⬅ 라벨를 올릴 레이어 -->
+            <div class="hole"></div>     <!-- ⬅ 가운데는 비워둠(중앙 % 제거) -->
+             
           </div>
-        </div>
       </div>
     `;
   }).join("");
+
+// 라벨 배치
+  const cards = Array.from(wrap.querySelectorAll('.channel-card'));
+  cards.forEach((card, i) => {
+    const donut = card.querySelector('.donut');
+    const info  = items[i] || {};
+    placeDonutLabels(donut, info.by_category || {}, info.count || 0);
+  });
+
+  // 리사이즈 대응 위해 데이터 저장 + 재계산 훅
+  window.__lastChannelInfo = items;
+  if (!window.__relabelBound) {
+    window.__relabelBound = true;
+    window.addEventListener('resize', () => {
+      clearTimeout(window.__relabelTimer);
+      window.__relabelTimer = setTimeout(() => {
+        const donuts = document.querySelectorAll('#channelCards .channel-card');
+        const data = window.__lastChannelInfo || [];
+        donuts.forEach((card, i) => {
+          const donut = card.querySelector('.donut');
+          const info  = data[i] || {};
+          placeDonutLabels(donut, info.by_category || {}, info.count || 0);
+        });
+      }, 120);
+    });
+  }
+
 
   // 높이 동기화 유지
   if (typeof adjustChannelsPanelHeight === "function") {
     requestAnimationFrame(adjustChannelsPanelHeight);
   }
 }
+
+// === 라벨 배치 설정값(원하는 대로 조절) ===
+const LABEL_PCT_MIN = 1.0;    // 이 % 미만 조각은 라벨 생략
+const LABEL_OFFSET_PX = 10;    // 도넛 외곽선에서 바깥쪽으로 얼마나 띄울지(px)
+
+// byCategory: { "배송":123, ... }, total: 수치 합
+function placeDonutLabels(el, byCategory, total) {
+  if (!el) return;
+  const layer = el.querySelector('.labels');
+  if (!layer) return;
+
+  layer.innerHTML = '';
+  if (!total) return;
+
+  const size = el.clientWidth;        // 도넛 실제 렌더 폭
+  const R = size / 2;                 // 반지름
+  const labelR = R + LABEL_OFFSET_PX; // 라벨 반경(도넛 바깥)
+
+  let startDeg = 0;
+  CHANNEL_CATEGORY_ORDER.forEach(cat => {
+    const v = (byCategory?.[cat] || 0);
+    if (v <= 0) return;
+
+    const ratio = v / total;
+    const deg   = ratio * 360;
+    const mid   = startDeg + deg / 2;
+
+    // CSS conic-gradient 기준(우측 = 0deg) → 수학각도로 변환(위쪽= -90 보정)
+    const rad = (mid - 90) * Math.PI / 180;
+
+    // 퍼센트 문자열
+    const pctStr = (ratio * 100).toFixed(1) + '%';
+    if (ratio * 100 < LABEL_PCT_MIN) { startDeg += deg; return; } // 너무 작은 조각은 생략
+
+    // 위치: 중심(50%, 50%)에서 labelR만큼 이동 → % 좌표로 환산
+    const x = 50 + (labelR / size * 100) * Math.cos(rad);
+    const y = 50 + (labelR / size * 100) * Math.sin(rad);
+
+    const span = document.createElement('span');
+    span.className = 'slice-label';
+    span.style.left = x + '%';
+    span.style.top  = y + '%';
+    span.textContent = pctStr;        // 필요하면 `${pctStr}` 대신 `${cat} ${pctStr}`
+
+    layer.appendChild(span);
+    startDeg += deg;
+  });
+}
+
 
 // 좌측 합계 높이 = 우측(채널) 카드 높이로 정확히 동기화
 function syncChannelsHeight() {
@@ -172,42 +239,64 @@ if (!window.__syncResizeBound) {               // 중복 바인딩 방지(스크
   });
 }
 
-/*여기까지 10_04*/
-
-
 function renderReliability(r, ui) {
   const box = document.getElementById("reliabilityBox");
   if (!box) return;
-  const split = r.split || {};
-  const acc = r.accuracy ?? 0;
-  const th = (ui && ui.accuracy_color_thresholds) || { good: 0.95, warn: 0.90 };
+  
+  const total = r.total_tickets || 0;
+  const avgConf = r.average_confidence ?? 0;
+  const highCount = r.high_confidence_count || 0;
+  const lowCount = r.low_confidence_count || 0;
+  const needsReview = r.needs_review_count || 0;
+  
+  // 신뢰도 기준 상태 판단
+  const th = (ui && ui.accuracy_color_thresholds) || { good: 0.90, warn: 0.75 };
   let state = "bad";
-  if (acc >= th.good) state = "good";
-  else if (acc >= th.warn) state = "warn";
+  if (avgConf >= th.good) state = "good";
+  else if (avgConf >= th.warn) state = "warn";
 
-  // 상태 뱃지 색상은 기존 CSS 배지 스타일 활용(없으면 텍스트만 출력됩니다)
+  // 상태 뱃지
   const badge =
-    state === "good" ? `<span class="badge ok">정확도 양호</span>` :
-    state === "warn" ? `<span class="badge warn">주의</span>` :
-                       `<span class="badge danger">개선 필요</span>`;
+    state === "good" ? `<span class="badge ok">신뢰도 높음</span>` :
+    state === "warn" ? `<span class="badge warn">보통</span>` :
+                       `<span class="badge danger">재검토 필요</span>`;
+
+  // 신뢰도 퍼센트 표시
+  const avgPercent = (avgConf * 100).toFixed(1);
+  const highPercent = total > 0 ? ((highCount / total) * 100).toFixed(1) : 0;
+  const lowPercent = total > 0 ? ((lowCount / total) * 100).toFixed(1) : 0;
 
   box.innerHTML = `
-    <div style="text-align:center">
-      <div style="margin-bottom:6px">${badge}</div>
-      <div>train/val/test = ${split.train || 0} / ${split.val || 0} / ${split.test || 0} (%)</div>
-      <div style="margin-top:4px">
-        macro-F1: <b>${(r.macro_f1 || 0).toFixed(3)}</b> · 
-        micro-F1: <b>${(r.micro_f1 || 0).toFixed(3)}</b> · 
-        acc: <b>${acc.toFixed(3)}</b>
+    <div style="text-align:center; padding: 12px 0;">
+      <div style="margin-bottom:12px">${badge}</div>
+      
+      <div style="font-size: 28px; font-weight: 700; color: var(--brand); margin-bottom: 8px;">
+        ${avgPercent}%
+      </div>
+      <div style="font-size: 13px; color: var(--muted); margin-bottom: 16px;">
+        평균 신뢰도
+      </div>
+      
+      <div style="display: flex; justify-content: space-around; gap: 16px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line);">
+        <div style="text-align: center;">
+          <div style="font-size: 20px; font-weight: 600; color: #10b981;">${highCount}</div>
+          <div style="font-size: 11px; color: var(--muted); margin-top: 4px;">높은 신뢰도</div>
+          <div style="font-size: 10px; color: var(--muted);">(${highPercent}%)</div>
+        </div>
+        <div style="text-align: center;">
+          <div style="font-size: 20px; font-weight: 600; color: #ef4444;">${needsReview}</div>
+          <div style="font-size: 11px; color: var(--muted); margin-top: 4px;">재검토 필요</div>
+          <div style="font-size: 10px; color: var(--muted);">(${lowPercent}%)</div>
+        </div>
       </div>
     </div>
   `;
 }
 
-function renderTicketTableFromTop3(top3_by_category) {
+function renderTicketTableFromAll(all_by_category) {
   const tbody = document.getElementById("ticketTableBody");
   if (!tbody) return;
-  const rows = flatTop3ByCategory(top3_by_category); // 최대 15건
+  const rows = flatAllByCategory(all_by_category); // 전체 티켓
   tbody.innerHTML = rows.map(t => `
     <tr>
       <td>${t.received_at}</td>
@@ -220,42 +309,144 @@ function renderTicketTableFromTop3(top3_by_category) {
   `).join("");
 }
 
+// ---------- 로딩 표시 (body 영역 가운데) ----------
+function showClassifyLoading(show) {
+  const section = document.getElementById("classify");
+  if (!section) return;
+  
+  const bodyDiv = section.querySelector('.body');
+  if (!bodyDiv) return;
+  
+  if (show) {
+    // 기존 로딩 인디케이터 제거
+    const existingLoading = bodyDiv.querySelector('.loading-indicator');
+    if (existingLoading) {
+      existingLoading.remove();
+    }
+    
+    // 1. 로딩 인디케이터 생성
+    const loadingDiv = document.createElement('div');
+    loadingDiv.className = 'loading-indicator';
+    loadingDiv.innerHTML = `
+      <div class="spinner"></div>
+      <p>티켓 분류 중...</p>
+    `;
+    
+    // 2. body 영역에 추가
+    bodyDiv.appendChild(loadingDiv);
+    
+    // 3. 딤드 추가 (동시에)
+    section.classList.add('loading');
+    
+    // 4. 강제 리플로우로 즉시 렌더링
+    loadingDiv.offsetHeight;
+    
+  } else {
+    // 동시에 제거
+    const loadingDiv = bodyDiv.querySelector('.loading-indicator');
+    
+    // 1. 로딩 인디케이터 제거
+    if (loadingDiv) {
+      loadingDiv.remove();
+    }
+    
+    // 2. 딤드 제거
+    section.classList.remove('loading');
+  }
+}
+
+// 메시지 토스트 (리포트와 동일한 UI)
+function showMessage(message, type = 'info') {
+  const existingMessage = document.querySelector('.message-toast');
+  if (existingMessage) existingMessage.remove();
+  
+  const messageDiv = document.createElement('div');
+  messageDiv.className = `message-toast ${type}`;
+  messageDiv.innerHTML = `
+    <span>${message}</span>
+    <button onclick="this.parentElement.remove()">×</button>
+  `;
+  
+  document.body.appendChild(messageDiv);
+  
+  setTimeout(() => {
+    if (messageDiv.parentElement) messageDiv.remove();
+  }, 3000);  // 3초로 변경 (리포트와 동일)
+}
+
 // ---------- 실행 ----------
 window.runClassification = async function runClassification() {
   const btn = document.getElementById("btn-run-classify");
-  btn?.classList.add("active");
-  if (btn) btn.disabled = true;
+  if (!btn) return;
+  
+  // 선택된 분류 엔진 확인
+  const selectedEngine = document.querySelector('input[name="classifier-engine"]:checked')?.value || 'rule';
+  const engineName = selectedEngine === 'ai' ? 'AI 기반' : '규칙 기반';
+  
+  // 버튼 비활성화
+  btn.classList.add("active");
+  btn.disabled = true;
+  
+  // 로딩 표시 (버튼 클릭 즉시)
+  showClassifyLoading(true);
+  
+  // 약간의 딜레이를 주어 로딩 화면이 완전히 렌더링되도록 보장
+  await new Promise(resolve => setTimeout(resolve, 50));
 
   try {
+    // 선택된 엔진과 함께 전송
     const res = await fetch("/api/classifications/run", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ user_id: 1, file_id: 123 })
+      body: JSON.stringify({ 
+        user_id: 1, 
+        file_id: 0,  // file_id: 0 → 최신 파일 자동 선택
+        engine: selectedEngine  // 'rule' 또는 'ai'
+      })
     });
-    if (!res.ok) throw new Error("HTTP " + res.status);
+    
+    if (!res.ok) {
+      const errorData = await res.json();
+      throw new Error(errorData.error || `HTTP ${res.status}`);
+    }
 
     const data = await res.json();
-    // --- 기존 렌더링 ---
+    
+    // 로딩 종료 (렌더링 전에)
+    showClassifyLoading(false);
+    
+    // 약간의 딜레이 후 렌더링 (로딩 해제 애니메이션 완료 대기)
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    // --- 결과 렌더링 ---
     renderCategoryTable(data.category_info || []);
     renderChannelCards(data.channel_info || []);
     renderReliability(data.reliability_info || {}, data.ui || {});
-    if (data.tickets?.top3_by_category) {
-      renderTicketTableFromTop3(data.tickets.top3_by_category);
+    if (data.tickets?.all_by_category) {
+      renderTicketTableFromAll(data.tickets.all_by_category);
     }
     requestAnimationFrame(syncChannelsHeight);
 
-    // --- 여기서만(성공 시) 마지막 분류 시각 갱신 & 저장 ---
+    // --- 마지막 분류 시각 갱신 & 저장 ---
     const ts = nowStringKST();
     setLastRunLabel(ts);
     localStorage.setItem("autoclass:last_run_at", ts);
-    // (선택) 결과 데이터도 계속 저장
     localStorage.setItem("autoclass:last", JSON.stringify(data));
+    
+    // 성공 메시지
+    const totalTickets = data.meta?.total_tickets || 0;
+    const usedEngine = data.meta?.engine_name || engineName;
+    showMessage(`✓ ${totalTickets}건의 티켓 분류 완료 (${usedEngine})`, 'success');
+    
   } catch (e) {
     console.error(e);
-    alert("분류 요청 실패: " + e.message);
+    showMessage(`✗ 분류 실패: ${e.message}`, 'error');
+    // 에러 시에도 로딩 종료
+    showClassifyLoading(false);
   } finally {
-    btn?.classList.remove("active");
-    if (btn) btn.disabled = false;
+    // 버튼 활성화
+    btn.classList.remove("active");
+    btn.disabled = false;
   }
 };
 
@@ -291,8 +482,8 @@ window.resetClassification = function resetClassification() {
       renderCategoryTable(data.category_info || []);
       renderChannelCards(data.channel_info || []);
       renderReliability(data.reliability_info || {}, data.ui || {});
-      if (data.tickets?.top3_by_category) {
-        renderTicketTableFromTop3(data.tickets.top3_by_category);
+      if (data.tickets?.all_by_category) {
+        renderTicketTableFromAll(data.tickets.all_by_category);
       }
       requestAnimationFrame(syncChannelsHeight); //new!
     } else {
@@ -317,9 +508,3 @@ window.resetClassification = function resetClassification() {
   }
 })();
 
-
-// 없애도 될 듯 // 페이지 로드 시 마지막 분류 시각 복원
-// (function restoreLastRunAt() {
-//   const saved = localStorage.getItem("autoclass:last_run_at");
-//   if (saved) setLastRunLabel(saved);
-// })();

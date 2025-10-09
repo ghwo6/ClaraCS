@@ -1,100 +1,99 @@
 from flask import Blueprint, request, jsonify
-import mysql.connector
-from datetime import datetime
+from services.mapping import MappingService
+from utils.logger import get_logger
 
-mapping_bp = Blueprint("mapping", __name__, url_prefix="/api/mapping")
+logger = get_logger(__name__)
 
-DB_CONFIG = {
-    'host': 'localhost',
-    'user': 'root',
-    'password': 'wlsdud0802!!',  # 본인 MySQL 비밀번호
-    'database': 'clara_cs',
-    'auth_plugin': 'mysql_native_password'
-}
+mapping_bp = Blueprint("mapping", __name__)
 
-# ✅ 매핑 저장 API
-@mapping_bp.route("/save", methods=["POST"])
+@mapping_bp.route("/api/mapping/codes", methods=["GET"])
+def get_mapping_codes():
+    """컬럼 매핑 코드 조회 API"""
+    try:
+        mapping_service = MappingService()
+        codes = mapping_service.get_all_mapping_codes()
+        
+        return jsonify({
+            'success': True,
+            'data': codes
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"매핑 코드 조회 실패: {e}")
+        return jsonify({
+            'success': False,
+            'error': f'매핑 코드 조회 중 오류가 발생했습니다: {str(e)}'
+        }), 500
+
+
+@mapping_bp.route("/api/mapping/save", methods=["POST"])
 def save_mapping():
-    data = request.get_json()
-
+    """컬럼 매핑 저장 API"""
     try:
-        # ✅ MySQL 연결
-        conn = mysql.connector.connect(**DB_CONFIG)
-        cursor = conn.cursor(dictionary=True)
-
-        # ✅ created_at 처리
-        created_at_str = data.get('created_at')
-        if created_at_str:
-            try:
-                created_at = datetime.fromisoformat(created_at_str.replace("Z", "+00:00"))
-                created_at_str = created_at.strftime("%Y-%m-%d %H:%M:%S")
-            except Exception as e:
-                print("Date parsing error:", e)
-                created_at_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        else:
-            created_at_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-        # ✅ INSERT 쿼리 실행
-        insert_query = """
-            INSERT INTO tb_column_mapping (original_column, file_id, mapping_code_id, is_activate, created_at)
-            VALUES (%s, %s, %s, %s, %s)
-        """
-        for m in data.get('mappings', []):
-            # 각 항목별로 created_at 생성
-            created_at_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-            cursor.execute(insert_query, (
-                m.get('original_column'),
-                m.get('file_id'),
-                m.get('mapping_code_id'),
-                m.get('is_activate'),
-                created_at_str
-            ))
-
-        conn.commit()
-
-        return jsonify({'status': 'success', 'message': 'Mapping saved successfully'})
-
+        data = request.get_json()
+        mappings = data.get('mappings', [])
+        file_id = data.get('file_id', None)
+        
+        if not mappings:
+            return jsonify({
+                'status': 'error',
+                'msg': '저장할 매핑 데이터가 없습니다.'
+            }), 400
+        
+        mapping_service = MappingService()
+        result = mapping_service.save_mappings(mappings, file_id)
+        
+        return jsonify({
+            'status': 'success',
+            'msg': '컬럼 매핑이 저장되었습니다.',
+            'data': result
+        }), 200
+        
     except Exception as e:
-        print("DB Error:", e)
-        return jsonify({'status': 'error', 'message': str(e)}), 500
+        logger.error(f"매핑 저장 실패: {e}")
+        return jsonify({
+            'status': 'error',
+            'msg': f'매핑 저장 중 오류가 발생했습니다: {str(e)}'
+        }), 500
 
-    finally:
-        cursor.close()
-        conn.close()
 
-
-# ✅ 마지막 매핑 가져오기 API
-@mapping_bp.route("/last", methods=['GET'])
+@mapping_bp.route("/api/mapping/last", methods=["GET"])
 def get_last_mapping():
-    conn = None
-    cursor = None
+    """마지막 컬럼 매핑 조회 API"""
     try:
-        conn = mysql.connector.connect(**DB_CONFIG)
-        cursor = conn.cursor(dictionary=True)
+        file_id = request.args.get('file_id', None)
         
-        # tb_column_mapping 테이블 존재 여부 체크
-        cursor.execute("""
-            SELECT COUNT(*) AS cnt 
-            FROM information_schema.tables 
-            WHERE table_schema=%s AND table_name='tb_column_mapping'
-        """, (DB_CONFIG['database'],))
-        table_exists = cursor.fetchone()[0] > 0
+        mapping_service = MappingService()
+        mappings = mapping_service.get_last_mappings(file_id)
         
-        if not table_exists:
-            print("테이블이 존재하지 않습니다: tb_column_mapping")
-            return jsonify({'mappings': [], 'msg': '테이블 없음'})
-
-        # 실제 매핑 데이터 조회
-        cursor.execute("SELECT * FROM tb_column_mapping ORDER BY created_at DESC")
-        rows = cursor.fetchall()  # dictionary=True이면 dict 반환
-
-        return jsonify({'mappings': rows})
-
+        return jsonify({
+            'success': True,
+            'mappings': mappings
+        }), 200
+        
     except Exception as e:
-        print("DB Error:", e)
-        return jsonify({'mappings': [], 'msg': str(e)})
-    
-    finally:
-        if cursor: cursor.close()
-        if conn: conn.close()
+        logger.error(f"마지막 매핑 조회 실패: {e}")
+        return jsonify({
+            'success': False,
+            'error': f'마지막 매핑 조회 중 오류가 발생했습니다: {str(e)}'
+        }), 500
+
+
+@mapping_bp.route("/api/mapping/by-file/<int:file_id>", methods=["GET"])
+def get_mapping_by_file(file_id):
+    """특정 파일의 컬럼 매핑 조회 API"""
+    try:
+        mapping_service = MappingService()
+        mappings = mapping_service.get_mappings_by_file(file_id)
+        
+        return jsonify({
+            'success': True,
+            'data': mappings
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"파일별 매핑 조회 실패: {e}")
+        return jsonify({
+            'success': False,
+            'error': f'매핑 조회 중 오류가 발생했습니다: {str(e)}'
+        }), 500

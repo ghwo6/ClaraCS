@@ -7,6 +7,7 @@ import io
 from urllib.parse import quote
 from dotenv import load_dotenv
 from controllers.main import main_bp
+from controllers.upload import upload_bp
 from controllers.report import report_bp
 from controllers.auto_classify import auto_bp
 
@@ -112,6 +113,7 @@ def create_app():
 
     app.register_blueprint(main_bp)
     app.register_blueprint(report_bp)
+    app.register_blueprint(upload_bp)
     app.register_blueprint(mapping_bp)
     app.register_blueprint(auto_bp)
 

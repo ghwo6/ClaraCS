@@ -1,3 +1,112 @@
 /* 자동 분류 페이지 전용 스타일 */
-/* 필요한 추가 스타일이 있으면 여기에 작성하세요 */
 
+/* 분류 엔진 선택 UI */
+.engine-selector {
+  display: inline-flex;
+  gap: 6px;
+  margin-right: 16px;
+  align-items: center;  /* 세로 중앙 정렬 */
+}
+
+/* 마지막 분류 시각 정렬 */
+#last-run-at {
+  margin-right: 16px;
+  align-self: center;  /* 세로 중앙 정렬 */
+  line-height: 1;
+}
+
+.engine-option {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.engine-option input[type="radio"] {
+  display: none;
+}
+
+.engine-label {
+  font-size: 13px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.engine-option:hover .engine-label {
+  color: #374151;
+  background: rgba(59, 130, 246, 0.05);
+}
+
+.engine-option input[type="radio"]:checked + .engine-label {
+  color: #3b82f6;
+  font-weight: 600;
+  background: rgba(59, 130, 246, 0.1);
+}
+
+/* 로딩 표시 - body 영역 기준 */
+#classify.loading {
+  pointer-events: none;
+}
+
+/* body 영역을 relative로 설정 (로딩 인디케이터 기준점) */
+#classify .body {
+  position: relative;
+}
+
+/* 로딩 오버레이 (딤드 효과) - body 영역만 */
+#classify.loading .body::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 999;
+  animation: fadeIn 0.15s ease;
+  border-radius: 8px;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* 로딩 인디케이터 - body 영역 정중앙 */
+#classify .body .loading-indicator {
+  position: absolute !important;
+  top: 50% !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%) !important;
+  z-index: 1000 !important;
+  background: rgba(21, 25, 34, 0.95) !important;
+  padding: 32px 48px !important;
+  border-radius: 12px !important;
+  text-align: center !important;
+  min-width: 300px !important;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3) !important;
+}
+
+#classify .body .loading-indicator .spinner {
+  width: 40px !important;
+  height: 40px !important;
+  border: 3px solid var(--line) !important;
+  border-top-color: var(--brand) !important;
+  border-radius: 50% !important;
+  animation: spin 1s linear infinite !important;
+  margin: 0 auto 16px !important;
+}
+
+#classify .body .loading-indicator p {
+  color: var(--text) !important;
+  font-size: 15px !important;
+  font-weight: 500 !important;
+  margin: 0 !important;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
