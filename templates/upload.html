@@ -12,6 +12,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <!-- SheetJS 라이브러리 (Excel 파일 읽기용) -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
 </head>
 <body>
 <div class="app">
@@ -66,19 +68,13 @@
         </div>
         <p class="tip" style="margin-top:10px;">※ 권장 사항 : 각 채널당 파일 수는 3~5개, 총 용량 15MB 이내로 업로드해 주세요.</p>
         <div class="card" style="margin-top:16px;">
-          <strong>미리보기(상위 5행)</strong>
-          <table class="table" style="margin-top:8px;">
-            <thead>
-              <tr>
-                <th>created_at</th><th>customer_ID</th><th>channel</th><th>product_ID</th><th>category</th><th>message</th><th>status</th>
-              </tr>
+          <strong>미리보기 (상위 5행)</strong>
+          <table class="table" style="margin-top:8px;" id="preview-table">
+            <thead id="preview-thead">
+              <!-- 업로드 후 동적으로 생성됩니다 -->
             </thead>
-            <tbody>
-              <tr><td>2025-08-01</td><td>cust_1023</td><td>게시판</td><td>MBP16-M3-1TB-SIL</td><td>배송 지연</td><td>	주문한 상품이 아직 도착을 안 했어요. 배송...</td><td>신규</td></tr>
-              <tr><td>2025-08-02</td><td>cust_3381</td><td>네이버 톡톡</td><td>MBA13-M2-256GB-MID</td><td>환불 문의</td><td>결제 취소가 안돼요. 지난주에 요청...</td><td>완료</td></tr>
-              <tr><td>2025-08-02</td><td>cust_9912</td><td>전화</td><td>MBP14-M3-512GB-SPG</td><td>파손 수령</td><td>박스가 찢어져서 제품 외부에 흠집이...</td><td>완료</td></tr>
-              <tr><td>2025-08-03</td><td>cust_1277</td><td>게시판<td>MBA13-M2-256GB-MID</td></td><td>품질 불만</td><td>색상이 사진과 달라요. 화면에서 본 색과...</td><td>완료</td></tr>
-              <tr><td>2025-08-03</td><td>cust_6620</td><td>카카오톡</td><td>MBA15-M3-512GB-STAR</td><td>AS 문의</td><td>작동이 중간에 멈춤. 전원 버튼을 눌러도...</td><td>진행중</td></tr>
+            <tbody id="preview-tbody">
+              <tr><td colspan="10" style="text-align: center; padding: 40px; color: var(--muted);">파일을 업로드하면 데이터 미리보기가 표시됩니다.</td></tr>
             </tbody>
           </table>
         </div>
@@ -89,9 +85,6 @@
     <section class="section" id="mapping">
       <div class="head">
         <h2>컬럼 매핑</h2>
-        <div class="toolbar">
-          <button id="btn-save" class="btn save">매핑 저장</button>
-        </div>
       </div>
       <div class="body grid cols-2">
         <div class="card">
@@ -101,104 +94,10 @@
             <div class="button-mapping-group" style="display: flex; gap: 8px;">
               <button class="btn edit">Edit</button>
               <button class="btn reset">초기화</button>
-              <button id="column_setting" class="btn save">컬럼 저장</button>
             </div>
           </div>
-          <div class="grid" style="margin-top:23px; clear:both;">
-            <div class="mapping-grid" style="display: flex; align-items: center; gap: 10px;">
-              <div class="delete-btn-container"> 
-                  <button class="btn delete-row-btn">&minus;</button>
-              </div>
-              <input class="input" value="created_at" />
-              <span style="text-align:center; color:var(--muted)">→</span>
-              <select class="select">
-                <option>접수일</option>
-              </select>
-              <div class="toggle-switch">
-                <input type="checkbox" class="toggle-input" id="toggle1" checked/>
-                <label class="toggle-label" for="toggle1"></label>
-              </div>
-            </div>
-            <div class="mapping-grid" style="display: flex; align-items: center; gap: 10px;">
-              <div class="delete-btn-container"> 
-                  <button class="btn delete-row-btn">&minus;</button>
-              </div>
-              <input class="input" value="customer_ID" />
-              <span style="text-align:center; color:var(--muted)">→</span>
-              <select class="select">
-                <option>고객ID/이메일(공용)</option><option>고객ID</option><option>이메일</option>
-              </select>
-              <div class="toggle-switch">
-                <input type="checkbox" class="toggle-input" id="toggle2" checked/>
-                <label class="toggle-label" for="toggle2"></label>
-              </div>
-            </div>
-            <div class="mapping-grid" style="display: flex; align-items: center; gap: 10px;">
-              <div class="delete-btn-container"> 
-                  <button class="btn delete-row-btn">&minus;</button>
-              </div>
-              <input class="input" value="channel" />
-              <span style="text-align:center; color:var(--muted)">→</span>
-              <select class="select">
-                <option>채널(공용)</option><option>게시판</option><option>전화</option><option>이메일</option><option>네이버 톡톡</option><option>카카오톡</option>
-              </select>
-              <div class="toggle-switch">
-                <input type="checkbox" class="toggle-input" id="toggle3" checked/>
-                <label class="toggle-label" for="toggle3"></label>
-              </div>
-            </div>
-            <div class="mapping-grid" style="display: flex; align-items: center; gap: 10px;">
-              <div class="delete-btn-container"> 
-                  <button class="btn delete-row-btn">&minus;</button>
-              </div>
-              <input class="input" value="product_ID" />
-              <span style="text-align:center; color:var(--muted)">→</span>
-              <select class="select"><option>상품ID(SKU)</option>
-              </select>
-              <div class="toggle-switch">
-                <input type="checkbox" class="toggle-input" id="toggle4" checked/>
-                <label class="toggle-label" for="toggle4"></label>
-              </div>
-            </div>
-            <div class="mapping-grid" style="display: flex; align-items: center; gap: 10px;">
-              <div class="delete-btn-container"> 
-                  <button class="btn delete-row-btn">&minus;</button>
-              </div>
-              <input class="input" value="category" />
-              <span style="text-align:center; color:var(--muted)">→</span>
-              <select class="select"><option>카테고리</option>
-              </select>
-              <div class="toggle-switch">
-                <input type="checkbox" class="toggle-input" id="toggle5" checked/>
-                <label class="toggle-label" for="toggle5"></label>
-              </div>
-            </div>
-            <div class="mapping-grid" style="display: flex; align-items: center; gap: 10px;">
-              <div class="delete-btn-container"> 
-                  <button class="btn delete-row-btn">&minus;</button>
-              </div>
-              <input class="input" value="message" />
-              <span style="text-align:center; color:var(--muted)">→</span>
-              <select class="select"><option>문의 내용(공용)</option><option>제목</option><option>본문</option>
-              </select>
-              <div class="toggle-switch">
-                <input type="checkbox" class="toggle-input" id="toggle6" checked/>
-                <label class="toggle-label" for="toggle6"></label>
-              </div>
-            </div>
-            <div class="mapping-grid" style="display: flex; align-items: center; gap: 10px;">
-              <div class="delete-btn-container"> 
-                  <button class="btn delete-row-btn">&minus;</button>
-              </div>
-              <input class="input" value="status" />
-              <span style="text-align:center; color:var(--muted)">→</span>
-              <select class="select"><option>처리 상태</option>
-              </select>
-              <div class="toggle-switch">
-                <input type="checkbox" class="toggle-input" id="toggle7" checked/>
-                <label class="toggle-label" for="toggle7"></label>
-              </div>
-            </div>
+          <div class="grid" id="mapping-grid-container" style="margin-top:23px; clear:both;">
+            <!-- 매핑 그리드는 JavaScript로 동적 생성됩니다 -->
           </div>
           <p class="tip" style="margin-top:3px;">※ 매핑 템플릿을 저장해두면 다음 업로드부터 자동 적용</p>
           <div class="add-btn-container">
@@ -206,14 +105,12 @@
           </div>
         </div>
         <div class="card">
-          <strong>유효성/정합성 체크</strong>
-          <ul class="subtle">
-            <li>필수 컬럼 누락: <span class="badge danger">본문</span> 2열에서 공란 5건</li>
-            <li>날짜 형식 불일치: <span class="badge warn">접수일</span> 3건(YYYY-MM-DD 권장)</li>
-            <li>개인정보 마스킹: <span class="badge ok">고객ID/이메일</span> 자동 마스킹 설정</li>
-          </ul>
-          <div class="toolbar" style="margin-top:10px;">
-            <button id="camelCase" class="btn">정제 실행</button>
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+            <strong>유효성/정합성 체크</strong>
+            <button id="save_btn" class="btn save">검증 및 업로드</button>
+          </div>
+          <div id="validation_result" class="validation-result">
+            <p class="tip">파일을 선택한 후 검증 및 업로드 버튼을 클릭하면 유효성 검사가 시작됩니다.</p>
           </div>
         </div>
       </div>
