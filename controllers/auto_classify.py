@@ -1,8 +1,9 @@
-from flask import Blueprint, jsonify, request, current_app
+from flask import Blueprint, jsonify, request, session, current_app
 from pathlib import Path
 import json
 from services.auto_classify import AutoClassifyService
 from utils.logger import get_logger
+from config import Config
 
 logger = get_logger(__name__)
 
@@ -19,7 +20,9 @@ def run():
     """
     try:
         body = request.get_json(silent=True) or {}
-        user_id = int(body.get("user_id", 1))  # 기본값 1
+        
+        # user_id 우선순위: 요청 데이터 > 세션 > 환경변수 기본값
+        user_id = int(body.get("user_id") or session.get('user_id') or Config.DEFAULT_USER_ID)
         file_id = int(body.get("file_id", 0))  # 0이면 최신 파일 선택
         engine = body.get("engine", "rule")  # 기본값: 규칙 기반
 

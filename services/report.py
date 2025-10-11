@@ -54,26 +54,32 @@ class ReportService:
             if not cs_data or cs_data['total_tickets'] == 0:
                 raise ValueError("분류된 CS 데이터가 없습니다. 먼저 자동 분류를 실행하세요.")
             
-            # 4. GPT 기반 통합 분석 (한 번의 호출로 모든 섹션 생성)
+            # 4. 채널별 추이 데이터 조회 (그래프용)
+            logger.info("채널별 추이 데이터 조회 중...")
+            channel_trends = self.report_db.get_channel_trend_data(file_id)
+            
+            # 5. GPT 기반 통합 분석 (한 번의 호출로 모든 섹션 생성)
             logger.info("GPT 기반 통합 분석 시작...")
             analysis_result = self.ai_service.generate_comprehensive_report(cs_data)
             
-            # 5. 스냅샷 저장 (DB에 영구 보관)
+            # 6. 스냅샷 저장 (DB에 영구 보관 - 3개 테이블)
             logger.info("분석 결과 스냅샷 저장 중...")
-            self._save_analysis_snapshot(report_id, analysis_result)
+            self._save_analysis_snapshot(report_id, analysis_result, channel_trends)
             
-            # 6. 리포트 완료 처리
+            # 7. 리포트 완료 처리
             self.report_db.complete_report(report_id)
             
-            # 7. 응답 데이터 구성
+            # 8. 응답 데이터 구성
             report_data = {
                 'report_id': report_id,
                 'file_id': file_id,
+                'channel_trends': channel_trends,  # 그래프 데이터 추가
                 'summary': analysis_result.get('summary', {}),
                 'insight': analysis_result.get('insight', {}),
-                'overall_insight': analysis_result.get('overall_insight', {}),
                 'solution': analysis_result.get('solution', {}),
-                'generated_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                'generated_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                'is_ai_generated': analysis_result.get('_is_ai_generated', False),  # AI 생성 여부
+                'data_source': analysis_result.get('_data_source', 'fallback')  # 데이터 출처
             }
             
             logger.info(f"리포트 생성 완료 (report_id: {report_id}, file_id: {file_id})")
@@ -83,24 +89,59 @@ class ReportService:
             logger.error(f"리포트 생성 실패: {e}")
             raise
     
-    def _save_analysis_snapshot(self, report_id: int, analysis_result: dict):
-        """GPT 분석 결과를 스냅샷으로 저장"""
+    def _save_analysis_snapshot(self, report_id: int, analysis_result: dict, channel_trends: dict = None):
+        """GPT 분석 결과를 스냅샷으로 저장 (4개 테이블)"""
         try:
-            # 전체 분석 결과를 하나의 JSON으로 저장
-            full_snapshot = {
-                'summary': analysis_result.get('summary', {}),
-                'insight': analysis_result.get('insight', {}),
-                'overall_insight': analysis_result.get('overall_insight', {}),
-                'solution': analysis_result.get('solution', {})
+            # 1. Summary 스냅샷 저장 (tb_analysis_summary_snapshot)
+            summary = analysis_result.get('summary', {})
+            
+            # 개선된 구조에서 데이터 추출
+            categories = summary.get('categories', [])
+            channels = summary.get('channels', [])
+            
+            # category_ratios 변환 (배열 → 딕셔너리)
+            category_ratios = {}
+            for cat in categories:
+                category_ratios[cat.get('category_name', '알수없음')] = cat.get('percentage', 0.0)
+            
+            # resolved_count 변환 (배열 → 딕셔너리)
+            resolved_count = {}
+            for ch in channels:
+                resolved_count[ch.get('channel', '알수없음')] = ch.get('resolution_rate', 0.0)
+            
+            summary_snapshot = {
+                'total_tickets': summary.get('total_cs_count', 0),
+                'resolved_count': resolved_count,
+                'category_ratios': category_ratios,
+                'repeat_rate': 0.0  # TODO: 반복 문의율 계산
             }
+            self.report_db.save_summary_snapshot(report_id, summary_snapshot)
+            logger.info(f"요약 스냅샷 저장 완료")
             
-            # 인사이트 스냅샷 테이블에 통합 저장
-            self.report_db.save_insight_snapshot(report_id, full_snapshot)
+            # 2. Insight 스냅샷 저장 (tb_analysis_insight_snapshot)
+            insight_snapshot = analysis_result.get('insight', {})
+            self.report_db.save_insight_snapshot(report_id, insight_snapshot)
+            logger.info(f"인사이트 스냅샷 저장 완료")
             
-            logger.info(f"리포트 {report_id}의 분석 스냅샷 저장 완료")
+            # 3. Solution 스냅샷 저장 (tb_analysis_solution_snapshot)
+            solution = analysis_result.get('solution', {})
+            self.report_db.save_solution_snapshot(report_id, solution)
+            logger.info(f"솔루션 스냅샷 저장 완료")
+            
+            # 4. Channel 스냅샷 저장 (tb_analysis_channel_snapshot)
+            if channel_trends and len(channel_trends) > 0:
+                saved = self.report_db.save_channel_snapshot(report_id, channel_trends)
+                if saved:
+                    logger.info(f"채널 스냅샷 저장 완료")
+                else:
+                    logger.warning(f"채널 스냅샷 저장 실패 (데이터는 있으나 저장 오류)")
+            else:
+                logger.warning(f"채널 추이 데이터가 없어 스냅샷 저장을 건너뜁니다")
+            
+            logger.info(f"리포트 {report_id}의 모든 스냅샷 저장 완료")
             
         except Exception as e:
-            logger.error(f"스냅샷 저장 실패: {e}")
+            logger.error(f"스냅샷 저장 실패: {e}", exc_info=True)
             # 스냅샷 저장 실패해도 리포트 생성은 계속 진행
     
     def get_channel_trends(self, file_id: int) -> dict:

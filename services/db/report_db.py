@@ -254,9 +254,9 @@ class ReportDB:
     # 리포트 데이터 조회 (프론트엔드용)
     # ========================================
     
-    def get_channel_trend_data(self, file_id: int) -> dict:
-        """채널별 추이 데이터 조회 (최근 30일)"""
-        logger.info(f"파일 {file_id}의 채널별 추이 데이터 조회")
+    def get_channel_trend_data(self, file_id: int, days: int = 365) -> dict:
+        """채널별 추이 데이터 조회 (기본 365일, 전체 기간 포함)"""
+        logger.info(f"파일 {file_id}의 채널별 추이 데이터 조회 (최근 {days}일)")
         
         connection = self.db_manager.get_connection()
         cursor = connection.cursor(dictionary=True)
@@ -265,9 +265,11 @@ class ReportDB:
             # 최신 분류 결과 ID 조회
             class_result_id = self.get_latest_classification_result(file_id)
             if not class_result_id:
+                logger.warning(f"파일 {file_id}의 분류 결과가 없습니다")
                 return {}
             
             # 채널별, 카테고리별, 날짜별 집계
+            # tb_ticket.classified_category_id를 직접 사용
             query = """
                 SELECT 
                     t.channel,
@@ -275,17 +277,21 @@ class ReportDB:
                     DATE(t.received_at) as date,
                     COUNT(*) as count
                 FROM tb_ticket t
-                LEFT JOIN tb_classification_result cr ON t.ticket_id = cr.ticket_id
-                LEFT JOIN tb_classification_category_result ccr ON cr.class_result_id = ccr.class_result_id
-                LEFT JOIN tb_category c ON ccr.category_id = c.category_id
+                LEFT JOIN tb_category c ON t.classified_category_id = c.category_id
                 WHERE t.file_id = %s
-                AND t.received_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+                  AND t.classified_category_id IS NOT NULL
                 GROUP BY t.channel, c.category_name, DATE(t.received_at)
                 ORDER BY DATE(t.received_at), t.channel, c.category_name
             """
             
             cursor.execute(query, [file_id])
             results = cursor.fetchall()
+            
+            if not results:
+                logger.warning(f"파일 {file_id}의 채널별 추이 데이터가 없습니다. 분류 실행 여부를 확인하세요.")
+                return {}
+            
+            logger.debug(f"채널별 추이 원본 데이터 {len(results)}건 조회")
             
             # 데이터 구조 변환
             channel_trends = {}
@@ -444,6 +450,7 @@ class ReportDB:
             
             for cat_result in category_results:
                 category_distribution.append({
+                    'category_id': cat_result['category_id'],  # ✅ category_id 추가
                     'category_name': cat_result['category_name'],
                     'count': cat_result['count'],
                     'ratio': cat_result['ratio'],
@@ -568,31 +575,52 @@ class ReportDB:
             if connection and connection.is_connected():
                 connection.close()
     
-    def save_channel_snapshot(self, report_id: int, channel_data: List[Dict]) -> bool:
-        """채널 스냅샷 저장"""
+    def save_channel_snapshot(self, report_id: int, channel_trends: Dict) -> bool:
+        """채널 스냅샷 저장 - 채널별 추이 데이터를 평면화하여 저장"""
         logger.info(f"채널 스냅샷 저장: report_id={report_id}")
         
         connection = self.db_manager.get_connection()
         cursor = connection.cursor()
         
         try:
+            # 카테고리명 -> category_id 매핑 조회
+            cursor.execute("SELECT category_id, category_name FROM tb_category")
+            category_map = {row[1]: row[0] for row in cursor.fetchall()}
+            
             query = """
                 INSERT INTO tb_analysis_channel_snapshot
                 (report_id, channel, time_period, category_id, count)
                 VALUES (%s, %s, %s, %s, %s)
             """
             
-            for data in channel_data:
-                cursor.execute(query, (
-                    report_id,
-                    data['channel'],
-                    data.get('time_period'),
-                    data.get('category_id'),
-                    data['count']
-                ))
+            snapshot_count = 0
+            
+            # channel_trends 구조: {channel: {categories: [...], dates: [...], data: [[...]]}}
+            for channel, trend_data in channel_trends.items():
+                categories = trend_data.get('categories', [])
+                dates = trend_data.get('dates', [])
+                data_matrix = trend_data.get('data', [])
+                
+                # 날짜별, 카테고리별 데이터 저장
+                for date_idx, date in enumerate(dates):
+                    if date_idx < len(data_matrix):
+                        for cat_idx, category in enumerate(categories):
+                            count = data_matrix[date_idx][cat_idx] if cat_idx < len(data_matrix[date_idx]) else 0
+                            
+                            # 카테고리 ID 조회
+                            category_id = category_map.get(category)
+                            
+                            cursor.execute(query, (
+                                report_id,
+                                channel,
+                                date,  # time_period (날짜 문자열)
+                                category_id,
+                                count
+                            ))
+                            snapshot_count += 1
             
             connection.commit()
-            logger.info(f"채널 스냅샷 {len(channel_data)}건 저장 완료")
+            logger.info(f"채널 스냅샷 {snapshot_count}건 저장 완료")
             return True
             
         except Exception as e:

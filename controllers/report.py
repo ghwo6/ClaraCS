@@ -1,7 +1,8 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, session
 from flasgger.utils import swag_from
 from services.report import ReportService
 from utils.logger import get_logger
+from config import Config
 import json
 
 logger = get_logger(__name__)
@@ -64,7 +65,9 @@ def generate_report():
         
         # 요청 데이터 파싱
         data = request.get_json() or {}
-        user_id = data.get('user_id', 1)  # 기본값 1
+        
+        # user_id 우선순위: 요청 데이터 > 세션 > 환경변수 기본값
+        user_id = data.get('user_id') or session.get('user_id') or Config.DEFAULT_USER_ID
         file_id = data.get('file_id')  # 선택사항
         
         logger.info(f"리포트 생성 요청: user_id={user_id}, file_id={file_id}")

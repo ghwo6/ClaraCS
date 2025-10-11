@@ -87,25 +87,45 @@ class AIService:
             cs_data: CS 분석 데이터 (카테고리, 채널, 해결률 등)
             
         Returns:
-            종합 리포트 (summary, insight, overall_insight, solution)
+            종합 리포트 (summary, insight, solution)
         """
-        logger.info("종합 리포트 생성 시작")
+        logger.info("=== GPT 기반 종합 리포트 생성 시작 ===")
+        
+        # API 키 확인
+        if not self.api_key:
+            logger.warning("⚠️  OpenAI API 키가 없습니다. Fallback 리포트를 사용합니다.")
+            logger.warning("환경변수 OPENAI_API_KEY를 설정하면 GPT 기반 분석을 사용할 수 있습니다.")
+            return self._get_fallback_comprehensive_report(cs_data)
         
         try:
             # 프롬프트 구성
+            logger.info("프롬프트 구성 중...")
             prompt = self._build_comprehensive_report_prompt(cs_data)
             
             # OpenAI API 호출
+            logger.info("🤖 GPT API 호출 중... (최대 30초 소요 예상)")
+            import time
+            start_time = time.time()
+            
             response = self._call_openai_api(prompt, max_tokens=3000)
             
+            elapsed = time.time() - start_time
+            logger.info(f"✅ GPT API 응답 완료 (소요 시간: {elapsed:.2f}초)")
+            
             # 응답 파싱
+            logger.info("GPT 응답 파싱 중...")
             report = self._parse_comprehensive_report_response(response)
             
-            logger.info("종합 리포트 생성 완료")
+            # AI 생성 메타데이터 추가
+            report['_is_ai_generated'] = True
+            report['_data_source'] = 'gpt-3.5-turbo'
+            
+            logger.info("=== 종합 리포트 생성 완료 (GPT 기반) ===")
             return report
             
         except Exception as e:
-            logger.error(f"종합 리포트 생성 실패: {e}")
+            logger.error(f"❌ GPT 리포트 생성 실패: {e}")
+            logger.warning("⚠️  Fallback 리포트를 사용합니다.")
             return self._get_fallback_comprehensive_report(cs_data)
     
     def _build_analysis_prompt(self, analysis_data: Dict[str, Any]) -> str:
@@ -197,6 +217,9 @@ JSON 형식으로 응답해주세요:
             raise Exception("OpenAI API 키가 설정되지 않았습니다.")
         
         try:
+            logger.info(f"GPT 모델 호출: gpt-3.5-turbo (max_tokens={max_tokens})")
+            logger.info(f"API 키 앞 10자: {self.api_key[:10]}... (총 길이: {len(self.api_key)})")
+            
             response = openai.ChatCompletion.create(
                 model="gpt-3.5-turbo",
                 messages=[
@@ -207,10 +230,25 @@ JSON 형식으로 응답해주세요:
                 temperature=0.7
             )
             
-            return response.choices[0].message.content
+            content = response.choices[0].message.content
+            logger.info(f"GPT 응답 수신 완료 (길이: {len(content)} chars)")
             
+            return content
+            
+        except openai.error.AuthenticationError as e:
+            logger.error(f"❌ OpenAI 인증 실패: API 키가 유효하지 않습니다.")
+            logger.error(f"상세 오류: {str(e)}")
+            raise Exception("OpenAI API 키가 유효하지 않습니다. .env 파일의 OPENAI_API_KEY를 확인하세요.")
+        except openai.error.RateLimitError as e:
+            logger.error(f"❌ OpenAI 사용량 초과: {e}")
+            raise Exception("OpenAI API 사용량 한도를 초과했습니다. 잠시 후 다시 시도하세요.")
+        except openai.error.InvalidRequestError as e:
+            logger.error(f"❌ OpenAI 잘못된 요청: {e}")
+            raise Exception(f"OpenAI API 요청 오류: {str(e)}")
         except Exception as e:
-            logger.error(f"OpenAI API 호출 실패: {e}")
+            logger.error(f"❌ OpenAI API 호출 실패: {e}")
+            logger.error(f"오류 타입: {type(e).__name__}")
+            logger.error(f"상세 오류: {str(e)}")
             raise
     
     def _parse_analysis_response(self, response: str) -> Dict[str, Any]:
@@ -325,20 +363,33 @@ JSON 형식으로 응답해주세요:
         }
     
     def _build_comprehensive_report_prompt(self, cs_data: Dict[str, Any]) -> str:
-        """종합 리포트 생성용 프롬프트 구성"""
+        """종합 리포트 생성용 프롬프트 구성 (개선된 JSON 구조)"""
         
         # CS 데이터를 읽기 쉬운 형식으로 변환
         total_tickets = cs_data.get('total_tickets', 0)
         
-        # 카테고리별 분포
+        # 카테고리별 분포 (category_id 포함)
         category_info = ""
+        category_list = []
         for cat in cs_data.get('category_distribution', []):
-            category_info += f"- {cat['category_name']}: {cat['count']}건 ({cat['percentage']}%)\n"
+            category_info += f"- [ID:{cat.get('category_id', 0)}] {cat['category_name']}: {cat['count']}건 ({cat['percentage']}%)\n"
+            category_list.append({
+                'id': cat.get('category_id', 0),
+                'name': cat['category_name'],
+                'count': cat['count'],
+                'percentage': cat['percentage']
+            })
         
         # 채널별 분포
         channel_info = ""
+        channel_list = []
         for ch in cs_data.get('channel_distribution', []):
             channel_info += f"- {ch['channel']}: {ch['count']}건 ({ch['percentage']}%)\n"
+            channel_list.append({
+                'name': ch['channel'],
+                'count': ch['count'],
+                'percentage': ch['percentage']
+            })
         
         # 채널별 해결률
         resolution_info = ""
@@ -347,7 +398,7 @@ JSON 형식으로 응답해주세요:
         
         prompt = f"""당신은 고객 CS 데이터를 분석하여 자동 분류 및 솔루션을 제안하는 AI 서비스의 분석 전문가입니다.
 
-다음 데이터를 기반으로 아래 4가지 항목에 대해 JSON 형식으로 응답해 주세요. 각 항목은 key-value 구조로 구성해 주세요.
+다음 데이터를 기반으로 아래 4가지 항목에 대해 JSON 형식으로 응답해 주세요.
 
 **CS 데이터:**
 - 전체 CS 건수: {total_tickets}건
@@ -361,70 +412,79 @@ JSON 형식으로 응답해주세요:
 **채널별 해결률:**
 {resolution_info}
 
+**사용 가능한 카테고리 목록 (반드시 정확한 ID와 이름 사용):**
+{json.dumps(category_list, ensure_ascii=False)}
+
 ---
 
-**응답 형식:**
+**응답 형식 (중요!):**
 
 다음 4가지 항목을 포함한 JSON 형식으로 응답해주세요:
 
 1. **summary**: 전체 CS 건수, 카테고리별 비율, 채널별 해결률
-   - total_cs_count (전체 건수)
-   - category_ratio (카테고리별 비율, 상위 3~5개만)
-   - resolution_rate (채널별 해결률)
+   - total_cs_count: 전체 건수 (number)
+   - categories: 배열 형태 [{{category_id, category_name, count, percentage}}]
+   - channels: 배열 형태 [{{channel, total, resolved, resolution_rate}}]
 
-2. **insight**: 카테고리별 문제점과 단기/장기 개선 방안
-   - 각 주요 카테고리에 대해:
-     - issue: 문제점
-     - short_term: 단기 개선 방안
-     - long_term: 장기 개선 방안
+2. **insight**: 카테고리별 분석
+   - by_category: 배열 형태 [{{category_id, category_name, priority, issue, short_term_actions, long_term_actions}}]
+   - overall: 종합 인사이트 {{short_term, long_term, notable_issues}}
 
-3. **overall_insight**: 단기/장기/특이사항 관점에서 종합 인사이트
-   - short_term: 단기적 종합 전략
-   - long_term: 장기적 종합 전략
-   - notable: 특이사항 (반복 문의, 긴급 이슈 등)
+3. **solution**: 단기/장기 전략 제안
+   - short_term: 배열 [{{category, suggestion, expected_effect, priority, difficulty, timeline}}]
+   - long_term: 배열 [{{category, suggestion, expected_effect, priority, difficulty, timeline}}]
 
-4. **solution**: 단기(1~6개월)/장기(6개월~2년) 전략 제안
-   - short_term: 배열 형태로 여러 제안
-     - suggestion: 제안 내용
-     - expected_effect: 기대 효과
-   - long_term: 배열 형태로 여러 제안
-     - suggestion: 제안 내용
-     - expected_effect: 기대 효과
+**중요 규칙:**
+- 카테고리 ID와 이름을 반드시 위 목록에서 선택하세요
+- 모든 숫자는 number 타입으로 (문자열 X)
+- 비율은 % 기호 없이 숫자만 (예: 40.0)
+- 배열 형태로 반환하세요
+- 순수한 JSON만 (마크다운 코드 블록 ``` 제외)
 
-**중요**: 반드시 순수한 JSON 형식으로만 응답하세요. 추가 설명이나 마크다운 코드 블록(```)은 포함하지 마세요.
-
-예시 JSON 구조:
+예시 JSON:
 {{
   "summary": {{
     "total_cs_count": {total_tickets},
-    "category_ratio": {{
-      "카테고리1": "40%",
-      "카테고리2": "35%"
-    }},
-    "resolution_rate": {{
-      "채널1": "70%",
-      "채널2": "85%"
-    }}
+    "categories": {json.dumps(category_list[:3], ensure_ascii=False)},
+    "channels": {json.dumps([{{'channel': ch['name'], 'total': ch['count'], 'resolved': 0, 'resolution_rate': 0.0}} for ch in channel_list[:2]], ensure_ascii=False)}
   }},
   "insight": {{
-    "카테고리1": {{
-      "issue": "문제점 설명",
-      "short_term": "단기 해결 방안",
-      "long_term": "장기 해결 방안"
+    "by_category": [
+      {{
+        "category_id": 1,
+        "category_name": "제품 하자",
+        "priority": "high",
+        "issue": "음성, 상담 의존 높음",
+        "short_term_actions": ["제품별 FAQ 제공", "영상 가이드"],
+        "long_term_actions": ["R&D 피드백 체계", "불량률 개선"]
+      }}
+    ],
+    "overall": {{
+      "short_term": "채널별 감정상태 분석 → 자동 분류, 챗봇 고도화",
+      "long_term": "실시간 피드백 체계 구축",
+      "notable_issues": ["중복 CS 12%", "전화 채널 과부하"]
     }}
-  }},
-  "overall_insight": {{
-    "short_term": "단기 종합 전략",
-    "long_term": "장기 종합 전략",
-    "notable": "특이사항"
   }},
   "solution": {{
     "short_term": [
-      {{"suggestion": "제안1", "expected_effect": "효과1"}},
-      {{"suggestion": "제안2", "expected_effect": "효과2"}}
+      {{
+        "category": "게시판",
+        "suggestion": "자동 분류 요약",
+        "expected_effect": "응답시간 30% 단축",
+        "priority": "high",
+        "difficulty": "low",
+        "timeline": "1-3개월"
+      }}
     ],
     "long_term": [
-      {{"suggestion": "제안1", "expected_effect": "효과1"}}
+      {{
+        "category": "품질 관리",
+        "suggestion": "예방형 품질 관리 체계",
+        "expected_effect": "불량률 지속 감소",
+        "priority": "high",
+        "difficulty": "high",
+        "timeline": "6-12개월"
+      }}
     ]
   }}
 }}
@@ -461,45 +521,52 @@ JSON 형식으로 응답해주세요:
             return self._get_fallback_comprehensive_report({})
     
     def _get_fallback_comprehensive_report(self, cs_data: Dict[str, Any]) -> Dict[str, Any]:
-        """API 실패 시 대체 리포트"""
+        """API 실패 시 대체 리포트 (개선된 JSON 구조) - DB 데이터 활용"""
+        logger.info("Fallback 리포트 생성: DB 데이터 기반 요약만 제공")
+        
         total_tickets = cs_data.get('total_tickets', 0)
         
-        # 카테고리별 비율 추출
-        category_ratio = {}
-        for cat in cs_data.get('category_distribution', [])[:3]:
-            category_ratio[cat['category_name']] = f"{cat['percentage']}%"
+        # 카테고리 데이터 변환 (DB에서 가져온 실제 데이터)
+        categories = []
+        for cat in cs_data.get('category_distribution', []):
+            categories.append({
+                'category_id': cat.get('category_id', 0),
+                'category_name': cat['category_name'],
+                'count': cat['count'],
+                'percentage': cat['percentage']
+            })
         
-        # 채널별 해결률 추출
-        resolution_rate = {}
+        # 채널 데이터 변환 (DB에서 가져온 실제 데이터)
+        channels = []
         for res in cs_data.get('channel_resolution_rates', []):
-            resolution_rate[res['channel']] = f"{res['resolution_rate']}%"
+            channels.append({
+                'channel': res['channel'],
+                'total': res['total'],
+                'resolved': res['resolved'],
+                'resolution_rate': res['resolution_rate']
+            })
         
         return {
             "summary": {
                 "total_cs_count": total_tickets,
-                "category_ratio": category_ratio if category_ratio else {"분석 중": "0%"},
-                "resolution_rate": resolution_rate if resolution_rate else {"분석 중": "0%"}
+                "categories": categories,
+                "channels": channels
             },
             "insight": {
-                "일반": {
-                    "issue": "AI 분석 서비스가 일시적으로 사용할 수 없습니다",
-                    "short_term": "수동 분석 또는 재시도",
-                    "long_term": "시스템 안정성 개선"
+                "by_category": [],  # AI 없이는 빈 배열
+                "overall": {
+                    "short_term": "",
+                    "long_term": "",
+                    "notable_issues": []
                 }
             },
-            "overall_insight": {
-                "short_term": "AI 분석 서비스 복구 후 재실행 권장",
-                "long_term": "안정적인 분석 시스템 구축",
-                "notable": "일시적 서비스 장애"
-            },
             "solution": {
-                "short_term": [
-                    {"suggestion": "AI 서비스 재시도", "expected_effect": "정상 분석 결과 획득"}
-                ],
-                "long_term": [
-                    {"suggestion": "백업 분석 시스템 구축", "expected_effect": "서비스 안정성 향상"}
-                ]
-            }
+                "short_term": [],  # AI 없이는 빈 배열
+                "long_term": []
+            },
+            "_is_ai_generated": False,  # Fallback 표시
+            "_data_source": "fallback",
+            "_fallback_reason": "OpenAI API 연동 실패"
         }
 
 # 싱글톤 인스턴스
