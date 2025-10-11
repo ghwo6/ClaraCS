@@ -41,22 +41,21 @@ class ReportManager {
         this.showLoading(true);
         
         try {
-            console.log('리포트 생성 시작...');
+            console.log('GPT 기반 리포트 생성 시작...');
             
-            // 1. 리포트 생성 API 호출 (file_id 기반)
+            // 1. 리포트 생성 API 호출 (최신 파일 자동 선택)
             const reportData = await this.callGenerateReportAPI();
             
             // 2. 각 섹션별 데이터 렌더링
-            await this.renderChannelTrends(reportData.channel_trends);
-            await this.renderSummary(reportData.summary);
-            await this.renderInsights(reportData.insights);
-            await this.renderSolutions(reportData.solutions);
+            this.renderSummary(reportData.summary);
+            this.renderInsights(reportData.insight, reportData.overall_insight);
+            this.renderSolutions(reportData.solution);
             
-            this.showMessage(`리포트가 성공적으로 생성되었습니다. (Report ID: ${reportData.report_id})`, 'success');
+            this.showMessage(`AI 리포트가 성공적으로 생성되었습니다. (Report ID: ${reportData.report_id})`, 'success');
             
         } catch (error) {
             console.error('리포트 생성 실패:', error);
-            this.showMessage('리포트 생성 중 오류가 발생했습니다.', 'error');
+            this.showMessage(error.message || '리포트 생성 중 오류가 발생했습니다.', 'error');
         } finally {
             this.isGenerating = false;
             this.showLoading(false);
@@ -70,13 +69,13 @@ class ReportManager {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                file_id: this.currentFileId,  // user_id 대신 file_id 사용
-                user_id: this.currentUserId
+                user_id: this.currentUserId  // file_id는 자동 선택
             })
         });
         
         if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+            const errorData = await response.json();
+            throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
         }
         
         const result = await response.json();
@@ -88,170 +87,142 @@ class ReportManager {
         return result.data;
     }
     
-    async renderChannelTrends(channelTrends) {
-        console.log('채널별 추이 렌더링 시작...');
+    
+    renderSummary(summary) {
+        console.log('데이터 요약 렌더링 시작...', summary);
         
-        const container = document.querySelector('#report .card:first-child .chart-box');
-        if (!container) return;
-        
-        // 기존 차트 제거
-        container.innerHTML = '';
-        
-        // 채널 데이터가 없는 경우
-        if (!channelTrends || Object.keys(channelTrends).length === 0) {
-            container.innerHTML = '<p style="text-align:center; color: var(--muted);">채널별 데이터가 없습니다.</p>';
-            return;
+        // 차트 카드는 숨기기
+        const chartCard = document.querySelector('#report .card:first-child');
+        if (chartCard) {
+            chartCard.style.display = 'none';
         }
         
-        // 각 채널별로 차트 생성
-        for (const [channel, data] of Object.entries(channelTrends)) {
-            const chartContainer = document.createElement('div');
-            chartContainer.className = 'chart-container';
-            chartContainer.innerHTML = `
-                <h4>${channel}</h4>
-                <div class="chart" id="chart-${channel.replace(/\s+/g, '-')}"></div>
-            `;
-            container.appendChild(chartContainer);
-            
-            // 차트 데이터 준비
-            const chartData = this.prepareChartData(data);
-            this.createChannelChart(`chart-${channel.replace(/\s+/g, '-')}`, chartData);
-        }
-    }
-    
-    prepareChartData(data) {
-        const categories = data.categories;
-        const dates = data.dates;
-        const values = data.data;
-        
-        return {
-            categories: categories,
-            dates: dates,
-            series: categories.map((category, index) => ({
-                name: category,
-                data: values.map(row => row[index] || 0)
-            }))
-        };
-    }
-    
-    createChannelChart(containerId, data) {
-        // 간단한 막대그래프 생성 (Chart.js 없이 CSS로 구현)
-        const container = document.getElementById(containerId);
-        if (!container) return;
-        
-        const maxValue = Math.max(...data.series.flatMap(s => s.data), 1);
-        const chartHeight = 200;
-        
-        let chartHTML = '<div class="simple-chart">';
-        
-        data.dates.forEach((date, dateIndex) => {
-            chartHTML += `<div class="chart-group">`;
-            chartHTML += `<div class="date-label">${date}</div>`;
-            chartHTML += `<div class="bars">`;
-            
-            data.series.forEach((series, seriesIndex) => {
-                const value = series.data[dateIndex] || 0;
-                const height = (value / maxValue) * chartHeight;
-                const color = this.getCategoryColor(series.name);
-                
-                chartHTML += `
-                    <div class="bar-container">
-                        <div class="bar" style="height: ${height}px; background-color: ${color};" 
-                             title="${series.name}: ${value}건"></div>
-                        <div class="bar-label">${value}</div>
-                    </div>
-                `;
-            });
-            
-            chartHTML += '</div></div>';
-        });
-        
-        chartHTML += '</div>';
-        container.innerHTML = chartHTML;
-    }
-    
-    getCategoryColor(category) {
-        const colors = {
-            '배송': '#ff6b6b',
-            '배송지연': '#ff6b6b',
-            '환불': '#4ecdc4',
-            '환불문의': '#4ecdc4',
-            '품질': '#45b7d1',
-            '품질불만': '#45b7d1',
-            'AS': '#96ceb4',
-            'AS요청': '#96ceb4',
-            '기타': '#feca57',
-            '기타문의': '#feca57',
-            '미분류': '#95a5a6'
-        };
-        return colors[category] || '#95a5a6';
-    }
-    
-    async renderSummary(summary) {
-        console.log('데이터 요약 렌더링 시작...');
-        
+        // 데이터 요약 컨테이너
         const container = document.querySelector('#report .card:nth-child(2) .subtle');
         if (!container) return;
         
-        const channelList = Object.entries(summary.channels || {})
-            .map(([channel, count]) => `${channel} (${count}건)`)
-            .join(', ') || 'N/A';
+        const totalCount = summary.total_cs_count || 0;
+        const categoryRatio = summary.category_ratio || {};
+        const resolutionRate = summary.resolution_rate || {};
+        
+        // 카테고리별 비율 리스트
+        const categoryList = Object.entries(categoryRatio)
+            .map(([cat, ratio]) => `<li><b>${cat}</b>: ${ratio}</li>`)
+            .join('');
+        
+        // 채널별 해결률 리스트
+        const resolutionList = Object.entries(resolutionRate)
+            .map(([channel, rate]) => `<li><b>${channel}</b>: ${rate}</li>`)
+            .join('');
         
         container.innerHTML = `
-            <li>총 티켓 수: <b>${summary.total_tickets.toLocaleString()}건</b></li>
-            <li>분류 정확도: <b>${(summary.classification_accuracy * 100).toFixed(1)}%</b></li>
-            <li>주요 채널: <b>${channelList}</b></li>
-            <li>상태별 분포: <b>${JSON.stringify(summary.status_distribution || {})}</b></li>
+            <li><strong>전체 CS 건수:</strong> <b>${totalCount.toLocaleString()}건</b></li>
+            <li><strong>카테고리별:</strong>
+                <ul style="margin-left: 20px; margin-top: 5px;">
+                    ${categoryList || '<li>데이터 없음</li>'}
+                </ul>
+            </li>
+            <li><strong>해결률:</strong>
+                <ul style="margin-left: 20px; margin-top: 5px;">
+                    ${resolutionList || '<li>데이터 없음</li>'}
+                </ul>
+            </li>
         `;
     }
     
-    async renderInsights(insights) {
-        console.log('인사이트 렌더링 시작...');
+    renderInsights(insight, overallInsight) {
+        console.log('인사이트 렌더링 시작...', insight, overallInsight);
         
         const container = document.querySelector('#report .card:nth-child(3) .subtle');
         if (!container) return;
         
         let insightsHTML = '';
         
-        if (insights.insights && insights.insights.length > 0) {
-            insights.insights.forEach(insight => {
+        // 카테고리별 인사이트
+        if (insight && Object.keys(insight).length > 0) {
+            insightsHTML += '<li><strong>카테고리별 인사이트:</strong><ul style="margin-left: 20px; margin-top: 5px;">';
+            
+            Object.entries(insight).forEach(([category, data]) => {
                 insightsHTML += `
                     <li>
-                        <strong>${insight.title}</strong><br/>
-                        ${insight.description}
-                        <span class="priority-badge ${insight.priority}">${insight.priority}</span>
+                        <strong>${category}</strong>
+                        <ul style="margin-left: 15px; font-size: 14px;">
+                            <li>문제점: ${data.issue || '-'}</li>
+                            <li>단기: ${data.short_term || '-'}</li>
+                            <li>장기: ${data.long_term || '-'}</li>
+                        </ul>
                     </li>
                 `;
             });
-        } else {
+            
+            insightsHTML += '</ul></li>';
+        }
+        
+        // 종합 인사이트
+        if (overallInsight) {
+            insightsHTML += '<li><strong>종합적 인사이트:</strong><ul style="margin-left: 20px; margin-top: 5px;">';
+            
+            if (overallInsight.short_term) {
+                insightsHTML += `<li><strong>단기:</strong> ${overallInsight.short_term}</li>`;
+            }
+            if (overallInsight.long_term) {
+                insightsHTML += `<li><strong>장기:</strong> ${overallInsight.long_term}</li>`;
+            }
+            if (overallInsight.notable) {
+                insightsHTML += `<li><strong>특이사항:</strong> ${overallInsight.notable}</li>`;
+            }
+            
+            insightsHTML += '</ul></li>';
+        }
+        
+        if (!insightsHTML) {
             insightsHTML = '<li>AI 인사이트 분석 중...</li>';
         }
         
         container.innerHTML = insightsHTML;
     }
     
-    async renderSolutions(solutions) {
-        console.log('솔루션 렌더링 시작...');
+    renderSolutions(solution) {
+        console.log('솔루션 렌더링 시작...', solution);
         
         const container = document.querySelector('#report .card:last-child .subtle');
         if (!container) return;
         
         let solutionsHTML = '';
         
-        if (solutions.solutions && solutions.solutions.length > 0) {
-            solutions.solutions.forEach(solution => {
+        // 단기 솔루션
+        if (solution.short_term && solution.short_term.length > 0) {
+            solutionsHTML += '<li><strong>단기 (1~6개월):</strong><ul style="margin-left: 20px; margin-top: 5px;">';
+            
+            solution.short_term.forEach((item, index) => {
                 solutionsHTML += `
                     <li>
-                        <strong>${solution.name}</strong><br/>
-                        ${solution.description}<br/>
-                        <span style="color: var(--muted); font-size: 12px;">
-                            예상 효과: ${solution.expected_impact} | 
-                            난이도: <span class="difficulty-badge ${solution.difficulty}">${solution.difficulty}</span>
-                        </span>
+                        <strong>${item.suggestion}</strong><br/>
+                        <span style="color: #666; font-size: 13px;">→ ${item.expected_effect}</span>
                     </li>
                 `;
             });
-        } else {
+            
+            solutionsHTML += '</ul></li>';
+        }
+        
+        // 장기 솔루션
+        if (solution.long_term && solution.long_term.length > 0) {
+            solutionsHTML += '<li><strong>장기 (6개월~2년):</strong><ul style="margin-left: 20px; margin-top: 5px;">';
+            
+            solution.long_term.forEach((item, index) => {
+                solutionsHTML += `
+                    <li>
+                        <strong>${item.suggestion}</strong><br/>
+                        <span style="color: #666; font-size: 13px;">→ ${item.expected_effect}</span>
+                    </li>
+                `;
+            });
+            
+            solutionsHTML += '</ul></li>';
+        }
+        
+        if (!solutionsHTML) {
             solutionsHTML = '<li>솔루션 분석 중...</li>';
         }
         

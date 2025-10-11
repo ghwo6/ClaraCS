@@ -9,8 +9,8 @@ class ReportService:
     """리포트 관련 비즈니스 로직 서비스
     
     Note: 
-        - 실제 DB 스키마 기반으로 동작
-        - file_id 기반으로 리포트 생성
+        - 최신 업로드 파일 자동 선택
+        - GPT 기반 통합 분석 (데이터 요약, 인사이트, 솔루션)
         - 생성된 리포트는 스냅샷으로 저장
     """
     
@@ -18,93 +18,86 @@ class ReportService:
         self.report_db = ReportDB()
         self.ai_service = ai_service
     
-    def generate_report(self, file_id: int, user_id: int = 1, start_date: str = None, end_date: str = None) -> dict:
-        """분석 리포트 생성
+    def generate_report(self, user_id: int = 1, file_id: int = None) -> dict:
+        """분석 리포트 생성 - GPT 기반 통합 분석
         
         Args:
-            file_id: 파일 ID (필수)
             user_id: 사용자 ID (기본값 1)
-            start_date: 시작 날짜 (선택사항)
-            end_date: 종료 날짜 (선택사항)
+            file_id: 파일 ID (선택사항, None이면 최신 파일 사용)
         
         Returns:
-            dict: 리포트 데이터 + report_id
+            dict: 리포트 데이터 (summary, insight, overall_insight, solution)
         """
-        logger.info(f"파일 {file_id}의 리포트 생성 시작 (user_id: {user_id})")
+        logger.info(f"리포트 생성 시작 (user_id: {user_id}, file_id: {file_id})")
         
         try:
-            # 1. 리포트 레코드 생성
-            report_title = f"분석 리포트_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-            report_id = self.report_db.create_report(file_id, user_id, 'full_analysis', report_title)
+            # 1. file_id가 없으면 최신 파일 선택
+            if not file_id:
+                file_id = self.report_db.get_latest_file_id(user_id)
+                if not file_id:
+                    raise ValueError("분석할 데이터가 없습니다. 먼저 파일을 업로드하고 자동 분류를 실행하세요.")
+                logger.info(f"최신 파일 자동 선택: file_id={file_id}")
+            
+            # 2. 리포트 레코드 생성
+            report_title = f"AI 분석 리포트_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+            report_id = self.report_db.create_report(file_id, user_id, 'ai_analysis', report_title)
             
             if not report_id:
                 raise Exception("리포트 레코드 생성 실패")
             
-            # 2. 채널별 추이 데이터 생성
-            logger.info("채널별 추이 데이터 생성 중...")
-            channel_trends = self.report_db.get_channel_trend_data(file_id)
+            logger.info(f"리포트 레코드 생성 완료: report_id={report_id}")
             
-            # 3. 데이터 요약 생성
-            logger.info("데이터 요약 생성 중...")
-            summary = self.report_db.get_summary_data(file_id)
+            # 3. CS 데이터 조회 (분류 결과 기반)
+            logger.info("CS 데이터 조회 중...")
+            cs_data = self.report_db.get_cs_analysis_data(file_id)
             
-            # 4. AI 분석용 데이터 준비
-            logger.info("AI 분석 데이터 준비 중...")
-            ai_analysis_data = self.report_db.get_ai_analysis_data(file_id)
+            if not cs_data or cs_data['total_tickets'] == 0:
+                raise ValueError("분류된 CS 데이터가 없습니다. 먼저 자동 분류를 실행하세요.")
             
-            # 5. AI 인사이트 분석
-            logger.info("AI 인사이트 분석 중...")
-            insights = self.ai_service.analyze_cs_insights(ai_analysis_data)
+            # 4. GPT 기반 통합 분석 (한 번의 호출로 모든 섹션 생성)
+            logger.info("GPT 기반 통합 분석 시작...")
+            analysis_result = self.ai_service.generate_comprehensive_report(cs_data)
             
-            # 6. 솔루션 제안 생성
-            logger.info("솔루션 제안 생성 중...")
-            solutions = self.ai_service.generate_solution_recommendations(insights)
+            # 5. 스냅샷 저장 (DB에 영구 보관)
+            logger.info("분석 결과 스냅샷 저장 중...")
+            self._save_analysis_snapshot(report_id, analysis_result)
             
-            # 7. 스냅샷 저장
-            logger.info("스냅샷 저장 중...")
-            self._save_snapshots(report_id, channel_trends, summary, insights, solutions)
-            
-            # 8. 리포트 완료 처리
+            # 6. 리포트 완료 처리
             self.report_db.complete_report(report_id)
             
-            # 9. 응답 데이터 구성
+            # 7. 응답 데이터 구성
             report_data = {
                 'report_id': report_id,
                 'file_id': file_id,
-                'channel_trends': channel_trends,
-                'summary': summary,
-                'insights': insights,
-                'solutions': solutions,
+                'summary': analysis_result.get('summary', {}),
+                'insight': analysis_result.get('insight', {}),
+                'overall_insight': analysis_result.get('overall_insight', {}),
+                'solution': analysis_result.get('solution', {}),
                 'generated_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             }
             
-            logger.info(f"파일 {file_id}의 리포트 생성 완료 (report_id: {report_id})")
+            logger.info(f"리포트 생성 완료 (report_id: {report_id}, file_id: {file_id})")
             return report_data
             
         except Exception as e:
             logger.error(f"리포트 생성 실패: {e}")
             raise
     
-    def _save_snapshots(self, report_id: int, channel_trends: dict, summary: dict, 
-                       insights: dict, solutions: dict):
-        """생성된 리포트 데이터를 스냅샷으로 저장"""
+    def _save_analysis_snapshot(self, report_id: int, analysis_result: dict):
+        """GPT 분석 결과를 스냅샷으로 저장"""
         try:
-            # 요약 스냅샷 저장
-            summary_snapshot = {
-                'total_tickets': summary.get('total_tickets', 0),
-                'resolved_count': summary.get('status_distribution', {}),
-                'category_ratios': {},  # 카테고리 비율 계산 필요
-                'repeat_rate': 0.0  # 반복 문의율 계산 필요
+            # 전체 분석 결과를 하나의 JSON으로 저장
+            full_snapshot = {
+                'summary': analysis_result.get('summary', {}),
+                'insight': analysis_result.get('insight', {}),
+                'overall_insight': analysis_result.get('overall_insight', {}),
+                'solution': analysis_result.get('solution', {})
             }
-            self.report_db.save_summary_snapshot(report_id, summary_snapshot)
             
-            # 인사이트 스냅샷 저장
-            self.report_db.save_insight_snapshot(report_id, insights)
+            # 인사이트 스냅샷 테이블에 통합 저장
+            self.report_db.save_insight_snapshot(report_id, full_snapshot)
             
-            # 솔루션 스냅샷 저장
-            self.report_db.save_solution_snapshot(report_id, solutions)
-            
-            logger.info(f"리포트 {report_id}의 스냅샷 저장 완료")
+            logger.info(f"리포트 {report_id}의 분석 스냅샷 저장 완료")
             
         except Exception as e:
             logger.error(f"스냅샷 저장 실패: {e}")

@@ -14,6 +14,47 @@ class ReportDB:
         self.db_manager = db_manager
     
     # ========================================
+    # 파일 관련 조회
+    # ========================================
+    
+    def get_latest_file_id(self, user_id: int) -> Optional[int]:
+        """사용자의 최신 업로드 파일 ID 조회"""
+        logger.info(f"사용자 {user_id}의 최신 파일 조회")
+        
+        connection = self.db_manager.get_connection()
+        cursor = connection.cursor(dictionary=True)
+        
+        try:
+            query = """
+                SELECT file_id
+                FROM tb_uploaded_file
+                WHERE user_id = %s
+                  AND status = 'processed'
+                  AND (is_deleted IS NULL OR is_deleted = FALSE)
+                ORDER BY created_at DESC
+                LIMIT 1
+            """
+            
+            cursor.execute(query, [user_id])
+            result = cursor.fetchone()
+            
+            if result:
+                file_id = result['file_id']
+                logger.info(f"최신 파일 조회 완료: file_id={file_id}")
+                return file_id
+            else:
+                logger.warning(f"사용자 {user_id}의 업로드 파일이 없습니다")
+                return None
+                
+        except Exception as e:
+            logger.error(f"최신 파일 조회 실패: {e}")
+            return None
+        finally:
+            cursor.close()
+            if connection and connection.is_connected():
+                connection.close()
+    
+    # ========================================
     # 티켓 관련 조회
     # ========================================
     
@@ -57,6 +98,8 @@ class ReportDB:
             return pd.DataFrame()
         finally:
             cursor.close()
+            if connection and connection.is_connected():
+                connection.close()
     
     def get_tickets_by_user(self, user_id: int) -> pd.DataFrame:
         """사용자 ID로 모든 티켓 조회"""
@@ -88,6 +131,8 @@ class ReportDB:
             return pd.DataFrame()
         finally:
             cursor.close()
+            if connection and connection.is_connected():
+                connection.close()
     
     # ========================================
     # 분류 결과 조회
@@ -101,12 +146,12 @@ class ReportDB:
         cursor = connection.cursor(dictionary=True)
         
         try:
+            # tb_classification_result 테이블에 file_id가 직접 있음 (JOIN 불필요)
             query = """
-                SELECT cr.class_result_id
-                FROM tb_classification_result cr
-                JOIN tb_ticket t ON cr.ticket_id = t.ticket_id
-                WHERE t.file_id = %s
-                ORDER BY cr.classified_at DESC
+                SELECT class_result_id
+                FROM tb_classification_result
+                WHERE file_id = %s
+                ORDER BY classified_at DESC
                 LIMIT 1
             """
             
@@ -125,6 +170,8 @@ class ReportDB:
             return None
         finally:
             cursor.close()
+            if connection and connection.is_connected():
+                connection.close()
     
     def get_category_results(self, class_result_id: int) -> List[Dict]:
         """카테고리별 분류 결과 조회"""
@@ -164,6 +211,8 @@ class ReportDB:
             return []
         finally:
             cursor.close()
+            if connection and connection.is_connected():
+                connection.close()
     
     def get_channel_results(self, class_result_id: int) -> List[Dict]:
         """채널별 분류 결과 조회"""
@@ -198,6 +247,8 @@ class ReportDB:
             return []
         finally:
             cursor.close()
+            if connection and connection.is_connected():
+                connection.close()
     
     # ========================================
     # 리포트 데이터 조회 (프론트엔드용)
@@ -279,6 +330,8 @@ class ReportDB:
             return {}
         finally:
             cursor.close()
+            if connection and connection.is_connected():
+                connection.close()
     
     def get_summary_data(self, file_id: int) -> dict:
         """데이터 요약 정보 조회"""
@@ -355,10 +408,12 @@ class ReportDB:
             }
         finally:
             cursor.close()
+            if connection and connection.is_connected():
+                connection.close()
     
-    def get_ai_analysis_data(self, file_id: int) -> dict:
-        """AI 분석용 데이터 조회"""
-        logger.info(f"파일 {file_id}의 AI 분석 데이터 조회")
+    def get_cs_analysis_data(self, file_id: int) -> dict:
+        """CS 분석용 데이터 조회 - GPT 프롬프트에 사용할 데이터"""
+        logger.info(f"파일 {file_id}의 CS 분석 데이터 조회")
         
         connection = self.db_manager.get_connection()
         cursor = connection.cursor(dictionary=True)
@@ -366,12 +421,37 @@ class ReportDB:
         try:
             class_result_id = self.get_latest_classification_result(file_id)
             
-            # 1. 카테고리별 티켓 분포
-            category_distribution = []
-            if class_result_id:
-                category_distribution = self.get_category_results(class_result_id)
+            if not class_result_id:
+                logger.warning(f"파일 {file_id}의 분류 결과가 없습니다")
+                return {
+                    'total_tickets': 0,
+                    'category_distribution': [],
+                    'channel_distribution': [],
+                    'status_distribution': {}
+                }
             
-            # 2. 채널별 티켓 분포
+            # 1. 총 티켓 수
+            cursor.execute("""
+                SELECT COUNT(*) as total_tickets
+                FROM tb_ticket
+                WHERE file_id = %s
+            """, [file_id])
+            total_tickets = cursor.fetchone()['total_tickets']
+            
+            # 2. 카테고리별 분포 (분류 결과 기반)
+            category_distribution = []
+            category_results = self.get_category_results(class_result_id)
+            
+            for cat_result in category_results:
+                category_distribution.append({
+                    'category_name': cat_result['category_name'],
+                    'count': cat_result['count'],
+                    'ratio': cat_result['ratio'],
+                    'percentage': round(cat_result['ratio'] * 100, 1),  # % 변환
+                    'keywords': cat_result.get('example_keywords', [])[:5]  # 상위 5개 키워드
+                })
+            
+            # 3. 채널별 분포
             cursor.execute("""
                 SELECT channel, COUNT(*) as count
                 FROM tb_ticket
@@ -379,64 +459,80 @@ class ReportDB:
                 GROUP BY channel
                 ORDER BY count DESC
             """, [file_id])
-            channel_distribution = cursor.fetchall()
+            channel_rows = cursor.fetchall()
             
-            # 3. 문의 유형별 분포
-            cursor.execute("""
-                SELECT inquiry_type, COUNT(*) as count
-                FROM tb_ticket
-                WHERE file_id = %s AND inquiry_type IS NOT NULL
-                GROUP BY inquiry_type
-                ORDER BY count DESC
-            """, [file_id])
-            inquiry_type_distribution = cursor.fetchall()
+            channel_distribution = []
+            for row in channel_rows:
+                channel_distribution.append({
+                    'channel': row['channel'] or '미분류',
+                    'count': row['count'],
+                    'percentage': round((row['count'] / total_tickets * 100), 1) if total_tickets > 0 else 0
+                })
             
-            # 4. 최근 7일간 추세
+            # 4. 상태별 분포 (해결률 계산용)
             cursor.execute("""
-                SELECT 
-                    DATE(received_at) as date,
-                    COUNT(*) as count
+                SELECT status, COUNT(*) as count
                 FROM tb_ticket
                 WHERE file_id = %s
-                AND received_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
-                GROUP BY DATE(received_at)
-                ORDER BY date
+                GROUP BY status
             """, [file_id])
-            recent_trend = cursor.fetchall()
+            status_rows = cursor.fetchall()
             
-            # 5. 키워드 추출 (카테고리별 예시 키워드에서)
-            top_keywords = []
-            if class_result_id:
-                for cat_result in category_distribution:
-                    if cat_result.get('example_keywords'):
-                        keywords = cat_result['example_keywords']
-                        if isinstance(keywords, list):
-                            top_keywords.extend(keywords)
+            status_distribution = {}
+            for row in status_rows:
+                status_distribution[row['status']] = {
+                    'count': row['count'],
+                    'percentage': round((row['count'] / total_tickets * 100), 1) if total_tickets > 0 else 0
+                }
             
-            ai_analysis_data = {
+            # 5. 채널별 해결률 계산 (status='closed' 기준)
+            cursor.execute("""
+                SELECT 
+                    channel,
+                    COUNT(*) as total,
+                    SUM(CASE WHEN status = 'closed' THEN 1 ELSE 0 END) as resolved
+                FROM tb_ticket
+                WHERE file_id = %s
+                GROUP BY channel
+            """, [file_id])
+            channel_resolution = cursor.fetchall()
+            
+            channel_resolution_rates = []
+            for row in channel_resolution:
+                resolution_rate = round((row['resolved'] / row['total'] * 100), 1) if row['total'] > 0 else 0
+                channel_resolution_rates.append({
+                    'channel': row['channel'] or '미분류',
+                    'total': row['total'],
+                    'resolved': row['resolved'],
+                    'resolution_rate': resolution_rate
+                })
+            
+            cs_analysis_data = {
+                'total_tickets': total_tickets,
                 'category_distribution': category_distribution,
                 'channel_distribution': channel_distribution,
-                'inquiry_type_distribution': inquiry_type_distribution,
-                'top_keywords': list(set(top_keywords))[:20],  # 중복 제거 후 상위 20개
-                'recent_trend': recent_trend,
+                'status_distribution': status_distribution,
+                'channel_resolution_rates': channel_resolution_rates,
                 'class_result_id': class_result_id
             }
             
-            logger.info(f"AI 분석 데이터 조회 완료")
-            return ai_analysis_data
+            logger.info(f"CS 분석 데이터 조회 완료: 총 {total_tickets}건")
+            return cs_analysis_data
             
         except Exception as e:
-            logger.error(f"AI 분석 데이터 조회 실패: {e}")
+            logger.error(f"CS 분석 데이터 조회 실패: {e}")
             return {
+                'total_tickets': 0,
                 'category_distribution': [],
                 'channel_distribution': [],
-                'inquiry_type_distribution': [],
-                'top_keywords': [],
-                'recent_trend': [],
+                'status_distribution': {},
+                'channel_resolution_rates': [],
                 'class_result_id': None
             }
         finally:
             cursor.close()
+            if connection and connection.is_connected():
+                connection.close()
     
     # ========================================
     # 리포트 저장 (스냅샷)
@@ -469,6 +565,8 @@ class ReportDB:
             return None
         finally:
             cursor.close()
+            if connection and connection.is_connected():
+                connection.close()
     
     def save_channel_snapshot(self, report_id: int, channel_data: List[Dict]) -> bool:
         """채널 스냅샷 저장"""
@@ -503,6 +601,8 @@ class ReportDB:
             return False
         finally:
             cursor.close()
+            if connection and connection.is_connected():
+                connection.close()
     
     def save_summary_snapshot(self, report_id: int, summary_data: Dict) -> bool:
         """요약 스냅샷 저장"""
@@ -536,6 +636,8 @@ class ReportDB:
             return False
         finally:
             cursor.close()
+            if connection and connection.is_connected():
+                connection.close()
     
     def save_insight_snapshot(self, report_id: int, insights: Dict) -> bool:
         """인사이트 스냅샷 저장"""
@@ -563,6 +665,8 @@ class ReportDB:
             return False
         finally:
             cursor.close()
+            if connection and connection.is_connected():
+                connection.close()
     
     def save_solution_snapshot(self, report_id: int, solutions: Dict) -> bool:
         """솔루션 스냅샷 저장"""
@@ -590,6 +694,8 @@ class ReportDB:
             return False
         finally:
             cursor.close()
+            if connection and connection.is_connected():
+                connection.close()
     
     def complete_report(self, report_id: int, file_path: str = None) -> bool:
         """리포트 완료 처리"""
@@ -620,6 +726,8 @@ class ReportDB:
             return False
         finally:
             cursor.close()
+            if connection and connection.is_connected():
+                connection.close()
     
     def _get_current_timestamp(self) -> str:
         """현재 타임스탬프 반환"""
