@@ -4,6 +4,7 @@ import pandas as pd
 from typing import Dict, List, Any, Optional
 from datetime import datetime
 import json
+import decimal
 
 logger = get_logger(__name__)
 
@@ -298,23 +299,30 @@ class ReportDB:
             for row in results:
                 channel = row['channel'] or '미분류'
                 category = row['category_name'] or '미분류'
-                date = row['date'].strftime('%m-%d') if row['date'] else ''
+                
+                # 날짜 형식: YYYY-MM-DD (DB 저장용 전체 날짜)
+                date_full = row['date'].strftime('%Y-%m-%d') if row['date'] else ''
+                # 표시용 날짜: MM-DD (프론트엔드용)
+                date_display = row['date'].strftime('%m-%d') if row['date'] else ''
+                
                 count = row['count']
                 
                 if channel not in channel_trends:
                     channel_trends[channel] = {
                         'categories': [],
-                        'dates': [],
+                        'dates': [],  # 표시용 (MM-DD)
+                        'dates_full': [],  # DB 저장용 (YYYY-MM-DD)
                         'data': []
                     }
                 
                 if category not in channel_trends[channel]['categories']:
                     channel_trends[channel]['categories'].append(category)
                 
-                if date not in channel_trends[channel]['dates']:
-                    channel_trends[channel]['dates'].append(date)
+                if date_display not in channel_trends[channel]['dates']:
+                    channel_trends[channel]['dates'].append(date_display)
+                    channel_trends[channel]['dates_full'].append(date_full)
                 
-                date_idx = channel_trends[channel]['dates'].index(date)
+                date_idx = channel_trends[channel]['dates'].index(date_display)
                 cat_idx = channel_trends[channel]['categories'].index(category)
                 
                 # data 배열 초기화
@@ -594,28 +602,46 @@ class ReportDB:
             """
             
             snapshot_count = 0
+            current_year = datetime.now().year
             
-            # channel_trends 구조: {channel: {categories: [...], dates: [...], data: [[...]]}}
+            # channel_trends 구조: {channel: {categories: [...], dates: [...], dates_full: [...], data: [[...]]}}
             for channel, trend_data in channel_trends.items():
                 categories = trend_data.get('categories', [])
-                dates = trend_data.get('dates', [])
+                dates = trend_data.get('dates', [])  # 표시용 (MM-DD)
+                dates_full = trend_data.get('dates_full', [])  # DB 저장용 (YYYY-MM-DD)
                 data_matrix = trend_data.get('data', [])
                 
                 # 날짜별, 카테고리별 데이터 저장
-                for date_idx, date in enumerate(dates):
+                for date_idx, date_display in enumerate(dates):
                     if date_idx < len(data_matrix):
+                        # DB 저장용 전체 날짜 가져오기
+                        full_date = dates_full[date_idx] if date_idx < len(dates_full) else None
+                        
+                        if not full_date:
+                            # 혹시 dates_full이 없으면 현재 연도로 변환
+                            if date_display and '-' in date_display and len(date_display.split('-')) == 2:
+                                month, day = date_display.split('-')
+                                full_date = f"{current_year}-{month}-{day}"
+                            else:
+                                logger.warning(f"날짜 형식 오류: {date_display}, 건너뜀")
+                                continue
+                        
                         for cat_idx, category in enumerate(categories):
                             count = data_matrix[date_idx][cat_idx] if cat_idx < len(data_matrix[date_idx]) else 0
                             
                             # 카테고리 ID 조회
                             category_id = category_map.get(category)
                             
+                            if not category_id:
+                                logger.warning(f"카테고리 '{category}' ID를 찾을 수 없습니다. 건너뜀")
+                                continue
+                            
                             cursor.execute(query, (
                                 report_id,
                                 channel,
-                                date,  # time_period (날짜 문자열)
+                                full_date,  # YYYY-MM-DD 형식
                                 category_id,
-                                count
+                                int(count) if count else 0
                             ))
                             snapshot_count += 1
             
@@ -625,6 +651,7 @@ class ReportDB:
             
         except Exception as e:
             logger.error(f"채널 스냅샷 저장 실패: {e}")
+            logger.error(f"상세 오류: {str(e)}", exc_info=True)
             connection.rollback()
             return False
         finally:
@@ -640,18 +667,33 @@ class ReportDB:
         cursor = connection.cursor()
         
         try:
+            # Decimal을 float로 변환하는 헬퍼 함수
+            def convert_decimals(obj):
+                """Decimal 타입을 float로 변환"""
+                if isinstance(obj, dict):
+                    return {k: convert_decimals(v) for k, v in obj.items()}
+                elif isinstance(obj, list):
+                    return [convert_decimals(item) for item in obj]
+                elif isinstance(obj, decimal.Decimal):
+                    return float(obj)
+                return obj
+            
             query = """
                 INSERT INTO tb_analysis_summary_snapshot
                 (report_id, total_tickets, resolved_count, category_ratios, repeat_rate, created_at)
                 VALUES (%s, %s, %s, %s, %s, NOW())
             """
             
+            # Decimal 변환 적용
+            resolved_count = convert_decimals(summary_data.get('resolved_count', {}))
+            category_ratios = convert_decimals(summary_data.get('category_ratios', {}))
+            
             cursor.execute(query, (
                 report_id,
-                summary_data.get('total_tickets', 0),
-                json.dumps(summary_data.get('resolved_count', {})),
-                json.dumps(summary_data.get('category_ratios', {})),
-                summary_data.get('repeat_rate', 0.0)
+                int(summary_data.get('total_tickets', 0)),
+                json.dumps(resolved_count, ensure_ascii=False),
+                json.dumps(category_ratios, ensure_ascii=False),
+                float(summary_data.get('repeat_rate', 0.0))
             ))
             
             connection.commit()

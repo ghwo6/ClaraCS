@@ -174,22 +174,7 @@ class ReportManager {
         const datasets = [];
         const categoryColors = this.getCategoryColors();
         
-        // 1. 카테고리별 스택 막대그래프
-        categories.forEach((category, catIdx) => {
-            const categoryData = dataMatrix.map(row => row[catIdx] || 0);
-            
-            datasets.push({
-                type: 'bar',
-                label: category,
-                data: categoryData,
-                backgroundColor: categoryColors[category] || this.getRandomColor(catIdx),
-                borderColor: categoryColors[category] || this.getRandomColor(catIdx),
-                borderWidth: 1,
-                stack: 'stack1'  // 스택 그룹
-            });
-        });
-        
-        // 2. 전체 합계 꺾은선 그래프
+        // 2. 전체 합계 꺾은선 그래프 (먼저 추가 → 막대 위에 표시)
         const totalData = dataMatrix.map(row => 
             row.reduce((sum, val) => sum + (val || 0), 0)
         );
@@ -203,9 +188,29 @@ class ReportManager {
             borderWidth: 2,
             fill: false,
             tension: 0.3,
-            pointRadius: 4,
+            pointRadius: 2,  // 작은 점
+            pointHoverRadius: 4,  // 호버 시 크기
             pointBackgroundColor: '#e74c3c',
-            yAxisID: 'y'
+            pointBorderColor: '#fff',
+            pointBorderWidth: 1,
+            yAxisID: 'y',
+            order: 1  // ✅ 막대 위에 표시 (낮은 숫자 = 위)
+        });
+        
+        // 1. 카테고리별 스택 막대그래프 (나중에 추가 → 아래 레이어)
+        categories.forEach((category, catIdx) => {
+            const categoryData = dataMatrix.map(row => row[catIdx] || 0);
+            
+            datasets.push({
+                type: 'bar',
+                label: category,
+                data: categoryData,
+                backgroundColor: categoryColors[category] || this.getRandomColor(catIdx),
+                borderColor: categoryColors[category] || this.getRandomColor(catIdx),
+                borderWidth: 1,
+                stack: 'stack1',  // 스택 그룹
+                order: 2  // ✅ 아래 레이어
+            });
         });
         
         // Chart.js 설정
