@@ -47,14 +47,16 @@
       <div class="head">
         <h2>분석 리포트 (요약/인사이트)</h2>
         <div class="toolbar">
-          <button class="btn" id="btn-template-select">템플릿 선택</button>
+          <!-- <button class="btn" id="btn-template-select">템플릿 선택</button> -->
           <button class="btn save" id="btn-generate-report">리포트 생성</button>
         </div>
       </div>
       <div class="body grid cols-2">
-        <div class="card">
+        <div class="card" id="channel-trends-card">
           <strong>채널별 추이</strong>
-          <div class="chart-box">차트 영역 (스택 바)</div>
+          <div class="chart-box" id="channel-charts-container">
+            <!-- 채널별 차트가 여기에 동적으로 생성됩니다 -->
+          </div>
         </div>
         <div class="card">
           <strong>데이터 요약</strong>
@@ -93,6 +95,15 @@
 
   </main>
 </div>
+<!-- Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<!-- 설정값 전달 -->
+<script>
+    window.DEFAULT_USER_ID = {{ DEFAULT_USER_ID }};
+    window.CHART_DAYS_RANGE = {{ CHART_DAYS_RANGE }};
+</script>
+
 <script type="text/javascript" src="{{ url_for('static', filename='js/sidebar.js') }}"></script>
 <script type="text/javascript" src="{{ url_for('static', filename='js/common.js') }}"></script>
 <script type="text/javascript" src="{{ url_for('static', filename='js/report.js') }}"></script>

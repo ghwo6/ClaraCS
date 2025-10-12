@@ -1,8 +1,9 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, session
 from flasgger.utils import swag_from
 from services.upload import UploadService
 from services.mapping import MappingService
 from utils.logger import get_logger
+from config import Config
 import json
 
 logger = get_logger(__name__)
@@ -17,10 +18,13 @@ def upload_file():
             return jsonify({'success': False, 'message': '파일이 없습니다.'}), 400
         
         file = request.files['file']  # 업로드된 파일 객체
-        user_id = request.form.get('user_id', 1)  # 임시로 1로 설정
+        
+        # user_id 우선순위: 폼 데이터 > 세션 > 환경변수 기본값
+        user_id = request.form.get('user_id') or session.get('user_id') or Config.DEFAULT_USER_ID
+        user_id = int(user_id)
         
         upload_service = UploadService()
-        upload_data = upload_service.upload(file, user_id=int(user_id))
+        upload_data = upload_service.upload(file, user_id=user_id)
         
         return jsonify({
             'success': True,
