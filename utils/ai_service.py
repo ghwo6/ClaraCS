@@ -79,6 +79,55 @@ class AIService:
             logger.error(f"솔루션 제안 생성 실패: {e}")
             return self._get_fallback_solutions()
     
+    def generate_comprehensive_report(self, cs_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        CS 데이터 기반 종합 리포트 생성 (데이터 요약, 인사이트, 솔루션 통합)
+        
+        Args:
+            cs_data: CS 분석 데이터 (카테고리, 채널, 해결률 등)
+            
+        Returns:
+            종합 리포트 (summary, insight, solution)
+        """
+        logger.info("=== GPT 기반 종합 리포트 생성 시작 ===")
+        
+        # API 키 확인
+        if not self.api_key:
+            logger.warning("⚠️  OpenAI API 키가 없습니다. Fallback 리포트를 사용합니다.")
+            logger.warning("환경변수 OPENAI_API_KEY를 설정하면 GPT 기반 분석을 사용할 수 있습니다.")
+            return self._get_fallback_comprehensive_report(cs_data)
+        
+        try:
+            # 프롬프트 구성
+            logger.info("프롬프트 구성 중...")
+            prompt = self._build_comprehensive_report_prompt(cs_data)
+            
+            # OpenAI API 호출
+            logger.info("🤖 GPT API 호출 중... (최대 30초 소요 예상)")
+            import time
+            start_time = time.time()
+            
+            response = self._call_openai_api(prompt, max_tokens=3000)
+            
+            elapsed = time.time() - start_time
+            logger.info(f"✅ GPT API 응답 완료 (소요 시간: {elapsed:.2f}초)")
+            
+            # 응답 파싱
+            logger.info("GPT 응답 파싱 중...")
+            report = self._parse_comprehensive_report_response(response)
+            
+            # AI 생성 메타데이터 추가
+            report['_is_ai_generated'] = True
+            report['_data_source'] = 'gpt-4o-mini'
+            
+            logger.info("=== 종합 리포트 생성 완료 (GPT 기반) ===")
+            return report
+            
+        except Exception as e:
+            logger.error(f"❌ GPT 리포트 생성 실패: {e}")
+            logger.warning("⚠️  Fallback 리포트를 사용합니다.")
+            return self._get_fallback_comprehensive_report(cs_data)
+    
     def _build_analysis_prompt(self, analysis_data: Dict[str, Any]) -> str:
         """인사이트 분석용 프롬프트 구성"""
         prompt = f"""
@@ -162,26 +211,44 @@ JSON 형식으로 응답해주세요:
 """
         return prompt
     
-    def _call_openai_api(self, prompt: str) -> str:
+    def _call_openai_api(self, prompt: str, max_tokens: int = 2000) -> str:
         """OpenAI API 호출"""
         if not self.api_key:
             raise Exception("OpenAI API 키가 설정되지 않았습니다.")
         
         try:
+            logger.info(f"GPT 모델 호출: gpt-4o-mini (max_tokens={max_tokens})")
+            logger.info(f"API 키 앞 10자: {self.api_key[:10]}... (총 길이: {len(self.api_key)})")
+            
             response = openai.ChatCompletion.create(
-                model="gpt-3.5-turbo",
+                model="gpt-4o-mini",  # gpt-3.5-turbo → gpt-4o-mini (더 빠르고 저렴)
                 messages=[
                     {"role": "system", "content": "당신은 CS 데이터 분석 전문가입니다. 정확하고 실용적인 인사이트와 솔루션을 제공해주세요."},
                     {"role": "user", "content": prompt}
                 ],
-                max_tokens=2000,
+                max_tokens=max_tokens,
                 temperature=0.7
             )
             
-            return response.choices[0].message.content
+            content = response.choices[0].message.content
+            logger.info(f"GPT 응답 수신 완료 (길이: {len(content)} chars)")
             
+            return content
+            
+        except openai.error.AuthenticationError as e:
+            logger.error(f"❌ OpenAI 인증 실패: API 키가 유효하지 않습니다.")
+            logger.error(f"상세 오류: {str(e)}")
+            raise Exception("OpenAI API 키가 유효하지 않습니다. .env 파일의 OPENAI_API_KEY를 확인하세요.")
+        except openai.error.RateLimitError as e:
+            logger.error(f"❌ OpenAI 사용량 초과: {e}")
+            raise Exception("OpenAI API 사용량 한도를 초과했습니다. 잠시 후 다시 시도하세요.")
+        except openai.error.InvalidRequestError as e:
+            logger.error(f"❌ OpenAI 잘못된 요청: {e}")
+            raise Exception(f"OpenAI API 요청 오류: {str(e)}")
         except Exception as e:
-            logger.error(f"OpenAI API 호출 실패: {e}")
+            logger.error(f"❌ OpenAI API 호출 실패: {e}")
+            logger.error(f"오류 타입: {type(e).__name__}")
+            logger.error(f"상세 오류: {str(e)}")
             raise
     
     def _parse_analysis_response(self, response: str) -> Dict[str, Any]:
@@ -293,6 +360,258 @@ JSON 형식으로 응답해주세요:
                     "resources": "기본 자원"
                 }
             ]
+        }
+    
+    def _build_comprehensive_report_prompt(self, cs_data: Dict[str, Any]) -> str:
+        """종합 리포트 생성용 프롬프트 구성 (개선된 JSON 구조)"""
+        
+        # CS 데이터를 읽기 쉬운 형식으로 변환
+        total_tickets = cs_data.get('total_tickets', 0)
+        
+        # Decimal을 float로 변환하는 헬퍼 함수
+        def safe_float(value, default=0.0):
+            """Decimal, int, float를 안전하게 float로 변환"""
+            try:
+                return float(value) if value is not None else default
+            except (ValueError, TypeError):
+                return default
+        
+        def safe_int(value, default=0):
+            """값을 안전하게 int로 변환"""
+            try:
+                return int(value) if value is not None else default
+            except (ValueError, TypeError):
+                return default
+        
+        # 카테고리별 분포 (category_id 포함)
+        category_info = ""
+        category_list = []
+        for cat in cs_data.get('category_distribution', []):
+            category_info += f"- [ID:{cat.get('category_id', 0)}] {cat['category_name']}: {cat['count']}건 ({cat['percentage']}%)\n"
+            category_list.append({
+                'id': safe_int(cat.get('category_id', 0)),
+                'name': str(cat['category_name']),
+                'count': safe_int(cat['count']),
+                'percentage': safe_float(cat['percentage'])
+            })
+        
+        # 채널별 분포
+        channel_info = ""
+        channel_list = []
+        for ch in cs_data.get('channel_distribution', []):
+            channel_info += f"- {ch['channel']}: {ch['count']}건 ({ch['percentage']}%)\n"
+            channel_list.append({
+                'name': str(ch['channel']),
+                'count': safe_int(ch['count']),
+                'percentage': safe_float(ch['percentage'])
+            })
+        
+        # 채널별 해결률
+        resolution_info = ""
+        resolution_list = []
+        for res in cs_data.get('channel_resolution_rates', []):
+            resolution_info += f"- {res['channel']}: {res['resolution_rate']}% (해결 {res['resolved']}건 / 전체 {res['total']}건)\n"
+            resolution_list.append({
+                'channel': str(res.get('channel', '미분류')),
+                'total': safe_int(res.get('total', 0)),
+                'resolved': safe_int(res.get('resolved', 0)),
+                'resolution_rate': safe_float(res.get('resolution_rate', 0.0))
+            })
+        
+        # JSON 문자열로 변환 (f-string 내부에서 안전하게 사용)
+        category_list_json = json.dumps(category_list, ensure_ascii=False)
+        channel_list_json = json.dumps(channel_list, ensure_ascii=False)
+        resolution_list_json = json.dumps(resolution_list, ensure_ascii=False)
+        
+        prompt = f"""당신은 고객 CS 데이터를 분석하여 자동 분류 및 솔루션을 제안하는 AI 서비스의 분석 전문가입니다.
+
+다음 데이터를 기반으로 아래 4가지 항목에 대해 JSON 형식으로 응답해 주세요.
+
+**CS 데이터:**
+- 전체 CS 건수: {total_tickets}건
+
+**카테고리별 분포:**
+{category_info}
+
+**채널별 분포:**
+{channel_info}
+
+**채널별 해결률:**
+{resolution_info}
+
+**사용 가능한 카테고리 목록 (반드시 정확한 ID와 이름 사용):**
+{category_list_json}
+
+---
+
+**응답 형식 (중요!):**
+
+다음 4가지 항목을 포함한 JSON 형식으로 응답해주세요:
+
+1. **summary**: 전체 CS 건수, 카테고리별 비율, 채널별 해결률
+   - total_cs_count: 전체 건수 (number)
+   - categories: 배열 형태 [{{category_id, category_name, count, percentage}}]
+   - channels: 배열 형태 [{{channel, total, resolved, resolution_rate}}]
+
+2. **insight**: 카테고리별 분석
+   - by_category: 배열 형태 [{{category_id, category_name, priority, issue, short_term_actions, long_term_actions}}]
+   - overall: 종합 인사이트 {{short_term, long_term, notable_issues}}
+
+3. **solution**: 단기/장기 전략 제안
+   - short_term: 배열 [{{category, suggestion, expected_effect, priority, difficulty, timeline}}]
+   - long_term: 배열 [{{category, suggestion, expected_effect, priority, difficulty, timeline}}]
+
+**중요 규칙:**
+- 카테고리 ID와 이름을 반드시 위 목록에서 선택하세요
+- 모든 숫자는 number 타입으로 (문자열 X)
+- 비율은 % 기호 없이 숫자만 (예: 40.0)
+- 배열 형태로 반환하세요
+- 순수한 JSON만 (마크다운 코드 블록 ``` 제외)
+
+예시 (반드시 순수한 JSON만 반환하세요):
+
+다음은 실제 데이터를 기반으로 한 응답 예시입니다. 이 형식을 정확히 따라주세요.
+카테고리 목록: {category_list_json}
+채널 목록: {channel_list_json}
+해결률 데이터: {resolution_list_json}
+
+응답 형식:
+{{
+  "summary": {{
+    "total_cs_count": (숫자),
+    "categories": [
+      {{"category_id": (숫자), "category_name": "이름", "count": (숫자), "percentage": (숫자)}}
+    ],
+    "channels": [
+      {{"channel": "이름", "total": (숫자), "resolved": (숫자), "resolution_rate": (숫자)}}
+    ]
+  }},
+  "insight": {{
+    "by_category": [
+      {{
+        "category_id": (숫자),
+        "category_name": "이름",
+        "priority": "high/medium/low",
+        "issue": "문제점 설명",
+        "short_term_actions": ["액션1", "액션2"],
+        "long_term_actions": ["액션1", "액션2"]
+      }}
+    ],
+    "overall": {{
+      "short_term": "단기 인사이트",
+      "long_term": "장기 인사이트",
+      "notable_issues": ["이슈1", "이슈2"]
+    }}
+  }},
+  "solution": {{
+    "short_term": [
+      {{
+        "category": "카테고리명",
+        "suggestion": "제안 내용",
+        "expected_effect": "기대 효과",
+        "priority": "high/medium/low",
+        "difficulty": "high/medium/low",
+        "timeline": "기간"
+      }}
+    ],
+    "long_term": [
+      {{
+        "category": "품질 관리",
+        "suggestion": "예방형 품질 관리 체계",
+        "expected_effect": "불량률 지속 감소",
+        "priority": "high",
+        "difficulty": "high",
+        "timeline": "6-12개월"
+      }}
+    ]
+  }}
+}}
+"""
+        return prompt
+    
+    def _parse_comprehensive_report_response(self, response: str) -> Dict[str, Any]:
+        """종합 리포트 응답 파싱"""
+        try:
+            # JSON 코드 블록 제거 (```json ... ``` 형식)
+            if '```json' in response:
+                response = response.split('```json')[1].split('```')[0].strip()
+            elif '```' in response:
+                response = response.split('```')[1].split('```')[0].strip()
+            
+            # JSON 파싱
+            report = json.loads(response)
+            
+            # 필수 키 검증 (새 구조에 맞춰 수정)
+            required_keys = ['summary', 'insight', 'solution']
+            for key in required_keys:
+                if key not in report:
+                    logger.warning(f"필수 키 '{key}'가 응답에 없습니다. 기본값 설정")
+                    if key == 'summary':
+                        report[key] = {'total_cs_count': 0, 'categories': [], 'channels': []}
+                    elif key == 'insight':
+                        report[key] = {'by_category': [], 'overall': {}}
+                    elif key == 'solution':
+                        report[key] = {'short_term': [], 'long_term': []}
+            
+            logger.info(f"GPT 응답 파싱 성공")
+            return report
+            
+        except json.JSONDecodeError as e:
+            logger.error(f"❌ JSON 파싱 실패: {e}")
+            logger.error(f"원본 응답 (처음 500자): {response[:500]}")
+            return self._get_fallback_comprehensive_report({})
+        except Exception as e:
+            logger.error(f"❌ 응답 파싱 중 오류: {e}")
+            logger.error(f"오류 타입: {type(e).__name__}")
+            return self._get_fallback_comprehensive_report({})
+    
+    def _get_fallback_comprehensive_report(self, cs_data: Dict[str, Any]) -> Dict[str, Any]:
+        """API 실패 시 대체 리포트 (개선된 JSON 구조) - DB 데이터 활용"""
+        logger.info("Fallback 리포트 생성: DB 데이터 기반 요약만 제공")
+        
+        total_tickets = cs_data.get('total_tickets', 0)
+        
+        # 카테고리 데이터 변환 (DB에서 가져온 실제 데이터)
+        categories = []
+        for cat in cs_data.get('category_distribution', []):
+            categories.append({
+                'category_id': cat.get('category_id', 0),
+                'category_name': cat['category_name'],
+                'count': cat['count'],
+                'percentage': cat['percentage']
+            })
+        
+        # 채널 데이터 변환 (DB에서 가져온 실제 데이터)
+        channels = []
+        for res in cs_data.get('channel_resolution_rates', []):
+            channels.append({
+                'channel': res['channel'],
+                'total': res['total'],
+                'resolved': res['resolved'],
+                'resolution_rate': res['resolution_rate']
+            })
+        
+        return {
+            "summary": {
+                "total_cs_count": total_tickets,
+                "categories": categories,
+                "channels": channels
+            },
+            "insight": {
+                "by_category": [],  # AI 없이는 빈 배열
+                "overall": {
+                    "short_term": "",
+                    "long_term": "",
+                    "notable_issues": []
+                }
+            },
+            "solution": {
+                "short_term": [],  # AI 없이는 빈 배열
+                "long_term": []
+            },
+            "_is_ai_generated": False,  # Fallback 표시
+            "_data_source": "fallback",
+            "_fallback_reason": "OpenAI API 연동 실패"
         }
 
 # 싱글톤 인스턴스

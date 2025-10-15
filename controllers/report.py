@@ -1,7 +1,8 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, session
 from flasgger.utils import swag_from
 from services.report import ReportService
 from utils.logger import get_logger
+from config import Config
 import json
 
 logger = get_logger(__name__)
@@ -11,15 +12,8 @@ report_bp = Blueprint("report", __name__)
 @report_bp.route("/api/report/generate", methods=["POST"])
 @swag_from({
     'tags': ['Report'],
-    'description': '분석 리포트 생성',
+    'description': '분석 리포트 생성 (최신 업로드 파일 기준)',
     'parameters': [
-        {
-            'name': 'file_id',
-            'in': 'body',
-            'type': 'integer',
-            'required': True,
-            'description': '파일 ID'
-        },
         {
             'name': 'user_id',
             'in': 'body',
@@ -28,18 +22,11 @@ report_bp = Blueprint("report", __name__)
             'description': '사용자 ID (기본값 1)'
         },
         {
-            'name': 'start_date',
+            'name': 'file_id',
             'in': 'body',
-            'type': 'string',
+            'type': 'integer',
             'required': False,
-            'description': '시작 날짜 (YYYY-MM-DD)'
-        },
-        {
-            'name': 'end_date',
-            'in': 'body',
-            'type': 'string',
-            'required': False,
-            'description': '종료 날짜 (YYYY-MM-DD)'
+            'description': '파일 ID (선택사항, 없으면 최신 파일 사용)'
         }
     ],
     'responses': {
@@ -54,10 +41,10 @@ report_bp = Blueprint("report", __name__)
                         'properties': {
                             'report_id': {'type': 'integer'},
                             'file_id': {'type': 'integer'},
-                            'channel_trends': {'type': 'object'},
                             'summary': {'type': 'object'},
-                            'insights': {'type': 'object'},
-                            'solutions': {'type': 'object'}
+                            'insight': {'type': 'object'},
+                            'overall_insight': {'type': 'object'},
+                            'solution': {'type': 'object'}
                         }
                     }
                 }
@@ -72,42 +59,36 @@ report_bp = Blueprint("report", __name__)
     }
 })
 def generate_report():
-    """분석 리포트 생성 API (실제 스키마 기반)"""
+    """분석 리포트 생성 API - 최신 파일 기준, GPT 기반 통합 분석"""
     try:
         logger.info("리포트 생성 요청 시작")
         
         # 요청 데이터 파싱
-        data = request.get_json()
-        if not data:
-            return jsonify({
-                'success': False,
-                'error': '요청 데이터가 없습니다.'
-            }), 400
+        data = request.get_json() or {}
         
-        file_id = data.get('file_id')
-        if not file_id:
-            return jsonify({
-                'success': False,
-                'error': 'file_id가 필요합니다.'
-            }), 400
+        # user_id 우선순위: 요청 데이터 > 세션 > 환경변수 기본값
+        user_id = data.get('user_id') or session.get('user_id') or Config.DEFAULT_USER_ID
+        file_id = data.get('file_id')  # 선택사항
         
-        user_id = data.get('user_id', 1)  # 기본값 1
-        start_date = data.get('start_date')
-        end_date = data.get('end_date')
-        
-        logger.info(f"파일 {file_id}의 리포트 생성 시작 (user_id: {user_id})")
+        logger.info(f"리포트 생성 요청: user_id={user_id}, file_id={file_id}")
         
         # 서비스를 통한 리포트 생성
         report_service = ReportService()
-        report_data = report_service.generate_report(file_id, user_id, start_date, end_date)
+        report_data = report_service.generate_report(user_id, file_id)
         
-        logger.info(f"파일 {file_id}의 리포트 생성 완료 (report_id: {report_data['report_id']})")
+        logger.info(f"리포트 생성 완료 (report_id: {report_data['report_id']})")
         
         return jsonify({
             'success': True,
             'data': report_data
         }), 200
         
+    except ValueError as ve:
+        logger.warning(f"리포트 생성 실패 (유효성 검증): {ve}")
+        return jsonify({
+            'success': False,
+            'error': str(ve)
+        }), 400
     except Exception as e:
         logger.error(f"리포트 생성 실패: {e}")
         return jsonify({

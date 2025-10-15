@@ -1,7 +1,9 @@
-from flask import Flask, send_file, jsonify,request
+from flask import Flask, send_file, jsonify, request, after_this_request, session
 from flasgger import Swagger
 from controllers.mapping import mapping_bp
 from controllers.export_to_pdf import create_prototype_report
+from config import Config
+import os
 import datetime
 import io
 from urllib.parse import quote
@@ -16,12 +18,30 @@ load_dotenv()
 
 def create_app():
     app = Flask(__name__)
+    
+    # Config 설정 로드
+    app.config.from_object(Config)
+    app.secret_key = Config.SECRET_KEY
 
     app.config['SWAGGER'] = {
         'title': 'ClaraCS API',
         'uiversion': 3
     }
     Swagger(app)
+    
+    # 템플릿 컨텍스트 프로세서 (설정값을 모든 템플릿에 전달)
+    @app.context_processor
+    def inject_config():
+        return {
+            'DEFAULT_USER_ID': Config.DEFAULT_USER_ID,
+            'CHART_DAYS_RANGE': Config.CHART_DAYS_RANGE
+        }
+    
+    # 세션 초기화 (로그인 구현 전까지 기본 user_id 사용)
+    @app.before_request
+    def init_session():
+        if 'user_id' not in session:
+            session['user_id'] = Config.DEFAULT_USER_ID
     
     @app.route('/dashboard')
     def get_dashboard_data():

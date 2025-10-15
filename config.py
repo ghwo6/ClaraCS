@@ -16,6 +16,12 @@ class Config:
     DB_PASSWORD = os.getenv('DB_PASSWORD', 'password')
     DB_NAME = os.getenv('DB_NAME', 'clara_cs')
     
+    # 애플리케이션 설정
+    DEFAULT_USER_ID = int(os.getenv('DEFAULT_USER_ID', '1'))  # 기본 사용자 ID
+    
+    # 리포트 설정
+    CHART_DAYS_RANGE = int(os.getenv('CHART_DAYS_RANGE', '365'))  # 차트 조회 기간 (일)
+    
     # 로깅 설정
     LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')
     

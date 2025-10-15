@@ -1,3 +1,153 @@
 /* 분석 리포트 페이지 전용 스타일 */
-/* 필요한 추가 스타일이 있으면 여기에 작성하세요 */
 
+/* 채널별 차트 컨테이너 (가로 2개씩 레이아웃) */
+#channel-charts-container {
+    padding: 16px;
+    max-height: 800px;
+    overflow-y: auto;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);  /* 가로 2개씩 고정 */
+    gap: 20px;
+}
+
+.channel-chart-wrapper {
+    background: #ffffff;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+    transition: box-shadow 0.2s;
+}
+
+.channel-chart-wrapper:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.channel-chart-wrapper h4 {
+    font-size: 16px;
+    font-weight: 600;
+    color: #333;
+    margin: 0 0 8px 0;
+    text-align: center;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #3498db;
+}
+
+.channel-chart-wrapper .ch-sub {
+    font-size: 13px;
+    color: #666;
+    text-align: center;
+    margin-bottom: 15px;
+    font-weight: 500;
+}
+
+.channel-chart-wrapper canvas {
+    background: #fff;
+    border-radius: 4px;
+}
+
+/* 반응형: 작은 화면에서는 1개씩 */
+@media (max-width: 768px) {
+    #channel-charts-container {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* 차트 로딩 상태 */
+.loading-indicator {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    z-index: 1000;
+}
+
+.spinner {
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #3498db;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 10px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* 메시지 토스트 */
+.message-toast {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 15px 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(400px);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+.message-toast.success {
+    background: #27ae60;
+    color: white;
+}
+
+.message-toast.error {
+    background: #e74c3c;
+    color: white;
+}
+
+.message-toast.warning {
+    background: #f39c12;
+    color: white;
+}
+
+.message-toast.info {
+    background: #3498db;
+    color: white;
+}
+
+.message-toast button {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 20px;
+    cursor: pointer;
+    padding: 0;
+    width: 24px;
+    height: 24px;
+    line-height: 1;
+}
+
+/* 차트 박스 스타일 개선 */
+.chart-box {
+    min-height: 200px;
+}
+
+/* 로딩 상태 오버레이 */
+.section.loading {
+    position: relative;
+    pointer-events: none;
+    opacity: 0.6;
+}
+
+.section.loading .loading-indicator {
+    display: block;
+}
