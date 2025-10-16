@@ -5,6 +5,7 @@
 class ReportManager {
     constructor() {
         this.currentFileId = null;  // 파일 ID (자동 선택)
+        this.currentReportId = null;  // 리포트 ID (PDF 다운로드용)
         this.currentUserId = this.getUserId();  // 동적으로 가져오기
         this.isGenerating = false;
         this.chartInstances = {};  // Chart.js 인스턴스 저장
@@ -63,6 +64,10 @@ class ReportManager {
             // 1. 리포트 생성 API 호출 (최신 파일 자동 선택)
             const reportData = await this.callGenerateReportAPI();
             
+            // 리포트 ID 저장 (PDF 다운로드용)
+            this.currentReportId = reportData.report_id;
+            this.currentFileId = reportData.file_id;
+            
             // 2. AI 생성 여부 확인 및 경고 표시
             if (!reportData.is_ai_generated || reportData.data_source === 'fallback') {
                 this.showMessage(`⚠️ AI 연동 실패. 기본 분석 데이터를 표시합니다. (OPENAI_API_KEY 확인 필요)`, 'warning');
@@ -118,7 +123,7 @@ class ReportManager {
         const container = document.getElementById('channel-charts-container');
         if (!container) return;
         
-        // 기존 차트 제거
+        // 기존 차트 및 Empty State 제거
         Object.values(this.chartInstances).forEach(chart => chart.destroy());
         this.chartInstances = {};
         container.innerHTML = '';
@@ -131,9 +136,13 @@ class ReportManager {
         
         // 채널 데이터가 없는 경우
         if (!channelTrends || Object.keys(channelTrends).length === 0) {
-            container.innerHTML = '<p style="text-align:center; color: #999; padding: 40px;">채널별 데이터가 없습니다.</p>';
+            container.classList.remove('has-charts');  // 그리드 클래스 제거
+            container.innerHTML = '<div class="empty-state"><p class="empty-icon">📊</p><p class="empty-desc">채널별 데이터가 없습니다.</p></div>';
             return;
         }
+        
+        // 그리드 레이아웃 활성화
+        container.classList.add('has-charts');
         
         // 각 채널별로 차트 생성
         Object.entries(channelTrends).forEach(([channel, trendData]) => {

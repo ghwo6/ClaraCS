@@ -1,5 +1,56 @@
 /* 분석 리포트 페이지 전용 스타일 */
 
+/* Empty State 스타일 */
+.empty-state {
+    text-align: center;
+    padding: 60px 40px;
+    color: #666;
+}
+
+.empty-icon {
+    font-size: 64px;
+    margin: 0 0 20px 0;
+}
+
+.empty-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: #333;
+    margin: 0 0 12px 0;
+}
+
+.empty-desc {
+    font-size: 14px;
+    color: #666;
+    margin: 0 0 8px 0;
+    line-height: 1.6;
+}
+
+.empty-hint {
+    font-size: 13px;
+    color: #999;
+    margin: 16px 0 0 0;
+    font-style: italic;
+}
+
+.empty-state-small {
+    text-align: center;
+    padding: 40px 20px;
+    color: #666;
+}
+
+.empty-icon-small {
+    font-size: 40px;
+    margin: 0 0 12px 0;
+}
+
+.empty-desc-small {
+    font-size: 13px;
+    color: #666;
+    line-height: 1.6;
+    margin: 0;
+}
+
 /* 채널별 추이 카드: 전체 너비 사용 */
 #channel-trends-card {
     width: 100%;
@@ -9,6 +60,9 @@
 
 #channel-trends-card .chart-box {
     min-height: 550px;  /* 차트 박스 최소 높이 */
+    display: flex;
+    justify-content: center;  /* 가운데 정렬 */
+    align-items: center;  /* 세로 가운데 정렬 */
 }
 
 /* 채널별 차트 컨테이너 (가로 스크롤 방지, 세로 스크롤만) */
@@ -17,9 +71,20 @@
     max-height: 800px;  /* 그래프 보기 편하게 높이 증가 */
     overflow-y: auto;
     overflow-x: hidden;  /* 가로 스크롤 방지 */
+    width: 100%;
+    display: flex;  /* 기본은 flexbox (empty state용) */
+    justify-content: center;
+    align-items: center;
+}
+
+/* 그래프가 있을 때 그리드 적용 (JavaScript로 클래스 추가) */
+#channel-charts-container.has-charts {
     display: grid;
     grid-template-columns: repeat(2, 1fr);  /* 가로 2개씩 고정 */
     gap: 20px;
+    grid-auto-rows: 450px;  /* 각 행의 고정 높이 */
+    align-items: stretch;
+    justify-content: initial;
 }
 
 .channel-chart-wrapper {
@@ -86,14 +151,14 @@
 
 /* 반응형: 화면 크기에 따라 컬럼 수 조정 */
 @media (max-width: 1600px) {
-    #channel-charts-container {
+    #channel-charts-container.has-charts {
         grid-template-columns: repeat(2, 1fr);  /* 중간 화면: 2컬럼 */
         grid-auto-rows: 450px;
     }
 }
 
 @media (max-width: 900px) {
-    #channel-charts-container {
+    #channel-charts-container.has-charts {
         grid-template-columns: 1fr;  /* 작은 화면: 1컬럼 */
         grid-auto-rows: 400px;
     }
@@ -104,6 +169,15 @@
     
     .channel-chart-wrapper > div:last-child {
         min-height: 300px;
+    }
+    
+    /* Empty state 폰트 크기 조정 */
+    .empty-icon {
+        font-size: 48px;
+    }
+    
+    .empty-title {
+        font-size: 16px;
     }
 }
 
