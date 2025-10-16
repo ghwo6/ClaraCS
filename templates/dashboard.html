@@ -15,9 +15,15 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
     <style>
       body {
+        /* 원래 폰트로 돌리려면 아래 주석을 해제하세요 */
+        /* font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans KR", Arial, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif !important; */
+        
+        /* 현재 폰트 (Inter) */
         font-family: 'Inter', sans-serif;
+        
         background-color: #010915;
         color: white;
       }
@@ -44,14 +50,26 @@
       </div>
       <div class="body">
         <div class="grid cols-2">
-          <div class="card kpi">
+          <div class="card kpi" id="completed-card">
             <div class="label">처리 완료 건수</div>
-            <div class="value" id="completed-count">133건</div>
+            <div class="value" id="completed-count">
+              <div class="kpi-empty-state">
+                <div class="kpi-icon">✅</div>
+                <div class="kpi-placeholder">--</div>
+                <div class="kpi-hint">자동 분류 후 표시됩니다</div>
+              </div>
+            </div>
           </div>
 
-          <div class="card kpi">
+          <div class="card kpi" id="pending-card">
             <div class="label">미처리 건수</div>
-            <div class="value" id="pending-count">13건</div>
+            <div class="value" id="pending-count">
+              <div class="kpi-empty-state">
+                <div class="kpi-icon">⏳</div>
+                <div class="kpi-placeholder">--</div>
+                <div class="kpi-hint">자동 분류 후 표시됩니다</div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -68,22 +86,27 @@
               </tr>
             </thead>
             <tbody id="top-categories-table">
-              <tr><td colspan="3">데이터를 불러오는 중입니다...</td></tr>
+              <tr>
+                <td colspan="3" style="text-align: center; padding: 40px; color: var(--muted);">
+                  자동 분류를 완료하면 상위 3개 카테고리가 표시됩니다.
+                </td>
+              </tr>
             </tbody>
           </table>
         </div>
         <div class="card" style="margin-top:16px;">
           <strong>카테고리별 문의 비율</strong>
-          <div class="chart-box">
-            <canvas id="category-pie-chart"></canvas>
+          <div class="chart-box" id="category-chart-container" style="min-height: 250px; display: flex; align-items: center; justify-content: center;">
+            <p style="text-align: center; color: var(--muted);">자동 분류를 완료하면 카테고리별 분포 차트가 표시됩니다.</p>
+            <canvas id="category-pie-chart" style="display: none;"></canvas>
           </div>
         </div>
       </div>
 
       <div class="card">
         <strong>인사이트 도출</strong>
-        <div id="generated-insights" style="margin-top: 8px;">
-          <p class="subtle">분석 리포트가 생성되면<br>AI가 핵심 인사이트를 여기에 표시합니다.</p>
+        <div id="generated-insights" style="margin-top: 8px; min-height: 200px; display: flex; align-items: center; justify-content: center;">
+          <p style="text-align: center; color: var(--muted); padding: 40px;">분석 리포트를 생성하면 AI가 도출한 인사이트가 표시됩니다.</p>
         </div>
       </div>
     </div>
@@ -92,6 +115,12 @@
 
   </main>
 </div>
+
+<!-- 설정값 전달 -->
+<script>
+    window.DEFAULT_USER_ID = {{ DEFAULT_USER_ID }};
+</script>
+
 <script type="text/javascript" src="{{ url_for('static', filename='js/common.js') }}"></script>
 <script type="text/javascript" src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
 </body>

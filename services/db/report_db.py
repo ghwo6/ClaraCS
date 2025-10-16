@@ -536,12 +536,12 @@ class ReportDB:
                     'percentage': round((row['count'] / total_tickets * 100), 1) if total_tickets > 0 else 0
                 }
             
-            # 5. 채널별 해결률 계산 (status='closed' 기준)
+            # 5. 채널별 해결률 계산 (status='closed', 'resolved', 'completed', '완료' 기준)
             cursor.execute("""
                 SELECT 
                     channel,
                     COUNT(*) as total,
-                    SUM(CASE WHEN status = 'closed' THEN 1 ELSE 0 END) as resolved
+                    SUM(CASE WHEN status IN ('closed', 'resolved', 'completed', '완료') THEN 1 ELSE 0 END) as resolved
                 FROM tb_ticket
                 WHERE file_id = %s
                 GROUP BY channel
@@ -558,8 +558,23 @@ class ReportDB:
                     'resolution_rate': resolution_rate
                 })
             
+            # 6. 처리 완료/미처리 건수 계산 (status 기준)
+            cursor.execute("""
+                SELECT 
+                    COUNT(CASE WHEN status IN ('closed', 'resolved', 'completed', '완료') THEN 1 END) as resolved,
+                    COUNT(CASE WHEN status NOT IN ('closed', 'resolved', 'completed', '완료') OR status IS NULL THEN 1 END) as unresolved
+                FROM tb_ticket
+                WHERE file_id = %s
+            """, [file_id])
+            status_count = cursor.fetchone()
+            
+            total_resolved = status_count['resolved'] or 0
+            total_unresolved = status_count['unresolved'] or 0
+            
             cs_analysis_data = {
                 'total_tickets': total_tickets,
+                'total_resolved': total_resolved,
+                'total_unresolved': total_unresolved,
                 'category_distribution': category_distribution,
                 'channel_distribution': channel_distribution,
                 'status_distribution': status_distribution,
