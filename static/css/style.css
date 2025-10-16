@@ -59,7 +59,9 @@ a { color: inherit; text-decoration: none; }
     font-family: 'Inter', sans-serif; 
     font-weight: 550;
     cursor: pointer;
-    background: linear-gradient(to right,#e348fa, #6f07d1); 
+    /* background: linear-gradient(to right,#e348fa, #6f07d1);  */
+    /* background: linear-gradient(to right,#a815bf, #6f07d1);  */
+    background: linear-gradient(to right,#d946ef, #9333ea); 
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
     transition: background 0.3s ease, box-shadow 0.3s ease;
 }
