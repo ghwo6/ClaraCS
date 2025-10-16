@@ -364,7 +364,7 @@ class ReportManager {
             const overall = insight.overall || {};
             
             // AI 연동 실패 시 명확한 메시지 표시
-            if (byCategory.length === 0 && (!overall.short_term && !overall.long_term)) {
+            if (byCategory.length === 0 && (!overall.summary || overall.summary === '')) {
                 insightsHTML = `
                     <li style="color: #e74c3c; font-weight: 600;">
                         ⚠️ AI 연동 실패
@@ -388,9 +388,9 @@ class ReportManager {
                         <li>
                             <strong>${cat.category_name} ${priorityBadge}</strong>
                             <ul style="margin-left: 15px; font-size: 14px;">
-                                <li><strong>문제점:</strong> ${cat.issue || '-'}</li>
-                                <li><strong>단기:</strong> ${Array.isArray(cat.short_term_actions) ? cat.short_term_actions.join(', ') : cat.short_term_actions || '-'}</li>
-                                <li><strong>장기:</strong> ${Array.isArray(cat.long_term_actions) ? cat.long_term_actions.join(', ') : cat.long_term_actions || '-'}</li>
+                                <li><strong>문제점:</strong> ${cat.problem || '-'}</li>
+                                <li><strong>단기 목표:</strong> ${cat.short_term_goal || '-'}</li>
+                                <li><strong>장기 목표:</strong> ${cat.long_term_goal || '-'}</li>
                             </ul>
                         </li>
                     `;
@@ -400,18 +400,15 @@ class ReportManager {
             }
             
             // 종합 인사이트 (overall)
-            if (overall && (overall.short_term || overall.long_term || (overall.notable_issues && overall.notable_issues.length > 0))) {
+            if (overall && (overall.summary || (overall.notable_issues && overall.notable_issues.length > 0))) {
                 insightsHTML += '<li><strong>종합적 인사이트:</strong><ul style="margin-left: 20px; margin-top: 5px;">';
                 
-                if (overall.short_term) {
-                    insightsHTML += `<li><strong>단기:</strong> ${overall.short_term}</li>`;
-                }
-                if (overall.long_term) {
-                    insightsHTML += `<li><strong>장기:</strong> ${overall.long_term}</li>`;
+                if (overall.summary) {
+                    insightsHTML += `<li>${overall.summary}</li>`;
                 }
                 if (overall.notable_issues && Array.isArray(overall.notable_issues) && overall.notable_issues.length > 0) {
                     const issues = overall.notable_issues.join(', ');
-                    insightsHTML += `<li><strong>특이사항:</strong> ${issues}</li>`;
+                    insightsHTML += `<li><strong>주요 이슈:</strong> ${issues}</li>`;
                 }
                 
                 insightsHTML += '</ul></li>';
@@ -428,11 +425,13 @@ class ReportManager {
             
             let solutionsHTML = '';
             
-            const shortTerm = solution.short_term || [];
-            const longTerm = solution.long_term || [];
+            const problemSummary = solution.problem_summary || '';
+            const shortTerm = solution.short_term || {};
+            const midTerm = solution.mid_term || {};
+            const longTerm = solution.long_term || {};
             
             // AI 연동 실패 시 명확한 메시지 표시
-            if (shortTerm.length === 0 && longTerm.length === 0) {
+            if (!problemSummary && !shortTerm.goal && !midTerm.goal && !longTerm.goal) {
                 solutionsHTML = `
                     <li style="color: #e74c3c; font-weight: 600;">
                         ⚠️ AI 연동 실패
@@ -446,50 +445,68 @@ class ReportManager {
                 return;
             }
             
-            // 단기 솔루션 (개선된 구조)
-            if (shortTerm.length > 0) {
-                solutionsHTML += '<li><strong>단기 (1~6개월):</strong><ul style="margin-left: 20px; margin-top: 5px;">';
-                
-                shortTerm.forEach(item => {
-                    const priorityBadge = item.priority === 'high' ? '🔴' : item.priority === 'medium' ? '🟡' : '🟢';
-                    const difficultyText = item.difficulty === 'high' ? '어려움' : item.difficulty === 'medium' ? '보통' : '쉬움';
-                    
-                    solutionsHTML += `
-                        <li>
-                            <strong>[${item.category}] ${item.suggestion}</strong> ${priorityBadge}<br/>
-                            <span style="color: #666; font-size: 13px;">
-                                → ${item.expected_effect} | 
-                                난이도: ${difficultyText} | 
-                                기간: ${item.timeline || '1-6개월'}
-                            </span>
-                        </li>
-                    `;
-                });
-                
-                solutionsHTML += '</ul></li>';
+            // 문제점 요약
+            if (problemSummary) {
+                solutionsHTML += `
+                    <li><strong>문제점 요약:</strong> ${problemSummary}</li>
+                `;
             }
             
-            // 장기 솔루션 (개선된 구조)
-            if (longTerm.length > 0) {
-                solutionsHTML += '<li><strong>장기 (6개월~2년):</strong><ul style="margin-left: 20px; margin-top: 5px;">';
-                
-                longTerm.forEach(item => {
-                    const priorityBadge = item.priority === 'high' ? '🔴' : item.priority === 'medium' ? '🟡' : '🟢';
-                    const difficultyText = item.difficulty === 'high' ? '어려움' : item.difficulty === 'medium' ? '보통' : '쉬움';
-                    
-                    solutionsHTML += `
-                        <li>
-                            <strong>[${item.category}] ${item.suggestion}</strong> ${priorityBadge}<br/>
-                            <span style="color: #666; font-size: 13px;">
-                                → ${item.expected_effect} | 
-                                난이도: ${difficultyText} | 
-                                기간: ${item.timeline || '6-24개월'}
-                            </span>
-                        </li>
-                    `;
-                });
-                
-                solutionsHTML += '</ul></li>';
+            // 단기 솔루션 (1-6개월)
+            if (shortTerm.goal || shortTerm.plan || (shortTerm.actions && shortTerm.actions.length > 0)) {
+                solutionsHTML += `
+                    <li><strong>• 단기 (1-6개월):</strong>
+                        <ul style="margin-left: 20px; margin-top: 5px;">
+                            ${shortTerm.goal ? `<li><strong>단기 목표:</strong> ${shortTerm.goal}</li>` : ''}
+                            ${shortTerm.plan ? `<li><strong>단기 플랜:</strong> ${shortTerm.plan}</li>` : ''}
+                            ${shortTerm.actions && shortTerm.actions.length > 0 ? `
+                                <li><strong>단기 액션:</strong>
+                                    <ul style="margin-left: 15px;">
+                                        ${shortTerm.actions.map(action => `<li>- ${action}</li>`).join('')}
+                                    </ul>
+                                </li>
+                            ` : ''}
+                        </ul>
+                    </li>
+                `;
+            }
+            
+            // 중기 솔루션 (6-12개월)
+            if (midTerm.goal || midTerm.plan || (midTerm.actions && midTerm.actions.length > 0)) {
+                solutionsHTML += `
+                    <li><strong>• 중기 (6-12개월):</strong>
+                        <ul style="margin-left: 20px; margin-top: 5px;">
+                            ${midTerm.goal ? `<li><strong>중기 목표:</strong> ${midTerm.goal}</li>` : ''}
+                            ${midTerm.plan ? `<li><strong>중기 플랜:</strong> ${midTerm.plan}</li>` : ''}
+                            ${midTerm.actions && midTerm.actions.length > 0 ? `
+                                <li><strong>중기 액션:</strong>
+                                    <ul style="margin-left: 15px;">
+                                        ${midTerm.actions.map(action => `<li>- ${action}</li>`).join('')}
+                                    </ul>
+                                </li>
+                            ` : ''}
+                        </ul>
+                    </li>
+                `;
+            }
+            
+            // 장기 솔루션 (12개월 이상)
+            if (longTerm.goal || longTerm.plan || (longTerm.actions && longTerm.actions.length > 0)) {
+                solutionsHTML += `
+                    <li><strong>• 장기 (12개월 이상):</strong>
+                        <ul style="margin-left: 20px; margin-top: 5px;">
+                            ${longTerm.goal ? `<li><strong>장기 목표:</strong> ${longTerm.goal}</li>` : ''}
+                            ${longTerm.plan ? `<li><strong>장기 플랜:</strong> ${longTerm.plan}</li>` : ''}
+                            ${longTerm.actions && longTerm.actions.length > 0 ? `
+                                <li><strong>장기 액션:</strong>
+                                    <ul style="margin-left: 15px;">
+                                        ${longTerm.actions.map(action => `<li>- ${action}</li>`).join('')}
+                                    </ul>
+                                </li>
+                            ` : ''}
+                        </ul>
+                    </li>
+                `;
             }
             
             container.innerHTML = solutionsHTML;
