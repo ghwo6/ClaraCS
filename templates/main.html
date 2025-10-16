@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Clara CS</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #010915;
+      color: white;
+    }
+  </style>
+</head>
+
+<body class="min-h-screen bg-[#030c1b] text-white">
+  <!-- Header -->
+  <header class="w-full flex justify-between items-center py-4 px-8 bg-transparent">
+    <div class="flex items-center gap-2">
+      <a href="/">
+        <img src="{{ url_for('static', filename='images/Claralogo.png') }}" alt="Clara CS Logo" class="w-10 h-10 cursor-pointer hover:opacity-80">
+      </a>
+    </div>
+    <nav class="flex items-center gap-6 text-sm">
+      <a href="/dashboard" class="hover:text-cyan-400">Dashboard</a>
+      <a href="/upload" class="hover:text-cyan-400">Upload</a>
+      <a href="/classify" class="hover:text-cyan-400">Analysis</a>
+      <a href="/report" class="hover:text-cyan-400">Reports</a>
+      <a href="/contact" class="hover:text-cyan-400">Contact</a>
+      <button class="border border-gray-400 px-3 py-1 rounded-md text-xs hover:bg-gray-700">Sign in</button>
+      <button class="border border-cyan-400 px-3 py-1 rounded-md text-xs hover:bg-cyan-400 hover:text-black">Register</button>
+    </nav>
+  </header>
+
+  <!-- Section 1 -->
+  <section class="relative flex flex-col justify-start items-start w-full min-h-[80vh] px-16 pt-36 pb-32 bg-cover bg-center"
+           style="background-image: url('{{ url_for("static", filename="images/back_2.jpg") }}');">
+    <div class="absolute inset-0 bg-gradient-to-b from-[#011627]/40 to-[#010915]/80"></div>
+
+    <div class="relative z-10 ml-4 mt-4">
+      <span class="border border-cyan-300 px-4 py-1 text-sm rounded-full tracking-wider">
+        INTELLIGENT CS DATA ANALYSIS & AI INSIGHT
+      </span>
+
+      <h1 class="mt-8 text-6xl font-bold text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.8)]">
+        Clara CS : 기업 데이터 활용의 혁신
+      </h1>
+
+      <p class="mt-11 ml-2 text-base uppercase tracking-wide text-cyan-300 cursor-pointer hover:underline">
+        Explore Now →
+      </p>
+    </div>
+  </section>
+
+  <!-- section 2 -->
+    <section class="relative text-center w-full min-h-[80vh] bg-cover bg-center"
+         style="background-image: url('{{ url_for("static", filename="images/back_none.jpg") }}');">
+    <div class="absolute inset-0 bg-gradient-to-b from-[#010915]/80 to-[#010915]/80"></div>
+
+    <div class="relative z-10 -translate-y-1">
+        <h2 class="text-lg mb-2 text-gray-400 tracking-wide underline underline-offset-4 decoration-gray-600">
+        Support Your Business
+        </h2>
+
+        <div class="flex justify-center gap-16 mt-12">
+
+          <div class="text-center">
+            <div class="w-56 h-56 bg-gray-800/30 rounded-2xl flex flex-col items-center justify-center hover:bg-gray-700/50 transition p-4">
+              <img src="{{ url_for('static', filename='images/classify.png') }}" alt="Auto-Classification Icon" class="w-36 h-40 mb-3 mt-3">
+            </div>
+            <p class="text-base text-white mt-4">Auto-Classification</p>
+          </div>
+
+          <div class="text-center">
+            <div class="w-56 h-56 bg-gray-800/30 rounded-2xl flex flex-col items-center justify-center hover:bg-gray-700/50 transition p-4">
+              <img src="{{ url_for('static', filename='images/analysis.png') }}" alt="Data Analysis Icon" class="w-36 h-[9.5rem] mb-3 mt-4">
+            </div>
+            <p class="text-base text-white mt-4">Data Analysis</p>
+          </div>
+        
+          <div class="text-center">
+            <div class="w-56 h-56 bg-gray-800/30 rounded-2xl flex flex-col items-center justify-center hover:bg-gray-700/50 transition p-4">
+              <img src="{{ url_for('static', filename='images/reports.png') }}" alt="Data Analysis Icon" class="w-36 h-38 mb-3 mt-3 ml-2">
+            </div>
+            <p class="text-base text-white mt-4">AI Report</p>
+          </div>
+        </div>
+    </div>
+    </section>
+
+  <!-- Footer -->
+    <footer class="bg-[#010915] py-12 px-8 flex flex-row justify-start gap-x-16 text-sm text-gray-400">
+    <h3 class="text-base mb-3 font-semibold text-cyan-400"
+        style="text-shadow: 0 0 8px rgba(0,255,255,0.7), 0 0 16px rgba(0,255,255,0.6), 0 0 24px rgba(0,255,255,0.4);">
+    Project team B
+    </h3>
+    <div>
+        <h3 class="text-white text-base mb-3 font-semibold">Members</h3>
+        <ul class="space-y-1">
+        <li>Minhyeok Kang</li>
+        <li>Jinyoung Kim</li>
+        <li>Yejin Kim</li>
+        <li>Hojae Kim</li>
+        </ul>
+    </div>
+    <div>
+        <h3 class="text-white text-base mb-3 font-semibold">Function</h3>
+        <ul class="space-y-1">
+        <li>Column Mapping</li>
+        <li>Auto-classification</li>
+        <li>Data Analysis</li>
+        <li>Data Summary</li>
+        <li>Suggest Solutions</li>
+        <li>Discover Insights</li>
+        <li>Create AI Reports</li>
+        </ul>
+    </div>
+    <div>
+        <h3 class="text-white text-base mb-3 font-semibold">Core Values</h3>
+        <ul class="space-y-1">
+        <li>혁신 [Innovation] – Redefining data intelligence with AI.</li>
+        <li>통찰 [Insight] – Discovering meaningful patterns to drive smarter decisions.</li>
+        <li>성과 [Impact] – Delivering insights that drive real-world outcomes.</li>
+        <li>성장 [Growth] – Empowering organizations to evolve with confidence.</li>
+        </ul>
+    </div>
+    </footer>
+    
+
+  </footer>
+</body>
+</html>

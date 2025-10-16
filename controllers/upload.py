@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify, session
 from flasgger.utils import swag_from
 from services.upload import UploadService
 from services.mapping import MappingService
+from services.db.report_db import ReportDB
 from utils.logger import get_logger
 from config import Config
 import json
@@ -92,4 +93,45 @@ def validate_file():
         return jsonify({
             'success': False,
             'error': f'파일 검증 중 오류가 발생했습니다: {str(e)}'
+        }), 500
+
+@upload_bp.route("/api/upload/latest-file", methods=["POST"])
+@swag_from({
+    'tags': ['Upload'],
+    'description': '최신 업로드 파일 조회',
+    'responses': {
+        200: {
+            'description': '최신 파일 조회 성공'
+        }
+    }
+})
+def get_latest_file():
+    """최신 업로드 파일 조회 API"""
+    try:
+        data = request.get_json() or {}
+        user_id = data.get('user_id') or session.get('user_id') or Config.DEFAULT_USER_ID
+        
+        logger.info(f"최신 파일 조회: user_id={user_id}")
+        
+        report_db = ReportDB()
+        file_id = report_db.get_latest_file_id(user_id)
+        
+        if not file_id:
+            return jsonify({
+                'success': False,
+                'error': '업로드된 파일이 없습니다.'
+            }), 404
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'file_id': file_id
+            }
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"최신 파일 조회 실패: {e}")
+        return jsonify({
+            'success': False,
+            'error': '파일 조회 중 오류가 발생했습니다.'
         }), 500

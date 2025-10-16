@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Clara CS</title>
+  <script src="https://cdn.tailwindcss.com"></script> 
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/contact.css') }}">
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #010915;
+      color: white;
+    }
+  </style>
+</head>
+
+<body class="min-h-screen bg-[#030c1b] text-white">
+  <!-- Header -->
+  <header class="w-full flex justify-between items-center py-4 px-8 bg-transparent">
+    <div class="flex items-center gap-2">
+      <a href="/">
+        <img src="{{ url_for('static', filename='images/Claralogo.png') }}" alt="Clara CS Logo" class="w-10 h-10 cursor-pointer hover:opacity-80">
+      </a>
+    </div>
+    <nav class="flex items-center gap-6 text-sm">
+      <a href="/dashboard" class="hover:text-cyan-400">Dashboard</a>
+      <a href="/upload" class="hover:text-cyan-400">Upload</a>
+      <a href="/classify" class="hover:text-cyan-400">Analysis</a>
+      <a href="/report" class="hover:text-cyan-400">Reports</a>
+      <a href="/contact" class="hover:text-cyan-400">Contact</a>
+      <button class="border border-gray-400 px-3 py-1 rounded-md text-xs hover:bg-gray-700">Sign in</button>
+      <button class="border border-cyan-400 px-3 py-1 rounded-md text-xs hover:bg-cyan-400 hover:text-black">Register</button>
+    </nav>
+  </header>
+
+  <!-- section 1 -->
+  <section class="full-screen-section"
+          style="background-image: url('{{ url_for("static", filename="images/back_2.jpg") }}'); background-size: cover; background-position: center; background-repeat: no-repeat;">
+    <div class="absolute inset-0 bg-gradient-to-b from-[#011627]/40 to-[#010915]/80"></div>
+      <div class="contact-container">
+          <h1>Contact with</h1>
+          <p class="team-name">team B</p>
+          <form class="contact-form">
+              <div class="form-group">
+                  <label for="name">Name</label>
+                  <input type="text" id="name" name="name" placeholder="Value">
+              </div>
+              <div class="form-group">
+                  <label for="surname">Surname</label>
+                  <input type="text" id="surname" name="surname" placeholder="Value">
+              </div>
+              <div class="form-group">
+                  <label for="email">Email</label>
+                  <input type="email" id="email" name="email" placeholder="Value">
+              </div>
+              <div class="form-group">
+                  <label for="message">Message</label>
+                  <textarea id="message" name="message" rows="5" placeholder="Value"></textarea>
+              </div>
+              <button type="submit" class="submit-button">Submit</button>
+          </form>
+      </div>
+  </section>
+
+  <!-- Footer -->
+    <footer class="bg-[#010915] py-12 px-8 flex flex-row justify-start gap-x-16 text-sm text-gray-400">
+    <h3 class="text-base mb-3 font-semibold text-cyan-400"
+        style="text-shadow: 0 0 8px rgba(0,255,255,0.7), 0 0 16px rgba(0,255,255,0.6), 0 0 24px rgba(0,255,255,0.4);">
+    Project team B
+    </h3>
+    <div>
+        <h3 class="text-white text-base mb-3 font-semibold">Members</h3>
+        <ul class="space-y-1">
+        <li>Minhyeok Kang</li>
+        <li>Jinyoung Kim</li>
+        <li>Yejin Kim</li>
+        <li>Hojae Kim</li>
+        </ul>
+    </div>
+    <div>
+        <h3 class="text-white text-base mb-3 font-semibold">Function</h3>
+        <ul class="space-y-1">
+        <li>Column Mapping</li>
+        <li>Auto-classification</li>
+        <li>Data Analysis</li>
+        <li>Data Summary</li>
+        <li>Suggest Solutions</li>
+        <li>Discover Insights</li>
+        <li>Create AI Reports</li>
+        </ul>
+    </div>
+    <div>
+        <h3 class="text-white text-base mb-3 font-semibold">Core Values</h3>
+        <ul class="space-y-1">
+        <li>혁신 [Innovation] – Redefining data intelligence with AI.</li>
+        <li>통찰 [Insight] – Discovering meaningful patterns to drive smarter decisions.</li>
+        <li>성과 [Impact] – Delivering insights that drive real-world outcomes.</li>
+        <li>성장 [Growth] – Empowering organizations to evolve with confidence.</li>
+        </ul>
+    </div>
+    </footer>
+    
+
+  </footer>
+</body>
+</html>
