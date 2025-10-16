@@ -7,6 +7,7 @@
     <meta property="og:description" content="ClaraCS의 메인 페이지입니다." />
     <meta property="og:image" content="" />
     <title>ClaraCS – 지능형 CS 데이터 분석·인사이트 플랫폼</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/upload.css') }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -14,35 +15,20 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <!-- SheetJS 라이브러리 (Excel 파일 읽기용) -->
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <style>
+      body {
+        font-family: 'Inter', sans-serif;
+        background-color: #010915;
+        color: white;
+      }
+    </style>
 </head>
-<body>
+<body class="min-h-screen bg-[#030c1b] text-white">
 <div class="app">
-  <!-- 사이드바 -->
-  <aside class="sidebar">
-    <div class="brand">
-      <div class="logo"></div>
-      <h1>ClaraCS – 데이터 인텔리전스</h1>
-    </div>
-    <nav class="nav">
-      <a href="/"><span class="dot"></span><span>대시보드</span><span class="badge ok">Home</span></a>
-      <a href="/upload" class="active"><span class="dot"></span><span>데이터 업로드</span><span></span></a>
-      <a href="/classify"><span class="dot"></span><span>자동 분류</span><span></span></a>
-      <a href="/report"><span class="dot"></span><span>분석 리포트</span><span></span></a>
-      <a href="/settings"><span class="dot"></span><span>설정 · 도움말</span><span></span></a>
-    </nav>
-    <div class="helper">
-      <div><strong>프로젝트명</strong><br/><br/>INTELLIGENT CS DATA ANALYSIS & INSIGHT PLATFORM</div>
-      <br/>
-      <button class="CTA-button" id="getCTABtn">
-          Get Your AI Report&nbsp;&rarr;
-      </button>
-      <br/>
-      <br/>
-    </div>
-  </aside>
+  {% include 'includes/header.html' %}
 
   <!-- 메인 -->
-  <main class="main">
+  <main class="main full-width">
 
     <!-- 업로드 -->
     <section class="section" id="upload">
@@ -118,7 +104,6 @@
 
   </main>
 </div>
-<script type="text/javascript" src="{{ url_for('static', filename='js/sidebar.js') }}"></script>
 <script type="text/javascript" src="{{ url_for('static', filename='js/common.js') }}"></script>
 <script type="text/javascript" src="{{ url_for('static', filename='js/upload.js') }}"></script>
 <script type="text/javascript" src="{{ url_for('static', filename='js/mapping.js') }}"></script>
