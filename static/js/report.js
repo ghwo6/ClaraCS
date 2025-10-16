@@ -451,13 +451,15 @@ class ReportManager {
             
             let solutionsHTML = '';
             
-            const problemSummary = solution.problem_summary || '';
+            const currentStatusProblems = solution.current_status_and_problems || {};
             const shortTerm = solution.short_term || {};
             const midTerm = solution.mid_term || {};
             const longTerm = solution.long_term || {};
+            const effectsRisks = solution.expected_effects_and_risks || {};
             
             // AI 연동 실패 시 명확한 메시지 표시
-            if (!problemSummary && !shortTerm.goal && !midTerm.goal && !longTerm.goal) {
+            if (!currentStatusProblems.status && !currentStatusProblems.problems && 
+                !shortTerm.goal_kpi && !midTerm.goal_kpi && !longTerm.goal_kpi) {
                 solutionsHTML = `
                     <li style="color: #e74c3c; font-weight: 600;">
                         ⚠️ AI 연동 실패
@@ -471,19 +473,24 @@ class ReportManager {
                 return;
             }
             
-            // 문제점 요약
-            if (problemSummary) {
+            // 현황 및 문제점 요약
+            if (currentStatusProblems.status || currentStatusProblems.problems) {
                 solutionsHTML += `
-                    <li><strong>문제점 요약:</strong> ${problemSummary}</li>
+                    <li><strong>현황 및 문제점 요약</strong>
+                        <ul style="margin-left: 20px; margin-top: 5px;">
+                            ${currentStatusProblems.status ? `<li><strong>현황:</strong> ${currentStatusProblems.status}</li>` : ''}
+                            ${currentStatusProblems.problems ? `<li><strong>문제점:</strong> ${currentStatusProblems.problems}</li>` : ''}
+                        </ul>
+                    </li>
                 `;
             }
             
             // 단기 솔루션 (1-6개월)
-            if (shortTerm.goal || shortTerm.plan || (shortTerm.actions && shortTerm.actions.length > 0)) {
+            if (shortTerm.goal_kpi || shortTerm.plan || (shortTerm.actions && shortTerm.actions.length > 0)) {
                 solutionsHTML += `
-                    <li><strong>• 단기 (1-6개월):</strong>
+                    <li><strong>단기 (1-6개월)</strong>
                         <ul style="margin-left: 20px; margin-top: 5px;">
-                            ${shortTerm.goal ? `<li><strong>단기 목표:</strong> ${shortTerm.goal}</li>` : ''}
+                            ${shortTerm.goal_kpi ? `<li><strong>단기 목표 (+KPI):</strong> ${shortTerm.goal_kpi}</li>` : ''}
                             ${shortTerm.plan ? `<li><strong>단기 플랜:</strong> ${shortTerm.plan}</li>` : ''}
                             ${shortTerm.actions && shortTerm.actions.length > 0 ? `
                                 <li><strong>단기 액션:</strong>
@@ -498,11 +505,11 @@ class ReportManager {
             }
             
             // 중기 솔루션 (6-12개월)
-            if (midTerm.goal || midTerm.plan || (midTerm.actions && midTerm.actions.length > 0)) {
+            if (midTerm.goal_kpi || midTerm.plan || (midTerm.actions && midTerm.actions.length > 0)) {
                 solutionsHTML += `
-                    <li><strong>• 중기 (6-12개월):</strong>
+                    <li><strong>중기 (6-12개월)</strong>
                         <ul style="margin-left: 20px; margin-top: 5px;">
-                            ${midTerm.goal ? `<li><strong>중기 목표:</strong> ${midTerm.goal}</li>` : ''}
+                            ${midTerm.goal_kpi ? `<li><strong>중기 목표 (+KPI):</strong> ${midTerm.goal_kpi}</li>` : ''}
                             ${midTerm.plan ? `<li><strong>중기 플랜:</strong> ${midTerm.plan}</li>` : ''}
                             ${midTerm.actions && midTerm.actions.length > 0 ? `
                                 <li><strong>중기 액션:</strong>
@@ -517,11 +524,11 @@ class ReportManager {
             }
             
             // 장기 솔루션 (12개월 이상)
-            if (longTerm.goal || longTerm.plan || (longTerm.actions && longTerm.actions.length > 0)) {
+            if (longTerm.goal_kpi || longTerm.plan || (longTerm.actions && longTerm.actions.length > 0)) {
                 solutionsHTML += `
-                    <li><strong>• 장기 (12개월 이상):</strong>
+                    <li><strong>장기 (12개월 이상)</strong>
                         <ul style="margin-left: 20px; margin-top: 5px;">
-                            ${longTerm.goal ? `<li><strong>장기 목표:</strong> ${longTerm.goal}</li>` : ''}
+                            ${longTerm.goal_kpi ? `<li><strong>장기 목표 (+KPI):</strong> ${longTerm.goal_kpi}</li>` : ''}
                             ${longTerm.plan ? `<li><strong>장기 플랜:</strong> ${longTerm.plan}</li>` : ''}
                             ${longTerm.actions && longTerm.actions.length > 0 ? `
                                 <li><strong>장기 액션:</strong>
@@ -530,6 +537,18 @@ class ReportManager {
                                     </ul>
                                 </li>
                             ` : ''}
+                        </ul>
+                    </li>
+                `;
+            }
+            
+            // 기대효과 및 리스크 관리
+            if (effectsRisks.expected_effects || effectsRisks.risk_management) {
+                solutionsHTML += `
+                    <li><strong>기대효과 및 리스크 관리</strong>
+                        <ul style="margin-left: 20px; margin-top: 5px;">
+                            ${effectsRisks.expected_effects ? `<li><strong>기대효과:</strong> ${effectsRisks.expected_effects}</li>` : ''}
+                            ${effectsRisks.risk_management ? `<li><strong>리스크 관리:</strong> ${effectsRisks.risk_management}</li>` : ''}
                         </ul>
                     </li>
                 `;
