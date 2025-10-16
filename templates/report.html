@@ -51,28 +51,33 @@
           <button class="btn save" id="btn-generate-report">리포트 생성</button>
         </div>
       </div>
-      <div class="body grid cols-2">
-        <div class="card" id="channel-trends-card">
+      <div class="body">
+        <!-- 채널별 추이: 전체 너비 사용 -->
+        <div class="card" id="channel-trends-card" style="margin-bottom: 20px;">
           <strong>채널별 추이</strong>
           <div class="chart-box" id="channel-charts-container">
             <!-- 채널별 차트가 여기에 동적으로 생성됩니다 -->
           </div>
         </div>
-        <div class="card">
-          <strong>데이터 요약</strong>
-          <ul class="subtle">
-          </ul>
-        </div>
-        <div class="card">
-          <strong>인사이트 도출</strong>
-          <ol class="subtle">
-          </ol>
-        </div>
-        <div class="card">
-          <strong>솔루션 제안</strong>
-          <ul class="subtle">
-            <!-- 솔루션이 여기에 동적으로 생성됩니다 -->
-          </ul>
+        
+        <!-- 나머지 카드들: 3컬럼 그리드 -->
+        <div class="grid cols-3">
+          <div class="card">
+            <strong>데이터 요약</strong>
+            <ul class="subtle">
+            </ul>
+          </div>
+          <div class="card">
+            <strong>인사이트 도출</strong>
+            <ol class="subtle">
+            </ol>
+          </div>
+          <div class="card">
+            <strong>솔루션 제안</strong>
+            <ul class="subtle">
+              <!-- 솔루션이 여기에 동적으로 생성됩니다 -->
+            </ul>
+          </div>
         </div>
       </div>
     </section>

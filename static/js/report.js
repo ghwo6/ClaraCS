@@ -158,13 +158,13 @@ class ReportManager {
             sum + row.reduce((a, b) => a + (b || 0), 0), 0
         );
         
-        // 채널별 컨테이너 생성 (도넛그래프 스타일)
+        // 채널별 컨테이너 생성
         const channelDiv = document.createElement('div');
         channelDiv.className = 'channel-chart-wrapper';
         channelDiv.innerHTML = `
             <h4>${channel}</h4>
             <div class="ch-sub">${totalCount.toLocaleString()}건</div>
-            <div style="position: relative; height: 280px;">
+            <div>
                 <canvas id="chart-${this.sanitizeId(channel)}"></canvas>
             </div>
         `;
@@ -236,8 +236,14 @@ class ReportManager {
                         position: 'top',
                         labels: {
                             usePointStyle: true,
-                            padding: 15
-                        }
+                            padding: 10,
+                            font: {
+                                size: 11
+                            },
+                            boxWidth: 12,
+                            boxHeight: 12
+                        },
+                        maxHeight: 80
                     },
                     tooltip: {
                         callbacks: {
@@ -258,7 +264,17 @@ class ReportManager {
                         stacked: true,
                         title: {
                             display: true,
-                            text: '날짜'
+                            text: '날짜',
+                            font: {
+                                size: 11
+                            }
+                        },
+                        ticks: {
+                            font: {
+                                size: 10
+                            },
+                            maxRotation: 45,
+                            minRotation: 0
                         }
                     },
                     y: {
@@ -266,7 +282,15 @@ class ReportManager {
                         beginAtZero: true,
                         title: {
                             display: true,
-                            text: 'CS 건수'
+                            text: 'CS 건수',
+                            font: {
+                                size: 11
+                            }
+                        },
+                        ticks: {
+                            font: {
+                                size: 10
+                            }
                         }
                     }
                 }
@@ -319,8 +343,8 @@ class ReportManager {
     renderSummary(summary) {
         console.log('데이터 요약 렌더링 시작...', summary);
         
-        // 데이터 요약 컨테이너
-        const container = document.querySelector('#report .card:nth-child(2) .subtle');
+        // 데이터 요약 컨테이너 (grid.cols-3 안의 첫 번째 카드)
+        const container = document.querySelector('#report .grid.cols-3 .card:nth-child(1) .subtle');
         if (!container) return;
         
         const totalCount = summary.total_cs_count || 0;
@@ -355,7 +379,8 @@ class ReportManager {
         renderInsights(insight) {
             console.log('인사이트 렌더링 시작...', insight);
             
-            const container = document.querySelector('#report .card:nth-child(3) .subtle');
+            // 인사이트 도출 컨테이너 (grid.cols-3 안의 두 번째 카드)
+            const container = document.querySelector('#report .grid.cols-3 .card:nth-child(2) .subtle');
             if (!container) return;
             
             let insightsHTML = '';
@@ -420,7 +445,8 @@ class ReportManager {
         renderSolutions(solution) {
             console.log('솔루션 렌더링 시작...', solution);
             
-            const container = document.querySelector('#report .card:last-child .subtle');
+            // 솔루션 제안 컨테이너 (grid.cols-3 안의 세 번째 카드)
+            const container = document.querySelector('#report .grid.cols-3 .card:nth-child(3) .subtle');
             if (!container) return;
             
             let solutionsHTML = '';
