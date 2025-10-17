@@ -189,3 +189,24 @@ class ReportService:
         # TODO: 스냅샷 테이블에서 리포트 데이터 조회
         # tb_analysis_insight_snapshot, tb_analysis_solution_snapshot 등에서 조회
         pass
+    
+    def get_latest_report(self, user_id: int) -> dict:
+        """사용자의 마지막 생성된 리포트 조회"""
+        logger.info(f"마지막 리포트 조회: user_id={user_id}")
+        
+        try:
+            # 마지막 리포트 ID 조회
+            latest_report_id = self.report_db.get_latest_report_id(user_id)
+            
+            if not latest_report_id:
+                logger.warning(f"사용자 {user_id}의 리포트가 없습니다")
+                return None
+            
+            logger.info(f"마지막 리포트 조회 완료: report_id={latest_report_id}")
+            return {
+                'report_id': latest_report_id
+            }
+            
+        except Exception as e:
+            logger.error(f"마지막 리포트 조회 실패: {e}")
+            return None

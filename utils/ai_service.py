@@ -453,13 +453,16 @@ JSON 형식으로 응답해주세요:
    - categories: 배열 형태 [{{category_id, category_name, count, percentage}}]
    - channels: 배열 형태 [{{channel, total, resolved, resolution_rate}}]
 
-2. **insight**: 카테고리별 분석
-   - by_category: 배열 형태 [{{category_id, category_name, priority, issue, short_term_actions, long_term_actions}}]
-   - overall: 종합 인사이트 {{short_term, long_term, notable_issues}}
+2. **insight**: 카테고리별 인사이트
+   - by_category: 배열 형태 [{{category_id, category_name, priority, problem, short_term_goal, long_term_goal}}]
+   - overall: 종합 인사이트 {{summary, notable_issues}}
 
-3. **solution**: 단기/장기 전략 제안
-   - short_term: 배열 [{{category, suggestion, expected_effect, priority, difficulty, timeline}}]
-   - long_term: 배열 [{{category, suggestion, expected_effect, priority, difficulty, timeline}}]
+3. **solution**: 단기/중기/장기 전략 제안
+   - current_status_and_problems: 현황 및 문제점 요약 {{status, problems}}
+   - short_term: 단기 솔루션 (1-6개월) {{goal_kpi, plan, actions: []}}
+   - mid_term: 중기 솔루션 (6-12개월) {{goal_kpi, plan, actions: []}}
+   - long_term: 장기 솔루션 (12개월+) {{goal_kpi, plan, actions: []}}
+   - expected_effects_and_risks: 기대효과 및 리스크 관리 {{expected_effects, risk_management}}
 
 **중요 규칙:**
 - 카테고리 ID와 이름을 반드시 위 목록에서 선택하세요
@@ -492,38 +495,52 @@ JSON 형식으로 응답해주세요:
         "category_id": (숫자),
         "category_name": "이름",
         "priority": "high/medium/low",
-        "issue": "문제점 설명",
-        "short_term_actions": ["액션1", "액션2"],
-        "long_term_actions": ["액션1", "액션2"]
+        "problem": "문제점 설명",
+        "short_term_goal": "단기 목표 설명",
+        "long_term_goal": "장기 목표 설명"
       }}
     ],
     "overall": {{
-      "short_term": "단기 인사이트",
-      "long_term": "장기 인사이트",
-      "notable_issues": ["이슈1", "이슈2"]
+      "summary": "전반적인 인사이트 요약",
+      "notable_issues": ["주요 이슈1", "주요 이슈2"]
     }}
   }},
   "solution": {{
-    "short_term": [
-      {{
-        "category": "카테고리명",
-        "suggestion": "제안 내용",
-        "expected_effect": "기대 효과",
-        "priority": "high/medium/low",
-        "difficulty": "high/medium/low",
-        "timeline": "기간"
-      }}
-    ],
-    "long_term": [
-      {{
-        "category": "품질 관리",
-        "suggestion": "예방형 품질 관리 체계",
-        "expected_effect": "불량률 지속 감소",
-        "priority": "high",
-        "difficulty": "high",
-        "timeline": "6-12개월"
-      }}
-    ]
+    "current_status_and_problems": {{
+      "status": "현재 CS 운영 현황 설명",
+      "problems": "주요 문제점 요약"
+    }},
+    "short_term": {{
+      "goal_kpi": "단기 목표 (1-6개월) 및 KPI 지표",
+      "plan": "단기 플랜 설명",
+      "actions": [
+        "단기 액션 1",
+        "단기 액션 2",
+        "단기 액션 3"
+      ]
+    }},
+    "mid_term": {{
+      "goal_kpi": "중기 목표 (6-12개월) 및 KPI 지표",
+      "plan": "중기 플랜 설명",
+      "actions": [
+        "중기 액션 1",
+        "중기 액션 2",
+        "중기 액션 3"
+      ]
+    }},
+    "long_term": {{
+      "goal_kpi": "장기 목표 (12개월 이상) 및 KPI 지표",
+      "plan": "장기 플랜 설명",
+      "actions": [
+        "장기 액션 1",
+        "장기 액션 2",
+        "장기 액션 3"
+      ]
+    }},
+    "expected_effects_and_risks": {{
+      "expected_effects": "예상되는 긍정적 효과 설명",
+      "risk_management": "잠재적 리스크 및 관리 방안"
+    }}
   }}
 }}
 """
@@ -549,9 +566,15 @@ JSON 형식으로 응답해주세요:
                     if key == 'summary':
                         report[key] = {'total_cs_count': 0, 'categories': [], 'channels': []}
                     elif key == 'insight':
-                        report[key] = {'by_category': [], 'overall': {}}
+                        report[key] = {'by_category': [], 'overall': {'summary': '', 'notable_issues': []}}
                     elif key == 'solution':
-                        report[key] = {'short_term': [], 'long_term': []}
+                        report[key] = {
+                            'current_status_and_problems': {'status': '', 'problems': ''},
+                            'short_term': {'goal_kpi': '', 'plan': '', 'actions': []},
+                            'mid_term': {'goal_kpi': '', 'plan': '', 'actions': []},
+                            'long_term': {'goal_kpi': '', 'plan': '', 'actions': []},
+                            'expected_effects_and_risks': {'expected_effects': '', 'risk_management': ''}
+                        }
             
             logger.info(f"GPT 응답 파싱 성공")
             return report
@@ -600,14 +623,34 @@ JSON 형식으로 응답해주세요:
             "insight": {
                 "by_category": [],  # AI 없이는 빈 배열
                 "overall": {
-                    "short_term": "",
-                    "long_term": "",
+                    "summary": "",
                     "notable_issues": []
                 }
             },
             "solution": {
-                "short_term": [],  # AI 없이는 빈 배열
-                "long_term": []
+                "current_status_and_problems": {
+                    "status": "",
+                    "problems": ""
+                },
+                "short_term": {
+                    "goal_kpi": "",
+                    "plan": "",
+                    "actions": []
+                },
+                "mid_term": {
+                    "goal_kpi": "",
+                    "plan": "",
+                    "actions": []
+                },
+                "long_term": {
+                    "goal_kpi": "",
+                    "plan": "",
+                    "actions": []
+                },
+                "expected_effects_and_risks": {
+                    "expected_effects": "",
+                    "risk_management": ""
+                }
             },
             "_is_ai_generated": False,  # Fallback 표시
             "_data_source": "fallback",

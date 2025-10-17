@@ -5,24 +5,55 @@ document.addEventListener("DOMContentLoaded", function() {
     const exportPdfButton = document.getElementById("btn-export-pdf");
 
     if (exportPdfButton) {
-        exportPdfButton.addEventListener("click", function() {
-            const file_id = 'file_12345'; // 예시 file_id
+        exportPdfButton.addEventListener("click", async function() {
+            // 현재 생성된 리포트 ID 가져오기
+            let reportId = window.reportManager?.currentReportId;
+            
+            // 리포트가 없으면 마지막 리포트 조회
+            if (!reportId) {
+                try {
+                    const response = await fetch('/api/report/latest', {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        }
+                    });
+                    
+                    if (response.ok) {
+                        const result = await response.json();
+                        if (result.success && result.data && result.data.report_id) {
+                            reportId = result.data.report_id;
+                            console.log(`마지막 리포트 사용: report_id=${reportId}`);
+                        } else {
+                            showMessage('생성된 리포트가 없습니다. 먼저 리포트를 생성해주세요.', 'warning');
+                            return;
+                        }
+                    } else {
+                        showMessage('리포트를 찾을 수 없습니다. 먼저 리포트를 생성해주세요.', 'warning');
+                        return;
+                    }
+                } catch (error) {
+                    console.error('마지막 리포트 조회 실패:', error);
+                    showMessage('리포트를 찾을 수 없습니다. 먼저 리포트를 생성해주세요.', 'warning');
+                    return;
+                }
+            }
 
             // 다운로드 로직
-            console.log("PDF 다운로드 요청을 서버로 보냅니다.");
+            console.log(`PDF 다운로드 요청: report_id=${reportId}`);
             exportPdfButton.disabled = true;
             const originalText = exportPdfButton.textContent;
             exportPdfButton.textContent = "생성 중...";
 
             // 1. 백엔드의 /download-pdf URL로 요청을 보냅니다.
-            fetch(`/download-pdf?file_id=${file_id}`)
+            fetch(`/download-pdf?report_id=${reportId}`)
                 .then(response => {
                     // 2. 서버의 응답이 성공적인지 확인합니다.
                     if (!response.ok) {
                         throw new Error("서버에서 PDF 생성에 실패했습니다.");
                     }
                     const disposition = response.headers.get('Content-Disposition');
-                    let filename = `AI분석리포트_${file_id}.pdf`; // 기본 파일 이름
+                    let filename = `AI분석리포트_${reportId}.pdf`; // 기본 파일 이름
                     if (disposition && disposition.indexOf('attachment') !== -1) {
                         const filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/;
                         const matches = filenameRegex.exec(disposition);

@@ -1,22 +1,106 @@
 /* 분석 리포트 페이지 전용 스타일 */
 
-/* 채널별 차트 컨테이너 (가로 2개씩 레이아웃) */
+/* Empty State 스타일 */
+.empty-state {
+    text-align: center;
+    padding: 60px 40px;
+    color: #666;
+}
+
+.empty-icon {
+    font-size: 64px;
+    margin: 0 0 20px 0;
+}
+
+.empty-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: #333;
+    margin: 0 0 12px 0;
+}
+
+.empty-desc {
+    font-size: 14px;
+    color: #666;
+    margin: 0 0 8px 0;
+    line-height: 1.6;
+}
+
+.empty-hint {
+    font-size: 13px;
+    color: #999;
+    margin: 16px 0 0 0;
+    font-style: italic;
+}
+
+.empty-state-small {
+    text-align: center;
+    padding: 40px 20px;
+    color: #666;
+}
+
+.empty-icon-small {
+    font-size: 40px;
+    margin: 0 0 12px 0;
+}
+
+.empty-desc-small {
+    font-size: 13px;
+    color: #666;
+    line-height: 1.6;
+    margin: 0;
+}
+
+/* 채널별 추이 카드: 전체 너비 사용 */
+#channel-trends-card {
+    width: 100%;
+    max-width: 100%;
+    min-height: 600px;  /* 최소 높이 보장 */
+}
+
+#channel-trends-card .chart-box {
+    min-height: 550px;  /* 차트 박스 최소 높이 */
+    display: flex;
+    justify-content: center;  /* 가운데 정렬 */
+    align-items: center;  /* 세로 가운데 정렬 */
+}
+
+/* 채널별 차트 컨테이너 (가로 스크롤 방지, 세로 스크롤만) */
 #channel-charts-container {
-    padding: 16px;
-    max-height: 800px;
+    padding: 20px;
+    max-height: 800px;  /* 그래프 보기 편하게 높이 증가 */
     overflow-y: auto;
+    overflow-x: hidden;  /* 가로 스크롤 방지 */
+    width: 100%;
+    display: flex;  /* 기본은 flexbox (empty state용) */
+    justify-content: center;
+    align-items: center;
+}
+
+/* 그래프가 있을 때 그리드 적용 (JavaScript로 클래스 추가) */
+#channel-charts-container.has-charts {
     display: grid;
     grid-template-columns: repeat(2, 1fr);  /* 가로 2개씩 고정 */
     gap: 20px;
+    grid-auto-rows: 450px;  /* 각 행의 고정 높이 */
+    align-items: stretch;
+    justify-content: initial;
 }
 
 .channel-chart-wrapper {
     background: #ffffff;
     border: 1px solid #e0e0e0;
     border-radius: 8px;
-    padding: 20px;
+    padding: 16px;
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
     transition: box-shadow 0.2s;
+    min-width: 300px;  /* 최소 너비 설정 (그래프 깨짐 방지) */
+    min-height: 400px;  /* 최소 높이 증가 */
+    overflow: hidden;
+    height: 100%;  /* 그리드 셀 높이에 맞춤 */
+    width: 100%;  /* 그리드 셀 너비에 맞춤 */
+    display: flex;
+    flex-direction: column;
 }
 
 .channel-chart-wrapper:hover {
@@ -31,6 +115,7 @@
     text-align: center;
     padding-bottom: 8px;
     border-bottom: 2px solid #3498db;
+    flex-shrink: 0;  /* 제목은 크기 고정 */
 }
 
 .channel-chart-wrapper .ch-sub {
@@ -39,6 +124,24 @@
     text-align: center;
     margin-bottom: 15px;
     font-weight: 500;
+    flex-shrink: 0;  /* 부제목은 크기 고정 */
+}
+
+.channel-chart-wrapper > div:last-child {
+    flex: 1;  /* 차트 영역이 남은 공간 차지 */
+    min-height: 350px;  /* 차트 최소 높이 증가 */
+    position: relative;
+    width: 100%;
+}
+
+.channel-chart-wrapper > div:last-child > canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100% !important;
+    height: 100% !important;
+    max-width: 100%;
+    max-height: 100%;
 }
 
 .channel-chart-wrapper canvas {
@@ -46,11 +149,55 @@
     border-radius: 4px;
 }
 
-/* 반응형: 작은 화면에서는 1개씩 */
-@media (max-width: 768px) {
-    #channel-charts-container {
-        grid-template-columns: 1fr;
+/* 반응형: 화면 크기에 따라 컬럼 수 조정 */
+@media (max-width: 1600px) {
+    #channel-charts-container.has-charts {
+        grid-template-columns: repeat(2, 1fr);  /* 중간 화면: 2컬럼 */
+        grid-auto-rows: 450px;
     }
+}
+
+@media (max-width: 900px) {
+    #channel-charts-container.has-charts {
+        grid-template-columns: 1fr;  /* 작은 화면: 1컬럼 */
+        grid-auto-rows: 400px;
+    }
+    
+    .channel-chart-wrapper {
+        min-height: 350px;
+    }
+    
+    .channel-chart-wrapper > div:last-child {
+        min-height: 300px;
+    }
+    
+    /* Empty state 폰트 크기 조정 */
+    .empty-icon {
+        font-size: 48px;
+    }
+    
+    .empty-title {
+        font-size: 16px;
+    }
+}
+
+/* 스크롤바 스타일 */
+#channel-charts-container::-webkit-scrollbar {
+    width: 8px;
+}
+
+#channel-charts-container::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+#channel-charts-container::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 4px;
+}
+
+#channel-charts-container::-webkit-scrollbar-thumb:hover {
+    background: #555;
 }
 
 /* 차트 로딩 상태 */
@@ -150,4 +297,55 @@
 
 .section.loading .loading-indicator {
     display: block;
+}
+
+/* 리포트 섹션 추가 스타일 */
+#report .body {
+    overflow-x: hidden;  /* 가로 스크롤 방지 */
+    width: 100%;
+}
+
+#report .grid.cols-3 {
+    gap: 16px;
+    margin-top: 0;
+}
+
+#report .grid.cols-3 > .card {
+    min-height: 200px;  /* 최소 높이를 작게 설정 (데이터 없을 때) */
+    max-height: 600px;  /* 최대 높이 제한 */
+    display: flex;
+    flex-direction: column;
+    height: auto;  /* 동적 높이 */
+}
+
+#report .grid.cols-3 > .card > strong {
+    flex-shrink: 0;  /* 제목 크기 고정 */
+    margin-bottom: 12px;
+}
+
+#report .card {
+    overflow-x: hidden;  /* 카드 내부 가로 스크롤 방지 */
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+}
+
+#report .card ul.subtle,
+#report .card ol.subtle {
+    max-height: 550px;  /* 최대 높이 증가 */
+    overflow-y: auto;
+    overflow-x: hidden;
+    min-height: 100px;  /* 최소 높이 */
+}
+
+/* 반응형: 3컬럼 그리드가 태블릿에서는 2컬럼, 모바일에서는 1컬럼 */
+@media (max-width: 1400px) {
+    #report .grid.cols-3 {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 900px) {
+    #report .grid.cols-3 {
+        grid-template-columns: 1fr;
+    }
 }

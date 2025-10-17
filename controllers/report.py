@@ -240,6 +240,43 @@ def get_insights():
             'error': f'AI 분석 중 오류가 발생했습니다: {str(e)}'
         }), 500
 
+@report_bp.route("/api/report/latest", methods=["GET"])
+@swag_from({
+    'tags': ['Report'],
+    'description': '마지막 생성된 리포트 조회',
+    'responses': {
+        200: {
+            'description': '마지막 리포트 조회 성공'
+        }
+    }
+})
+def get_latest_report():
+    """마지막 생성된 리포트 조회 API"""
+    try:
+        user_id = session.get('user_id') or Config.DEFAULT_USER_ID
+        logger.info(f"마지막 리포트 조회: user_id={user_id}")
+        
+        report_service = ReportService()
+        latest_report = report_service.get_latest_report(user_id)
+        
+        if not latest_report:
+            return jsonify({
+                'success': False,
+                'error': '생성된 리포트가 없습니다.'
+            }), 404
+        
+        return jsonify({
+            'success': True,
+            'data': latest_report
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"마지막 리포트 조회 실패: {e}")
+        return jsonify({
+            'success': False,
+            'error': '리포트 조회 중 오류가 발생했습니다.'
+        }), 500
+
 @report_bp.route("/api/report/solutions", methods=["POST"])
 @swag_from({
     'tags': ['Report'],

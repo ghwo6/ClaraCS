@@ -6,6 +6,19 @@ main_bp = Blueprint("main", __name__)
 @main_bp.route("/")
 @swag_from({
     'tags': ['Main'],
+    'description': '메인 페이지 반환',
+    'responses': {
+        200: {
+            'description': 'response OK'
+        }
+    }
+})
+def main():
+    return render_template("main.html")
+
+@main_bp.route("/dashboard")
+@swag_from({
+    'tags': ['Main'],
     'description': '대시보드 페이지 반환',
     'responses': {
         200: {
@@ -15,19 +28,6 @@ main_bp = Blueprint("main", __name__)
 })
 def dashboard():
     return render_template("dashboard.html")
-
-# @main_bp.route("/")
-# @swag_from({
-#     'tags': ['Main'],
-#     'description': '대시보드 페이지 반환',
-#     'responses': {
-#         200: {
-#             'description': 'response OK'
-#         }
-#     }
-# })
-# def dashboard():
-#     return render_template("dashboard.html")
 
 @main_bp.route("/upload")
 @swag_from({
@@ -80,3 +80,16 @@ def report():
 })
 def settings():
     return render_template("settings.html")
+
+@main_bp.route("/contact")
+@swag_from({
+    'tags': ['Main'],
+    'description': '연락처 페이지 반환',
+    'responses': {
+        200: {
+            'description': 'response OK'
+        }
+    }
+})
+def contact():
+    return render_template("contact.html")

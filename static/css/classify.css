@@ -41,7 +41,7 @@
 }
 
 .engine-option input[type="radio"]:checked + .engine-label {
-  color: #3b82f6;
+  color: #ffffff;
   font-weight: 600;
   background: rgba(59, 130, 246, 0.1);
 }

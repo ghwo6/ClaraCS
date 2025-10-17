@@ -1,17 +1,21 @@
-from flask import Flask, send_file, jsonify, request, after_this_request, session
+from flask import Flask, session
 from flasgger import Swagger
-from controllers.mapping import mapping_bp
-from controllers.export_to_pdf import create_prototype_report
 from config import Config
+<<<<<<< HEAD
 import os
 import datetime
 import io
 from urllib.parse import quote
+=======
+>>>>>>> 81a6467139b316a3d9439097a5451034ab2ca9df
 from dotenv import load_dotenv
 from controllers.main import main_bp
 from controllers.upload import upload_bp
 from controllers.report import report_bp
 from controllers.auto_classify import auto_bp
+from controllers.mapping import mapping_bp
+from controllers.dashboard import dashboard_bp
+from controllers.export_to_pdf import export_bp
 
 # .env 파일 로드
 load_dotenv()
@@ -43,6 +47,7 @@ def create_app():
         if 'user_id' not in session:
             session['user_id'] = Config.DEFAULT_USER_ID
     
+<<<<<<< HEAD
     @app.route('/dashboard')
     def get_dashboard_data():
         """ 여기서 DB 쿼리를 통해 실제 데이터를 가져와야 합니다."""
@@ -131,11 +136,16 @@ def create_app():
             print(f"PDF 다운로드 처리 중 오류 발생: {e}")
             return jsonify({"error": "리포트를 처리하는 중 서버에서 오류가 발생했습니다."}), 500
 
+=======
+    # Blueprint 등록
+>>>>>>> 81a6467139b316a3d9439097a5451034ab2ca9df
     app.register_blueprint(main_bp)
-    app.register_blueprint(report_bp)
     app.register_blueprint(upload_bp)
-    app.register_blueprint(mapping_bp)
     app.register_blueprint(auto_bp)
+    app.register_blueprint(mapping_bp)
+    app.register_blueprint(report_bp)
+    app.register_blueprint(dashboard_bp)
+    app.register_blueprint(export_bp)
 
     return app
 

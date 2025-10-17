@@ -5,6 +5,7 @@
 class ReportManager {
     constructor() {
         this.currentFileId = null;  // 파일 ID (자동 선택)
+        this.currentReportId = null;  // 리포트 ID (PDF 다운로드용)
         this.currentUserId = this.getUserId();  // 동적으로 가져오기
         this.isGenerating = false;
         this.chartInstances = {};  // Chart.js 인스턴스 저장
@@ -63,6 +64,10 @@ class ReportManager {
             // 1. 리포트 생성 API 호출 (최신 파일 자동 선택)
             const reportData = await this.callGenerateReportAPI();
             
+            // 리포트 ID 저장 (PDF 다운로드용)
+            this.currentReportId = reportData.report_id;
+            this.currentFileId = reportData.file_id;
+            
             // 2. AI 생성 여부 확인 및 경고 표시
             if (!reportData.is_ai_generated || reportData.data_source === 'fallback') {
                 this.showMessage(`⚠️ AI 연동 실패. 기본 분석 데이터를 표시합니다. (OPENAI_API_KEY 확인 필요)`, 'warning');
@@ -118,7 +123,7 @@ class ReportManager {
         const container = document.getElementById('channel-charts-container');
         if (!container) return;
         
-        // 기존 차트 제거
+        // 기존 차트 및 Empty State 제거
         Object.values(this.chartInstances).forEach(chart => chart.destroy());
         this.chartInstances = {};
         container.innerHTML = '';
@@ -131,9 +136,13 @@ class ReportManager {
         
         // 채널 데이터가 없는 경우
         if (!channelTrends || Object.keys(channelTrends).length === 0) {
-            container.innerHTML = '<p style="text-align:center; color: #999; padding: 40px;">채널별 데이터가 없습니다.</p>';
+            container.classList.remove('has-charts');  // 그리드 클래스 제거
+            container.innerHTML = '<div class="empty-state"><p class="empty-icon">📊</p><p class="empty-desc">채널별 데이터가 없습니다.</p></div>';
             return;
         }
+        
+        // 그리드 레이아웃 활성화
+        container.classList.add('has-charts');
         
         // 각 채널별로 차트 생성
         Object.entries(channelTrends).forEach(([channel, trendData]) => {
@@ -158,13 +167,13 @@ class ReportManager {
             sum + row.reduce((a, b) => a + (b || 0), 0), 0
         );
         
-        // 채널별 컨테이너 생성 (도넛그래프 스타일)
+        // 채널별 컨테이너 생성
         const channelDiv = document.createElement('div');
         channelDiv.className = 'channel-chart-wrapper';
         channelDiv.innerHTML = `
             <h4>${channel}</h4>
             <div class="ch-sub">${totalCount.toLocaleString()}건</div>
-            <div style="position: relative; height: 280px;">
+            <div>
                 <canvas id="chart-${this.sanitizeId(channel)}"></canvas>
             </div>
         `;
@@ -236,8 +245,14 @@ class ReportManager {
                         position: 'top',
                         labels: {
                             usePointStyle: true,
-                            padding: 15
-                        }
+                            padding: 10,
+                            font: {
+                                size: 11
+                            },
+                            boxWidth: 12,
+                            boxHeight: 12
+                        },
+                        maxHeight: 80
                     },
                     tooltip: {
                         callbacks: {
@@ -258,7 +273,17 @@ class ReportManager {
                         stacked: true,
                         title: {
                             display: true,
-                            text: '날짜'
+                            text: '날짜',
+                            font: {
+                                size: 11
+                            }
+                        },
+                        ticks: {
+                            font: {
+                                size: 10
+                            },
+                            maxRotation: 45,
+                            minRotation: 0
                         }
                     },
                     y: {
@@ -266,7 +291,15 @@ class ReportManager {
                         beginAtZero: true,
                         title: {
                             display: true,
-                            text: 'CS 건수'
+                            text: 'CS 건수',
+                            font: {
+                                size: 11
+                            }
+                        },
+                        ticks: {
+                            font: {
+                                size: 10
+                            }
                         }
                     }
                 }
@@ -319,8 +352,8 @@ class ReportManager {
     renderSummary(summary) {
         console.log('데이터 요약 렌더링 시작...', summary);
         
-        // 데이터 요약 컨테이너
-        const container = document.querySelector('#report .card:nth-child(2) .subtle');
+        // 데이터 요약 컨테이너 (grid.cols-3 안의 첫 번째 카드)
+        const container = document.querySelector('#report .grid.cols-3 .card:nth-child(1) .subtle');
         if (!container) return;
         
         const totalCount = summary.total_cs_count || 0;
@@ -355,7 +388,8 @@ class ReportManager {
         renderInsights(insight) {
             console.log('인사이트 렌더링 시작...', insight);
             
-            const container = document.querySelector('#report .card:nth-child(3) .subtle');
+            // 인사이트 도출 컨테이너 (grid.cols-3 안의 두 번째 카드)
+            const container = document.querySelector('#report .grid.cols-3 .card:nth-child(2) .subtle');
             if (!container) return;
             
             let insightsHTML = '';
@@ -364,7 +398,7 @@ class ReportManager {
             const overall = insight.overall || {};
             
             // AI 연동 실패 시 명확한 메시지 표시
-            if (byCategory.length === 0 && (!overall.short_term && !overall.long_term)) {
+            if (byCategory.length === 0 && (!overall.summary || overall.summary === '')) {
                 insightsHTML = `
                     <li style="color: #e74c3c; font-weight: 600;">
                         ⚠️ AI 연동 실패
@@ -388,9 +422,9 @@ class ReportManager {
                         <li>
                             <strong>${cat.category_name} ${priorityBadge}</strong>
                             <ul style="margin-left: 15px; font-size: 14px;">
-                                <li><strong>문제점:</strong> ${cat.issue || '-'}</li>
-                                <li><strong>단기:</strong> ${Array.isArray(cat.short_term_actions) ? cat.short_term_actions.join(', ') : cat.short_term_actions || '-'}</li>
-                                <li><strong>장기:</strong> ${Array.isArray(cat.long_term_actions) ? cat.long_term_actions.join(', ') : cat.long_term_actions || '-'}</li>
+                                <li><strong>문제점:</strong> ${cat.problem || '-'}</li>
+                                <li><strong>단기 목표:</strong> ${cat.short_term_goal || '-'}</li>
+                                <li><strong>장기 목표:</strong> ${cat.long_term_goal || '-'}</li>
                             </ul>
                         </li>
                     `;
@@ -400,18 +434,15 @@ class ReportManager {
             }
             
             // 종합 인사이트 (overall)
-            if (overall && (overall.short_term || overall.long_term || (overall.notable_issues && overall.notable_issues.length > 0))) {
+            if (overall && (overall.summary || (overall.notable_issues && overall.notable_issues.length > 0))) {
                 insightsHTML += '<li><strong>종합적 인사이트:</strong><ul style="margin-left: 20px; margin-top: 5px;">';
                 
-                if (overall.short_term) {
-                    insightsHTML += `<li><strong>단기:</strong> ${overall.short_term}</li>`;
-                }
-                if (overall.long_term) {
-                    insightsHTML += `<li><strong>장기:</strong> ${overall.long_term}</li>`;
+                if (overall.summary) {
+                    insightsHTML += `<li>${overall.summary}</li>`;
                 }
                 if (overall.notable_issues && Array.isArray(overall.notable_issues) && overall.notable_issues.length > 0) {
                     const issues = overall.notable_issues.join(', ');
-                    insightsHTML += `<li><strong>특이사항:</strong> ${issues}</li>`;
+                    insightsHTML += `<li><strong>주요 이슈:</strong> ${issues}</li>`;
                 }
                 
                 insightsHTML += '</ul></li>';
@@ -423,16 +454,21 @@ class ReportManager {
         renderSolutions(solution) {
             console.log('솔루션 렌더링 시작...', solution);
             
-            const container = document.querySelector('#report .card:last-child .subtle');
+            // 솔루션 제안 컨테이너 (grid.cols-3 안의 세 번째 카드)
+            const container = document.querySelector('#report .grid.cols-3 .card:nth-child(3) .subtle');
             if (!container) return;
             
             let solutionsHTML = '';
             
-            const shortTerm = solution.short_term || [];
-            const longTerm = solution.long_term || [];
+            const currentStatusProblems = solution.current_status_and_problems || {};
+            const shortTerm = solution.short_term || {};
+            const midTerm = solution.mid_term || {};
+            const longTerm = solution.long_term || {};
+            const effectsRisks = solution.expected_effects_and_risks || {};
             
             // AI 연동 실패 시 명확한 메시지 표시
-            if (shortTerm.length === 0 && longTerm.length === 0) {
+            if (!currentStatusProblems.status && !currentStatusProblems.problems && 
+                !shortTerm.goal_kpi && !midTerm.goal_kpi && !longTerm.goal_kpi) {
                 solutionsHTML = `
                     <li style="color: #e74c3c; font-weight: 600;">
                         ⚠️ AI 연동 실패
@@ -446,50 +482,85 @@ class ReportManager {
                 return;
             }
             
-            // 단기 솔루션 (개선된 구조)
-            if (shortTerm.length > 0) {
-                solutionsHTML += '<li><strong>단기 (1~6개월):</strong><ul style="margin-left: 20px; margin-top: 5px;">';
-                
-                shortTerm.forEach(item => {
-                    const priorityBadge = item.priority === 'high' ? '🔴' : item.priority === 'medium' ? '🟡' : '🟢';
-                    const difficultyText = item.difficulty === 'high' ? '어려움' : item.difficulty === 'medium' ? '보통' : '쉬움';
-                    
-                    solutionsHTML += `
-                        <li>
-                            <strong>[${item.category}] ${item.suggestion}</strong> ${priorityBadge}<br/>
-                            <span style="color: #666; font-size: 13px;">
-                                → ${item.expected_effect} | 
-                                난이도: ${difficultyText} | 
-                                기간: ${item.timeline || '1-6개월'}
-                            </span>
-                        </li>
-                    `;
-                });
-                
-                solutionsHTML += '</ul></li>';
+            // 현황 및 문제점 요약
+            if (currentStatusProblems.status || currentStatusProblems.problems) {
+                solutionsHTML += `
+                    <li><strong>현황 및 문제점 요약</strong>
+                        <ul style="margin-left: 20px; margin-top: 5px;">
+                            ${currentStatusProblems.status ? `<li><strong>현황:</strong> ${currentStatusProblems.status}</li>` : ''}
+                            ${currentStatusProblems.problems ? `<li><strong>문제점:</strong> ${currentStatusProblems.problems}</li>` : ''}
+                        </ul>
+                    </li>
+                `;
             }
             
-            // 장기 솔루션 (개선된 구조)
-            if (longTerm.length > 0) {
-                solutionsHTML += '<li><strong>장기 (6개월~2년):</strong><ul style="margin-left: 20px; margin-top: 5px;">';
-                
-                longTerm.forEach(item => {
-                    const priorityBadge = item.priority === 'high' ? '🔴' : item.priority === 'medium' ? '🟡' : '🟢';
-                    const difficultyText = item.difficulty === 'high' ? '어려움' : item.difficulty === 'medium' ? '보통' : '쉬움';
-                    
-                    solutionsHTML += `
-                        <li>
-                            <strong>[${item.category}] ${item.suggestion}</strong> ${priorityBadge}<br/>
-                            <span style="color: #666; font-size: 13px;">
-                                → ${item.expected_effect} | 
-                                난이도: ${difficultyText} | 
-                                기간: ${item.timeline || '6-24개월'}
-                            </span>
-                        </li>
-                    `;
-                });
-                
-                solutionsHTML += '</ul></li>';
+            // 단기 솔루션 (1-6개월)
+            if (shortTerm.goal_kpi || shortTerm.plan || (shortTerm.actions && shortTerm.actions.length > 0)) {
+                solutionsHTML += `
+                    <li><strong>단기 (1-6개월)</strong>
+                        <ul style="margin-left: 20px; margin-top: 5px;">
+                            ${shortTerm.goal_kpi ? `<li><strong>단기 목표 (+KPI):</strong> ${shortTerm.goal_kpi}</li>` : ''}
+                            ${shortTerm.plan ? `<li><strong>단기 플랜:</strong> ${shortTerm.plan}</li>` : ''}
+                            ${shortTerm.actions && shortTerm.actions.length > 0 ? `
+                                <li><strong>단기 액션:</strong>
+                                    <ul style="margin-left: 15px;">
+                                        ${shortTerm.actions.map(action => `<li>- ${action}</li>`).join('')}
+                                    </ul>
+                                </li>
+                            ` : ''}
+                        </ul>
+                    </li>
+                `;
+            }
+            
+            // 중기 솔루션 (6-12개월)
+            if (midTerm.goal_kpi || midTerm.plan || (midTerm.actions && midTerm.actions.length > 0)) {
+                solutionsHTML += `
+                    <li><strong>중기 (6-12개월)</strong>
+                        <ul style="margin-left: 20px; margin-top: 5px;">
+                            ${midTerm.goal_kpi ? `<li><strong>중기 목표 (+KPI):</strong> ${midTerm.goal_kpi}</li>` : ''}
+                            ${midTerm.plan ? `<li><strong>중기 플랜:</strong> ${midTerm.plan}</li>` : ''}
+                            ${midTerm.actions && midTerm.actions.length > 0 ? `
+                                <li><strong>중기 액션:</strong>
+                                    <ul style="margin-left: 15px;">
+                                        ${midTerm.actions.map(action => `<li>- ${action}</li>`).join('')}
+                                    </ul>
+                                </li>
+                            ` : ''}
+                        </ul>
+                    </li>
+                `;
+            }
+            
+            // 장기 솔루션 (12개월 이상)
+            if (longTerm.goal_kpi || longTerm.plan || (longTerm.actions && longTerm.actions.length > 0)) {
+                solutionsHTML += `
+                    <li><strong>장기 (12개월 이상)</strong>
+                        <ul style="margin-left: 20px; margin-top: 5px;">
+                            ${longTerm.goal_kpi ? `<li><strong>장기 목표 (+KPI):</strong> ${longTerm.goal_kpi}</li>` : ''}
+                            ${longTerm.plan ? `<li><strong>장기 플랜:</strong> ${longTerm.plan}</li>` : ''}
+                            ${longTerm.actions && longTerm.actions.length > 0 ? `
+                                <li><strong>장기 액션:</strong>
+                                    <ul style="margin-left: 15px;">
+                                        ${longTerm.actions.map(action => `<li>- ${action}</li>`).join('')}
+                                    </ul>
+                                </li>
+                            ` : ''}
+                        </ul>
+                    </li>
+                `;
+            }
+            
+            // 기대효과 및 리스크 관리
+            if (effectsRisks.expected_effects || effectsRisks.risk_management) {
+                solutionsHTML += `
+                    <li><strong>기대효과 및 리스크 관리</strong>
+                        <ul style="margin-left: 20px; margin-top: 5px;">
+                            ${effectsRisks.expected_effects ? `<li><strong>기대효과:</strong> ${effectsRisks.expected_effects}</li>` : ''}
+                            ${effectsRisks.risk_management ? `<li><strong>리스크 관리:</strong> ${effectsRisks.risk_management}</li>` : ''}
+                        </ul>
+                    </li>
+                `;
             }
             
             container.innerHTML = solutionsHTML;

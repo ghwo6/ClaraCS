@@ -18,6 +18,42 @@ class ReportDB:
     # 파일 관련 조회
     # ========================================
     
+    def get_latest_report_id(self, user_id: int) -> Optional[int]:
+        """사용자의 최신 리포트 ID 조회"""
+        logger.info(f"사용자 {user_id}의 최신 리포트 조회")
+        
+        connection = self.db_manager.get_connection()
+        cursor = connection.cursor(dictionary=True)
+        
+        try:
+            query = """
+                SELECT report_id
+                FROM tb_analysis_report
+                WHERE created_by = %s
+                  AND status = 'completed'
+                ORDER BY created_at DESC
+                LIMIT 1
+            """
+            
+            cursor.execute(query, [user_id])
+            result = cursor.fetchone()
+            
+            if result:
+                report_id = result['report_id']
+                logger.info(f"최신 리포트 조회 완료: report_id={report_id}")
+                return report_id
+            else:
+                logger.warning(f"사용자 {user_id}의 리포트가 없습니다")
+                return None
+                
+        except Exception as e:
+            logger.error(f"최신 리포트 조회 실패: {e}")
+            return None
+        finally:
+            cursor.close()
+            if connection and connection.is_connected():
+                connection.close()
+    
     def get_latest_file_id(self, user_id: int) -> Optional[int]:
         """사용자의 최신 업로드 파일 ID 조회"""
         logger.info(f"사용자 {user_id}의 최신 파일 조회")
@@ -500,12 +536,12 @@ class ReportDB:
                     'percentage': round((row['count'] / total_tickets * 100), 1) if total_tickets > 0 else 0
                 }
             
-            # 5. 채널별 해결률 계산 (status='closed' 기준)
+            # 5. 채널별 해결률 계산 (status='closed', 'resolved', 'completed', '완료' 기준)
             cursor.execute("""
                 SELECT 
                     channel,
                     COUNT(*) as total,
-                    SUM(CASE WHEN status = 'closed' THEN 1 ELSE 0 END) as resolved
+                    SUM(CASE WHEN status IN ('closed', 'resolved', 'completed', '완료') THEN 1 ELSE 0 END) as resolved
                 FROM tb_ticket
                 WHERE file_id = %s
                 GROUP BY channel
@@ -522,8 +558,23 @@ class ReportDB:
                     'resolution_rate': resolution_rate
                 })
             
+            # 6. 처리 완료/미처리 건수 계산 (status 기준)
+            cursor.execute("""
+                SELECT 
+                    COUNT(CASE WHEN status IN ('closed', 'resolved', 'completed', '완료') THEN 1 END) as resolved,
+                    COUNT(CASE WHEN status NOT IN ('closed', 'resolved', 'completed', '완료') OR status IS NULL THEN 1 END) as unresolved
+                FROM tb_ticket
+                WHERE file_id = %s
+            """, [file_id])
+            status_count = cursor.fetchone()
+            
+            total_resolved = status_count['resolved'] or 0
+            total_unresolved = status_count['unresolved'] or 0
+            
             cs_analysis_data = {
                 'total_tickets': total_tickets,
+                'total_resolved': total_resolved,
+                'total_unresolved': total_unresolved,
                 'category_distribution': category_distribution,
                 'channel_distribution': channel_distribution,
                 'status_distribution': status_distribution,
@@ -802,3 +853,155 @@ class ReportDB:
     def _get_current_timestamp(self) -> str:
         """현재 타임스탬프 반환"""
         return datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    
+    def get_report_with_snapshots(self, report_id: int) -> Optional[Dict]:
+        """리포트 ID로 리포트 및 스냅샷 데이터 조회"""
+        logger.info(f"리포트 조회: report_id={report_id}")
+        
+        connection = self.db_manager.get_connection()
+        cursor = connection.cursor(dictionary=True)
+        
+        try:
+            # 1. 리포트 기본 정보 조회
+            report_query = """
+                SELECT 
+                    r.report_id,
+                    r.file_id,
+                    r.created_by,
+                    r.report_type,
+                    r.title,
+                    r.status,
+                    r.created_at,
+                    r.completed_at
+                FROM tb_analysis_report r
+                WHERE r.report_id = %s
+            """
+            cursor.execute(report_query, [report_id])
+            report = cursor.fetchone()
+            
+            if not report:
+                logger.warning(f"리포트를 찾을 수 없음: report_id={report_id}")
+                return None
+            
+            # 2. Summary 스냅샷 조회
+            summary_query = """
+                SELECT 
+                    total_tickets,
+                    resolved_count,
+                    category_ratios,
+                    repeat_rate
+                FROM tb_analysis_summary_snapshot
+                WHERE report_id = %s
+                ORDER BY created_at DESC
+                LIMIT 1
+            """
+            cursor.execute(summary_query, [report_id])
+            summary_result = cursor.fetchone()
+            
+            if summary_result:
+                # JSON 컬럼은 문자열로 반환될 수 있으므로 파싱 필요
+                resolved_count = summary_result.get('resolved_count', {})
+                if isinstance(resolved_count, str):
+                    resolved_count = json.loads(resolved_count)
+                
+                category_ratios = summary_result.get('category_ratios', {})
+                if isinstance(category_ratios, str):
+                    category_ratios = json.loads(category_ratios)
+                
+                summary = {
+                    'total_tickets': summary_result.get('total_tickets', 0),
+                    'resolved_count': resolved_count,
+                    'category_ratios': category_ratios,
+                    'repeat_rate': float(summary_result.get('repeat_rate', 0.0)) if summary_result.get('repeat_rate') else 0.0
+                }
+            else:
+                summary = {}
+            
+            # 3. Insight 스냅샷 조회
+            insight_query = """
+                SELECT insight_payload
+                FROM tb_analysis_insight_snapshot
+                WHERE report_id = %s
+                ORDER BY created_at DESC
+                LIMIT 1
+            """
+            cursor.execute(insight_query, [report_id])
+            insight_result = cursor.fetchone()
+            
+            if insight_result:
+                insight_payload = insight_result.get('insight_payload', {})
+                if isinstance(insight_payload, str):
+                    insight = json.loads(insight_payload)
+                else:
+                    insight = insight_payload
+            else:
+                insight = {}
+            
+            # 4. Solution 스냅샷 조회
+            solution_query = """
+                SELECT solution_payload
+                FROM tb_analysis_solution_snapshot
+                WHERE report_id = %s
+                ORDER BY created_at DESC
+                LIMIT 1
+            """
+            cursor.execute(solution_query, [report_id])
+            solution_result = cursor.fetchone()
+            
+            if solution_result:
+                solution_payload = solution_result.get('solution_payload', {})
+                if isinstance(solution_payload, str):
+                    solution = json.loads(solution_payload)
+                else:
+                    solution = solution_payload
+            else:
+                solution = {}
+            
+            # 5. Channel 스냅샷 조회 (여러 행을 그룹화)
+            channel_query = """
+                SELECT 
+                    channel,
+                    time_period,
+                    category_id,
+                    count
+                FROM tb_analysis_channel_snapshot
+                WHERE report_id = %s
+                ORDER BY time_period, channel, category_id
+            """
+            cursor.execute(channel_query, [report_id])
+            channel_results = cursor.fetchall()
+            
+            # 채널별로 데이터 그룹화
+            channel_trends = {}
+            if channel_results:
+                for row in channel_results:
+                    channel = row['channel']
+                    if channel not in channel_trends:
+                        channel_trends[channel] = {
+                            'dates': [],
+                            'categories': [],
+                            'data': []
+                        }
+                    # 간단한 구조로 저장 (실제로는 더 복잡한 변환 필요)
+            else:
+                channel_trends = {}
+            
+            # 결과 조합
+            result = {
+                **report,
+                'summary': summary,
+                'insight': insight,
+                'solution': solution,
+                'channel_trends': channel_trends
+            }
+            
+            logger.info(f"리포트 조회 완료: report_id={report_id}")
+            return result
+            
+        except Exception as e:
+            logger.error(f"리포트 조회 실패: {e}")
+            return None
+        finally:
+            cursor.close()
+            if connection and connection.is_connected():
+                connection.close()
