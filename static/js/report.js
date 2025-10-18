@@ -9,6 +9,7 @@ class ReportManager {
         this.currentUserId = this.getUserId();  // 동적으로 가져오기
         this.isGenerating = false;
         this.chartInstances = {};  // Chart.js 인스턴스 저장
+        this.modalChartInstance = null;  // 모달용 차트 인스턴스
         
         this.init();
     }
@@ -33,6 +34,7 @@ class ReportManager {
     init() {
         this.bindEvents();
         this.loadReportSection();
+        this.createChartModal();
     }
     
     bindEvents() {
@@ -177,6 +179,12 @@ class ReportManager {
                 <canvas id="chart-${this.sanitizeId(channel)}"></canvas>
             </div>
         `;
+        
+        // 클릭 이벤트 추가 (모달 열기)
+        channelDiv.addEventListener('click', () => {
+            this.openChartModal(channel, trendData);
+        });
+        
         container.appendChild(channelDiv);
         
         // Chart.js 데이터셋 준비
@@ -674,6 +682,222 @@ class ReportManager {
         const reportSection = document.querySelector('#report');
         if (reportSection) {
             console.log('리포트 섹션 로드됨 (file_id 기반)');
+        }
+    }
+    
+    createChartModal() {
+        // 모달 HTML 생성
+        const modalHTML = `
+            <div class="chart-modal" id="chartModal">
+                <div class="chart-modal-content">
+                    <div class="chart-modal-header">
+                        <div>
+                            <h3 class="chart-modal-title" id="modalChartTitle">채널명</h3>
+                            <p class="chart-modal-subtitle" id="modalChartSubtitle">건수</p>
+                        </div>
+                        <button class="chart-modal-close" id="modalCloseBtn">×</button>
+                    </div>
+                    <div class="chart-modal-body">
+                        <div class="chart-modal-canvas-wrapper">
+                            <canvas id="modalChartCanvas"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // body에 모달 추가
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+        
+        // 모달 이벤트 바인딩
+        const modal = document.getElementById('chartModal');
+        const closeBtn = document.getElementById('modalCloseBtn');
+        
+        // X 버튼 클릭
+        closeBtn.addEventListener('click', () => this.closeChartModal());
+        
+        // 배경 클릭 (모달 외부 클릭)
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                this.closeChartModal();
+            }
+        });
+        
+        // ESC 키 누르기
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && modal.classList.contains('active')) {
+                this.closeChartModal();
+            }
+        });
+    }
+    
+    openChartModal(channel, trendData) {
+        const modal = document.getElementById('chartModal');
+        const titleEl = document.getElementById('modalChartTitle');
+        const subtitleEl = document.getElementById('modalChartSubtitle');
+        
+        // 모달 열기
+        modal.classList.add('active');
+        
+        // 제목 설정
+        titleEl.textContent = channel;
+        
+        // 전체 건수 계산
+        const dataMatrix = trendData.data || [];
+        const totalCount = dataMatrix.reduce((sum, row) => 
+            sum + row.reduce((a, b) => a + (b || 0), 0), 0
+        );
+        subtitleEl.textContent = `총 ${totalCount.toLocaleString()}건`;
+        
+        // 기존 차트 제거
+        if (this.modalChartInstance) {
+            this.modalChartInstance.destroy();
+        }
+        
+        // 차트 생성
+        const canvas = document.getElementById('modalChartCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        const categories = trendData.categories || [];
+        const dates = trendData.dates || [];
+        const datasets = [];
+        const categoryColors = this.getCategoryColors();
+        
+        // 전체 합계 꺾은선 그래프
+        const totalData = dataMatrix.map(row => 
+            row.reduce((sum, val) => sum + (val || 0), 0)
+        );
+        
+        datasets.push({
+            type: 'line',
+            label: '전체 합계',
+            data: totalData,
+            borderColor: '#e74c3c',
+            backgroundColor: 'rgba(231, 76, 60, 0.1)',
+            borderWidth: 3,
+            fill: false,
+            tension: 0.3,
+            pointRadius: 4,
+            pointHoverRadius: 6,
+            pointBackgroundColor: '#e74c3c',
+            pointBorderColor: '#fff',
+            pointBorderWidth: 2,
+            yAxisID: 'y',
+            order: 1
+        });
+        
+        // 카테고리별 스택 막대그래프
+        categories.forEach((category, catIdx) => {
+            const categoryData = dataMatrix.map(row => row[catIdx] || 0);
+            
+            datasets.push({
+                type: 'bar',
+                label: category,
+                data: categoryData,
+                backgroundColor: categoryColors[category] || this.getRandomColor(catIdx),
+                borderColor: categoryColors[category] || this.getRandomColor(catIdx),
+                borderWidth: 1,
+                stack: 'stack1',
+                order: 2
+            });
+        });
+        
+        // Chart.js 설정
+        const config = {
+            type: 'bar',
+            data: {
+                labels: dates,
+                datasets: datasets
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false
+                },
+                plugins: {
+                    title: {
+                        display: false
+                    },
+                    legend: {
+                        display: true,
+                        position: 'top',
+                        labels: {
+                            usePointStyle: true,
+                            padding: 15,
+                            font: {
+                                size: 13
+                            },
+                            boxWidth: 15,
+                            boxHeight: 15
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            footer: (tooltipItems) => {
+                                let sum = 0;
+                                tooltipItems.forEach(item => {
+                                    if (item.dataset.type === 'bar') {
+                                        sum += item.parsed.y;
+                                    }
+                                });
+                                return '합계: ' + sum + '건';
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        stacked: true,
+                        title: {
+                            display: true,
+                            text: '날짜',
+                            font: {
+                                size: 14,
+                                weight: 'bold'
+                            }
+                        },
+                        ticks: {
+                            font: {
+                                size: 12
+                            },
+                            maxRotation: 45,
+                            minRotation: 0
+                        }
+                    },
+                    y: {
+                        stacked: true,
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'CS 건수',
+                            font: {
+                                size: 14,
+                                weight: 'bold'
+                            }
+                        },
+                        ticks: {
+                            font: {
+                                size: 12
+                            }
+                        }
+                    }
+                }
+            }
+        };
+        
+        this.modalChartInstance = new Chart(ctx, config);
+    }
+    
+    closeChartModal() {
+        const modal = document.getElementById('chartModal');
+        modal.classList.remove('active');
+        
+        // 차트 인스턴스 제거
+        if (this.modalChartInstance) {
+            this.modalChartInstance.destroy();
+            this.modalChartInstance = null;
         }
     }
 }

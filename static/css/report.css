@@ -55,11 +55,11 @@
 #channel-trends-card {
     width: 100%;
     max-width: 100%;
-    min-height: 600px;  /* 최소 높이 보장 */
+    min-height: 400px;  /* 최소 높이 보장 (2/3 비율) */
 }
 
 #channel-trends-card .chart-box {
-    min-height: 550px;  /* 차트 박스 최소 높이 */
+    min-height: 370px;  /* 차트 박스 최소 높이 (2/3 비율) */
     display: flex;
     justify-content: center;  /* 가운데 정렬 */
     align-items: center;  /* 세로 가운데 정렬 */
@@ -68,7 +68,7 @@
 /* 채널별 차트 컨테이너 (가로 스크롤 방지, 세로 스크롤만) */
 #channel-charts-container {
     padding: 20px;
-    max-height: 800px;  /* 그래프 보기 편하게 높이 증가 */
+    max-height: 600px;  /* 그래프 높이 (2/3 비율) */
     overflow-y: auto;
     overflow-x: hidden;  /* 가로 스크롤 방지 */
     width: 100%;
@@ -80,9 +80,9 @@
 /* 그래프가 있을 때 그리드 적용 (JavaScript로 클래스 추가) */
 #channel-charts-container.has-charts {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);  /* 가로 2개씩 고정 */
+    grid-template-columns: repeat(4, 1fr);  /* 가로 4개씩 고정 */
     gap: 20px;
-    grid-auto-rows: 450px;  /* 각 행의 고정 높이 */
+    grid-auto-rows: 300px;  /* 각 행의 고정 높이 (2/3 비율) */
     align-items: stretch;
     justify-content: initial;
 }
@@ -93,18 +93,13 @@
     border-radius: 8px;
     padding: 16px;
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
-    transition: box-shadow 0.2s;
     min-width: 300px;  /* 최소 너비 설정 (그래프 깨짐 방지) */
-    min-height: 400px;  /* 최소 높이 증가 */
+    min-height: 270px;  /* 최소 높이 (2/3 비율) */
     overflow: hidden;
     height: 100%;  /* 그리드 셀 높이에 맞춤 */
     width: 100%;  /* 그리드 셀 너비에 맞춤 */
     display: flex;
     flex-direction: column;
-}
-
-.channel-chart-wrapper:hover {
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
 }
 
 .channel-chart-wrapper h4 {
@@ -129,7 +124,7 @@
 
 .channel-chart-wrapper > div:last-child {
     flex: 1;  /* 차트 영역이 남은 공간 차지 */
-    min-height: 350px;  /* 차트 최소 높이 증가 */
+    min-height: 230px;  /* 차트 최소 높이 (2/3 비율) */
     position: relative;
     width: 100%;
 }
@@ -150,25 +145,32 @@
 }
 
 /* 반응형: 화면 크기에 따라 컬럼 수 조정 */
-@media (max-width: 1600px) {
+@media (max-width: 1800px) {
+    #channel-charts-container.has-charts {
+        grid-template-columns: repeat(3, 1fr);  /* 중간-큰 화면: 3컬럼 */
+        grid-auto-rows: 300px;  /* 2/3 비율 유지 */
+    }
+}
+
+@media (max-width: 1400px) {
     #channel-charts-container.has-charts {
         grid-template-columns: repeat(2, 1fr);  /* 중간 화면: 2컬럼 */
-        grid-auto-rows: 450px;
+        grid-auto-rows: 300px;  /* 2/3 비율 유지 */
     }
 }
 
 @media (max-width: 900px) {
     #channel-charts-container.has-charts {
         grid-template-columns: 1fr;  /* 작은 화면: 1컬럼 */
-        grid-auto-rows: 400px;
+        grid-auto-rows: 270px;  /* 2/3 비율 유지 */
     }
     
     .channel-chart-wrapper {
-        min-height: 350px;
+        min-height: 240px;  /* 2/3 비율 유지 */
     }
     
     .channel-chart-wrapper > div:last-child {
-        min-height: 300px;
+        min-height: 200px;  /* 2/3 비율 유지 */
     }
     
     /* Empty state 폰트 크기 조정 */
@@ -198,6 +200,165 @@
 
 #channel-charts-container::-webkit-scrollbar-thumb:hover {
     background: #555;
+}
+
+/* 그래프 클릭 가능 표시 */
+.channel-chart-wrapper {
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.channel-chart-wrapper:hover {
+    transform: translateY(-2px);
+}
+
+/* 차트 모달 팝업 */
+.chart-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.85);
+    z-index: 10000;
+    justify-content: center;
+    align-items: center;
+    backdrop-filter: blur(5px);
+    animation: fadeIn 0.3s ease-out;
+}
+
+.chart-modal.active {
+    display: flex;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+.chart-modal-content {
+    background: white;
+    border-radius: 12px;
+    padding: 30px;
+    max-width: 90vw;
+    max-height: 90vh;
+    width: 1200px;
+    position: relative;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    animation: slideUp 0.3s ease-out;
+    display: flex;
+    flex-direction: column;
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(50px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.chart-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #e0e0e0;
+}
+
+.chart-modal-title {
+    font-size: 24px;
+    font-weight: 700;
+    color: #333;
+    margin: 0;
+}
+
+.chart-modal-subtitle {
+    font-size: 16px;
+    color: #666;
+    margin: 5px 0 0 0;
+}
+
+.chart-modal-close {
+    background: #e74c3c;
+    border: none;
+    color: white;
+    font-size: 28px;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s, transform 0.2s;
+    line-height: 1;
+    padding: 0;
+}
+
+.chart-modal-close:hover {
+    background: #c0392b;
+    transform: rotate(90deg);
+}
+
+.chart-modal-body {
+    flex: 1;
+    min-height: 500px;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.chart-modal-canvas-wrapper {
+    width: 100%;
+    height: 100%;
+    min-height: 500px;
+    position: relative;
+}
+
+.chart-modal-canvas-wrapper canvas {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+/* 모달 반응형 */
+@media (max-width: 1400px) {
+    .chart-modal-content {
+        width: 85vw;
+    }
+    
+    .chart-modal-canvas-wrapper {
+        min-height: 400px;
+    }
+}
+
+@media (max-width: 900px) {
+    .chart-modal-content {
+        width: 95vw;
+        padding: 20px;
+    }
+    
+    .chart-modal-title {
+        font-size: 20px;
+    }
+    
+    .chart-modal-subtitle {
+        font-size: 14px;
+    }
+    
+    .chart-modal-canvas-wrapper {
+        min-height: 300px;
+    }
 }
 
 /* 차트 로딩 상태 */
