@@ -105,7 +105,13 @@
 
       <!-- 3x1 + 3x2 : 티켓 목록(하단 전체 폭) -->
       <div class="card card--tickets">
-        <strong>티켓 목록</strong>
+        <div class="ticket-header">
+          <strong>티켓 목록</strong>
+          <div class="ticket-controls">
+            <input type="text" id="ticket-search" class="search-input" placeholder="🔍 검색 (내용, 채널, 카테고리)">
+            <span id="ticket-count" class="ticket-count">총 0건</span>
+          </div>
+        </div>
         <table class="table" style="margin-top:8px;">
           <thead>
             <tr>
@@ -116,6 +122,9 @@
             <tr><td colspan="6">-</td></tr>
           </tbody>
         </table>
+        <div class="pagination" id="ticket-pagination">
+          <!-- 페이지네이션 버튼이 여기에 동적으로 생성됩니다 -->
+        </div>
       </div>
 
     </div>

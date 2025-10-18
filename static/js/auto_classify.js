@@ -293,11 +293,91 @@ function renderReliability(r, ui) {
   `;
 }
 
+// 티켓 데이터 저장 (페이지네이션/검색용)
+let allTickets = [];
+let filteredTickets = [];
+let currentPage = 1;
+const ITEMS_PER_PAGE = 30;
+
 function renderTicketTableFromAll(all_by_category) {
   const tbody = document.getElementById("ticketTableBody");
   if (!tbody) return;
-  const rows = flatAllByCategory(all_by_category); // 전체 티켓
-  tbody.innerHTML = rows.map(t => `
+  
+  // 전체 티켓 저장
+  allTickets = flatAllByCategory(all_by_category);
+  filteredTickets = [...allTickets];
+  currentPage = 1;
+  
+  // 티켓 카운트 업데이트
+  updateTicketCount(allTickets.length);
+  
+  // 검색 이벤트 바인딩
+  bindSearchEvent();
+  
+  // 첫 페이지 렌더링
+  renderTicketTable();
+}
+
+function updateTicketCount(count) {
+  const countEl = document.getElementById("ticket-count");
+  if (countEl) {
+    countEl.textContent = `총 ${count.toLocaleString()}건`;
+  }
+}
+
+function bindSearchEvent() {
+  const searchInput = document.getElementById("ticket-search");
+  if (!searchInput) return;
+  
+  // 이미 바인딩 되었으면 스킵
+  if (searchInput.dataset.bound) return;
+  searchInput.dataset.bound = 'true';
+  
+  searchInput.addEventListener('input', function(e) {
+    const keyword = e.target.value.toLowerCase().trim();
+    
+    if (!keyword) {
+      // 검색어가 없으면 전체 표시
+      filteredTickets = [...allTickets];
+    } else {
+      // 검색 필터링 (내용, 채널, 카테고리)
+      filteredTickets = allTickets.filter(t => {
+        return (
+          (t.content && t.content.toLowerCase().includes(keyword)) ||
+          (t.channel && t.channel.toLowerCase().includes(keyword)) ||
+          (t.category && t.category.toLowerCase().includes(keyword))
+        );
+      });
+    }
+    
+    // 첫 페이지로 리셋
+    currentPage = 1;
+    updateTicketCount(filteredTickets.length);
+    renderTicketTable();
+  });
+}
+
+function renderTicketTable() {
+  const tbody = document.getElementById("ticketTableBody");
+  if (!tbody) return;
+  
+  // 페이지네이션 계산
+  const totalPages = Math.ceil(filteredTickets.length / ITEMS_PER_PAGE);
+  const startIdx = (currentPage - 1) * ITEMS_PER_PAGE;
+  const endIdx = startIdx + ITEMS_PER_PAGE;
+  const pageTickets = filteredTickets.slice(startIdx, endIdx);
+  
+  // 티켓이 없을 때
+  if (pageTickets.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:40px; color:var(--muted);">
+      ${filteredTickets.length === 0 && allTickets.length > 0 ? '검색 결과가 없습니다.' : '티켓 데이터가 없습니다.'}
+    </td></tr>`;
+    renderPagination(0, 0);
+    return;
+  }
+  
+  // 티켓 렌더링
+  tbody.innerHTML = pageTickets.map(t => `
     <tr>
       <td>${t.received_at}</td>
       <td>${t.channel}</td>
@@ -307,7 +387,82 @@ function renderTicketTableFromAll(all_by_category) {
       <td class="right">${t.importance}</td>
     </tr>
   `).join("");
+  
+  // 페이지네이션 렌더링
+  renderPagination(currentPage, totalPages);
 }
+
+function renderPagination(current, total) {
+  const paginationEl = document.getElementById("ticket-pagination");
+  if (!paginationEl) return;
+  
+  if (total <= 1) {
+    paginationEl.innerHTML = '';
+    return;
+  }
+  
+  let html = '';
+  
+  // 이전 버튼
+  html += `<button onclick="goToPage(${current - 1})" ${current <= 1 ? 'disabled' : ''}>‹ 이전</button>`;
+  
+  // 페이지 번호
+  const maxButtons = 5;
+  let startPage = Math.max(1, current - Math.floor(maxButtons / 2));
+  let endPage = Math.min(total, startPage + maxButtons - 1);
+  
+  // 시작 페이지 조정
+  if (endPage - startPage < maxButtons - 1) {
+    startPage = Math.max(1, endPage - maxButtons + 1);
+  }
+  
+  // 첫 페이지
+  if (startPage > 1) {
+    html += `<button onclick="goToPage(1)">1</button>`;
+    if (startPage > 2) {
+      html += `<span class="page-info">...</span>`;
+    }
+  }
+  
+  // 페이지 버튼들
+  for (let i = startPage; i <= endPage; i++) {
+    html += `<button onclick="goToPage(${i})" class="${i === current ? 'active' : ''}">${i}</button>`;
+  }
+  
+  // 마지막 페이지
+  if (endPage < total) {
+    if (endPage < total - 1) {
+      html += `<span class="page-info">...</span>`;
+    }
+    html += `<button onclick="goToPage(${total})">${total}</button>`;
+  }
+  
+  // 다음 버튼
+  html += `<button onclick="goToPage(${current + 1})" ${current >= total ? 'disabled' : ''}>다음 ›</button>`;
+  
+  // 페이지 정보
+  html += `<span class="page-info">${current} / ${total} 페이지</span>`;
+  
+  paginationEl.innerHTML = html;
+}
+
+function goToPage(page) {
+  const totalPages = Math.ceil(filteredTickets.length / ITEMS_PER_PAGE);
+  
+  if (page < 1 || page > totalPages) return;
+  
+  currentPage = page;
+  renderTicketTable();
+  
+  // 테이블 상단으로 스크롤
+  const ticketCard = document.querySelector('.card--tickets');
+  if (ticketCard) {
+    ticketCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+}
+
+// 전역 함수로 등록
+window.goToPage = goToPage;
 
 // ---------- 로딩 표시 (body 영역 가운데) ----------
 function showClassifyLoading(show) {
@@ -456,10 +611,22 @@ function clearUIToInitial() {
   const ch  = document.getElementById("channelCards");
   const rel = document.getElementById("reliabilityBox");
   const tik = document.getElementById("ticketTableBody");
+  const pagination = document.getElementById("ticket-pagination");
+  const searchInput = document.getElementById("ticket-search");
+  
   if (cat) cat.innerHTML = `<tr><td colspan="4">[분류 실행]을 눌러 데이터를 불러오세요</td></tr>`;
   if (ch)  ch.innerHTML  = "";
   if (rel) rel.innerHTML = `-`;
   if (tik) tik.innerHTML = `<tr><td colspan="6">-</td></tr>`;
+  if (pagination) pagination.innerHTML = '';
+  if (searchInput) searchInput.value = '';
+  
+  // 티켓 데이터 초기화
+  allTickets = [];
+  filteredTickets = [];
+  currentPage = 1;
+  updateTicketCount(0);
+  
   setLastRunLabel("-"); // 라벨도 초기화
 }
 
@@ -490,7 +657,10 @@ window.resetClassification = function resetClassification() {
       // 완전 초기 상태 보장
       clearUIToInitial();
     }
-  } catch { /* 무시 */ }
+  } catch(e) { 
+    console.error('복원 실패:', e);
+    clearUIToInitial();
+  }
 })();
 
 
