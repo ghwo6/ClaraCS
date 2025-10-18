@@ -290,7 +290,7 @@ class DashboardManager {
                     <li style="margin-bottom: 10px;">
                         <strong>${cat.category_name} ${priorityBadge}</strong>
                         <ul style="margin-left: 15px; font-size: 12px; margin-top: 4px;">
-                            ${cat.problem ? `<li><strong>문제점:</strong> ${cat.problem}</li>` : ''}
+                            ${cat.problem ? `<li><strong>현황 및 문제점:</strong> ${cat.problem}</li>` : ''}
                             ${cat.short_term_goal ? `<li><strong>단기 목표:</strong> ${cat.short_term_goal}</li>` : ''}
                             ${cat.long_term_goal ? `<li><strong>장기 목표:</strong> ${cat.long_term_goal}</li>` : ''}
                         </ul>
