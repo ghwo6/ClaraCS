@@ -412,9 +412,51 @@ class ReportManager {
                 return;
             }
             
+            // ✨ 상단 요약 추가 (종합 인사이트를 맨 위에 표시)
+            if (overall && (overall.summary || (overall.notable_issues && overall.notable_issues.length > 0))) {
+                insightsHTML += `
+                    <li style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                               padding: 16px; 
+                               border-radius: 8px; 
+                               margin-bottom: 16px;
+                               color: white;
+                               box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                        <strong style="font-size: 16px; display: block; margin-bottom: 12px; color: #fff;">📊 종합 분석 요약</strong>
+                `;
+                
+                if (overall.summary) {
+                    insightsHTML += `
+                        <div style="background: rgba(255,255,255,0.15); 
+                                   padding: 12px; 
+                                   border-radius: 6px; 
+                                   margin-bottom: 10px;
+                                   line-height: 1.6;
+                                   font-size: 14px;">
+                            ${overall.summary}
+                        </div>
+                    `;
+                }
+                
+                if (overall.notable_issues && Array.isArray(overall.notable_issues) && overall.notable_issues.length > 0) {
+                    insightsHTML += `
+                        <div style="background: rgba(255,255,255,0.15); 
+                                   padding: 12px; 
+                                   border-radius: 6px;
+                                   line-height: 1.6;">
+                            <strong style="display: block; margin-bottom: 8px; font-size: 14px;">⚠️ 주요 이슈</strong>
+                            <ul style="margin: 0; padding-left: 20px; font-size: 14px;">
+                                ${overall.notable_issues.map(issue => `<li>${issue}</li>`).join('')}
+                            </ul>
+                        </div>
+                    `;
+                }
+                
+                insightsHTML += '</li>';
+            }
+            
             // 카테고리별 인사이트 (배열 기반)
             if (byCategory.length > 0) {
-                insightsHTML += '<li><strong>카테고리별 인사이트:</strong><ul style="margin-left: 20px; margin-top: 5px;">';
+                insightsHTML += '<li><strong>카테고리별 세부 인사이트:</strong><ul style="margin-left: 20px; margin-top: 5px;">';
                 
                 byCategory.forEach(cat => {
                     const priorityBadge = cat.priority === 'high' ? '🔴' : cat.priority === 'medium' ? '🟡' : '🟢';
@@ -429,21 +471,6 @@ class ReportManager {
                         </li>
                     `;
                 });
-                
-                insightsHTML += '</ul></li>';
-            }
-            
-            // 종합 인사이트 (overall)
-            if (overall && (overall.summary || (overall.notable_issues && overall.notable_issues.length > 0))) {
-                insightsHTML += '<li><strong>종합적 인사이트:</strong><ul style="margin-left: 20px; margin-top: 5px;">';
-                
-                if (overall.summary) {
-                    insightsHTML += `<li>${overall.summary}</li>`;
-                }
-                if (overall.notable_issues && Array.isArray(overall.notable_issues) && overall.notable_issues.length > 0) {
-                    const issues = overall.notable_issues.join(', ');
-                    insightsHTML += `<li><strong>주요 이슈:</strong> ${issues}</li>`;
-                }
                 
                 insightsHTML += '</ul></li>';
             }
@@ -482,16 +509,44 @@ class ReportManager {
                 return;
             }
             
-            // 현황 및 문제점 요약
+            // ✨ 상단 요약 추가 (현황 및 문제점을 강조하여 맨 위에 표시)
             if (currentStatusProblems.status || currentStatusProblems.problems) {
                 solutionsHTML += `
-                    <li><strong>현황 및 문제점 요약</strong>
-                        <ul style="margin-left: 20px; margin-top: 5px;">
-                            ${currentStatusProblems.status ? `<li><strong>현황:</strong> ${currentStatusProblems.status}</li>` : ''}
-                            ${currentStatusProblems.problems ? `<li><strong>문제점:</strong> ${currentStatusProblems.problems}</li>` : ''}
-                        </ul>
-                    </li>
+                    <li style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); 
+                               padding: 16px; 
+                               border-radius: 8px; 
+                               margin-bottom: 16px;
+                               color: white;
+                               box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                        <strong style="font-size: 16px; display: block; margin-bottom: 12px; color: #fff;">🎯 핵심 현황 및 우선순위</strong>
                 `;
+                
+                if (currentStatusProblems.status) {
+                    solutionsHTML += `
+                        <div style="background: rgba(255,255,255,0.15); 
+                                   padding: 12px; 
+                                   border-radius: 6px; 
+                                   margin-bottom: 10px;
+                                   line-height: 1.6;">
+                            <strong style="display: block; margin-bottom: 6px; font-size: 14px;">📌 현황</strong>
+                            <div style="font-size: 14px;">${currentStatusProblems.status}</div>
+                        </div>
+                    `;
+                }
+                
+                if (currentStatusProblems.problems) {
+                    solutionsHTML += `
+                        <div style="background: rgba(255,255,255,0.15); 
+                                   padding: 12px; 
+                                   border-radius: 6px;
+                                   line-height: 1.6;">
+                            <strong style="display: block; margin-bottom: 6px; font-size: 14px;">⚠️ 주요 문제점</strong>
+                            <div style="font-size: 14px;">${currentStatusProblems.problems}</div>
+                        </div>
+                    `;
+                }
+                
+                solutionsHTML += '</li>';
             }
             
             // 단기 솔루션 (1-6개월)

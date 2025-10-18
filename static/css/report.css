@@ -337,6 +337,11 @@
     min-height: 100px;  /* 최소 높이 */
 }
 
+/* 3컬럼 그리드 커스텀: 데이터 요약(1), 인사이트(1.5), 솔루션(1.5) */
+#report .grid.cols-3 {
+    grid-template-columns: 1fr 1.5fr 1.5fr;
+}
+
 /* 반응형: 3컬럼 그리드가 태블릿에서는 2컬럼, 모바일에서는 1컬럼 */
 @media (max-width: 1400px) {
     #report .grid.cols-3 {
