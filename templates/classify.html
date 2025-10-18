@@ -85,11 +85,13 @@
         <div class="channels-head">
           <strong>채널별 분류 결과</strong>
           <div class="legend sticky">
-            <div class="item"><span class="dot" style="background:#ef4444"></span>배송 문의</div>
-            <div class="item"><span class="dot" style="background:#f59e0b"></span>환불/교환</div>
-            <div class="item"><span class="dot" style="background:#10b981"></span>상품 문의</div>
-            <div class="item"><span class="dot" style="background:#3b82f6"></span>기술 지원</div>
-            <div class="item"><span class="dot" style="background:#ff7875"></span>불만/클레임</div>
+            <div class="item"><span class="dot" style="background:#ef4444"></span>품질/하자</div>
+            <div class="item"><span class="dot" style="background:#f59e0b"></span>서비스</div>
+            <div class="item"><span class="dot" style="background:#10b981"></span>배송</div>
+            <div class="item"><span class="dot" style="background:#3b82f6"></span>AS/수리</div>
+            <div class="item"><span class="dot" style="background:#8b5cf6"></span>결제</div>
+            <div class="item"><span class="dot" style="background:#ec4899"></span>이벤트</div>
+            <div class="item"><span class="dot" style="background:#6366f1"></span>일반</div>
             <div class="item"><span class="dot" style="background:#9ca3af"></span>기타</div>
           </div>
         </div>
@@ -105,7 +107,13 @@
 
       <!-- 3x1 + 3x2 : 티켓 목록(하단 전체 폭) -->
       <div class="card card--tickets">
-        <strong>티켓 목록</strong>
+        <div class="ticket-header">
+          <strong>티켓 목록</strong>
+          <div class="ticket-controls">
+            <input type="text" id="ticket-search" class="search-input" placeholder="🔍 검색 (내용, 채널, 카테고리)">
+            <span id="ticket-count" class="ticket-count">총 0건</span>
+          </div>
+        </div>
         <table class="table" style="margin-top:8px;">
           <thead>
             <tr>
@@ -116,6 +124,9 @@
             <tr><td colspan="6">-</td></tr>
           </tbody>
         </table>
+        <div class="pagination" id="ticket-pagination">
+          <!-- 페이지네이션 버튼이 여기에 동적으로 생성됩니다 -->
+        </div>
       </div>
 
     </div>
