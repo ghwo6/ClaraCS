@@ -35,8 +35,12 @@
   </header>
 
   <!-- section 1 -->
-  <section class="full-screen-section"
-          style="background-image: url('{{ url_for("static", filename="images/back_2.jpg") }}'); background-size: cover; background-position: center; background-repeat: no-repeat;">
+  <section class="relative flex flex justify-center items-center w-full min-h-[80vh]"
+          style="background-image: url('{{ url_for("static", filename="images/back_2.jpg") }}'); 
+                  background-size: cover; 
+                  background-position: center; 
+                  background-repeat: no-repeat;
+                  min-height: 80vh;">
     <div class="absolute inset-0 bg-gradient-to-b from-[#011627]/40 to-[#010915]/80"></div>
       <div class="contact-container">
           <h1>Contact with</h1>
@@ -45,10 +49,6 @@
               <div class="form-group">
                   <label for="name">Name</label>
                   <input type="text" id="name" name="name" placeholder="Value">
-              </div>
-              <div class="form-group">
-                  <label for="surname">Surname</label>
-                  <input type="text" id="surname" name="surname" placeholder="Value">
               </div>
               <div class="form-group">
                   <label for="email">Email</label>
