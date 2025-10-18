@@ -565,7 +565,7 @@ class ReportManager {
                 solutionsHTML += `
                     <li><strong>단기 (1-6개월)</strong>
                         <ul style="margin-left: 20px; margin-top: 5px;">
-                            ${shortTerm.goal_kpi ? `<li><strong>단기 목표 (+KPI):</strong> ${shortTerm.goal_kpi}</li>` : ''}
+                            ${shortTerm.goal_kpi ? `<li><strong>단기 목표:</strong> ${shortTerm.goal_kpi}</li>` : ''}
                             ${shortTerm.plan ? `<li><strong>단기 플랜:</strong> ${shortTerm.plan}</li>` : ''}
                             ${shortTerm.actions && shortTerm.actions.length > 0 ? `
                                 <li><strong>단기 액션:</strong>
@@ -584,7 +584,7 @@ class ReportManager {
                 solutionsHTML += `
                     <li><strong>중기 (6-12개월)</strong>
                         <ul style="margin-left: 20px; margin-top: 5px;">
-                            ${midTerm.goal_kpi ? `<li><strong>중기 목표 (+KPI):</strong> ${midTerm.goal_kpi}</li>` : ''}
+                            ${midTerm.goal_kpi ? `<li><strong>중기 목표:</strong> ${midTerm.goal_kpi}</li>` : ''}
                             ${midTerm.plan ? `<li><strong>중기 플랜:</strong> ${midTerm.plan}</li>` : ''}
                             ${midTerm.actions && midTerm.actions.length > 0 ? `
                                 <li><strong>중기 액션:</strong>
@@ -603,7 +603,7 @@ class ReportManager {
                 solutionsHTML += `
                     <li><strong>장기 (12개월 이상)</strong>
                         <ul style="margin-left: 20px; margin-top: 5px;">
-                            ${longTerm.goal_kpi ? `<li><strong>장기 목표 (+KPI):</strong> ${longTerm.goal_kpi}</li>` : ''}
+                            ${longTerm.goal_kpi ? `<li><strong>장기 목표:</strong> ${longTerm.goal_kpi}</li>` : ''}
                             ${longTerm.plan ? `<li><strong>장기 플랜:</strong> ${longTerm.plan}</li>` : ''}
                             ${longTerm.actions && longTerm.actions.length > 0 ? `
                                 <li><strong>장기 액션:</strong>

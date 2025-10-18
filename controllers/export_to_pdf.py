@@ -9,6 +9,7 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.enums import TA_LEFT, TA_CENTER, TA_JUSTIFY
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.lib.utils import ImageReader
 from services.db.report_db import ReportDB
 from utils.logger import get_logger
 import os
@@ -21,6 +22,7 @@ import matplotlib.pyplot as plt
 import matplotlib.font_manager as fm
 from io import BytesIO
 import base64
+from PIL import Image
 
 logger = get_logger(__name__)
 
@@ -201,103 +203,139 @@ def download_pdf_file():
 
 
 def create_report_with_real_data_to_buffer(buffer, pdf_data):
-    """실제 리포트 데이터를 기반으로 PDF 생성 (BytesIO 버퍼에 직접 작성) - 개선된 버전"""
+    """실제 리포트 데이터를 기반으로 PDF 생성 (프로토타입 레이아웃 기반)"""
     report_data = pdf_data.get('report_data', {})
+    
+    # 데이터 추출 (스냅샷에서 가져오기)
     summary = report_data.get('summary', {})
     insight = report_data.get('insight', {})
     solution = report_data.get('solution', {})
     channel_trends = report_data.get('channel_trends', {})
     
+    logger.info(f"PDF 생성 데이터 확인 - summary: {bool(summary)}, channel_trends: {len(channel_trends) if channel_trends else 0}개")
+    
     # Canvas 생성
     c = canvas.Canvas(buffer, pagesize=A4)
     width, height = A4
+    right_margin = width - (1 * cm)
     
-    # ========== 페이지 1: 표지 + 데이터 요약 ==========
-    draw_cover_page(c, pdf_data, width, height)
-    draw_summary_section(c, summary, width, height)
+    company_name = pdf_data.get("company_name", "ClaraCS")
+    report_date = pdf_data.get("date", datetime.date.today().strftime("%Y.%m.%d"))
     
-    # 새 페이지
+    # ========== 페이지 1: 데이터 요약 ==========
+    draw_page_header(c, "ClaraCS AI 분석 리포트", company_name, report_date, width, height, right_margin)
+    draw_page1_summary(c, summary, width, height)
+    
+    # ========== 페이지 2: 채널별 추이 (모든 채널, 크게) ==========
     c.showPage()
-    
-    # ========== 페이지 2: 채널별 추이 그래프 ==========
-    if channel_trends:
-        draw_channel_trends(c, channel_trends, width, height)
-        c.showPage()
+    draw_page_header(c, "ClaraCS AI 분석 리포트 - 채널별 추이", company_name, report_date, width, height, right_margin)
+    draw_page2_all_channel_trends(c, channel_trends, width, height, company_name, report_date, right_margin)
     
     # ========== 페이지 3: 인사이트 도출 ==========
-    draw_insights_section(c, insight, width, height)
     c.showPage()
+    draw_insights_page(c, insight, width, height, company_name, report_date, right_margin)
     
     # ========== 페이지 4: 솔루션 제안 ==========
-    draw_solutions_section(c, solution, width, height)
+    c.showPage()
+    draw_solutions_page(c, solution, width, height, company_name, report_date, right_margin)
     
     # PDF 저장
     c.save()
     logger.info("PDF 생성 완료 (메모리)")
 
 
-def draw_cover_page(c, pdf_data, width, height):
-    """표지 페이지 그리기"""
-    company_name = pdf_data.get("company_name", "ClaraCS")
-    report_date = pdf_data.get("date", datetime.date.today().strftime("%Y.%m.%d"))
-    
-    # 배경 그라디언트 효과 (간단한 사각형들로 표현)
-    c.setFillColor(colors.HexColor('#667eea'))
-    c.rect(0, height - 3*inch, width, 3*inch, fill=1, stroke=0)
-    
-    # 메인 타이틀
-    c.setFillColor(colors.white)
-    c.setFont(FONT_NAME_BOLD, 28)
-    c.drawCentredString(width/2, height - 1.5*inch, "ClaraCS")
-    
-    c.setFont(FONT_NAME_BOLD, 22)
-    c.drawCentredString(width/2, height - 2*inch, "AI 분석 리포트")
-    
-    # 날짜
-    c.setFont(FONT_NAME, 14)
-    c.drawCentredString(width/2, height - 2.5*inch, report_date)
-    
-    # 하단 정보
-    c.setFillColor(colors.black)
-    c.setFont(FONT_NAME, 10)
-    c.drawCentredString(width/2, 1.5*inch, f"Report ID: {pdf_data.get('report_id', 'N/A')}")
-    c.drawCentredString(width/2, 1.2*inch, company_name)
-
-
-def draw_summary_section(c, summary, width, height):
-    """데이터 요약 섹션"""
-    y_start = height - 4*inch
-    
-    # 섹션 제목
-    c.setFillColor(colors.HexColor('#667eea'))
-    c.setFont(FONT_NAME_BOLD, 18)
-    c.drawString(1*inch, y_start, "📊 데이터 요약")
-    
-    # 구분선
-    c.setStrokeColor(colors.HexColor('#667eea'))
-    c.setLineWidth(2)
-    c.line(1*inch, y_start - 0.1*inch, 7.5*inch, y_start - 0.1*inch)
-    
-    y_position = y_start - 0.4*inch
-    
-    # 전체 CS 건수 강조
-    total_cs = summary.get('total_cs_count', 0)
-    c.setFillColor(colors.HexColor('#667eea'))
+def draw_page_header(c, title, company_name, report_date, width, height, right_margin):
+    """페이지 상단 헤더"""
     c.setFont(FONT_NAME_BOLD, 14)
-    c.drawString(1.2*inch, y_position, "전체 CS 건수")
+    c.drawCentredString(width/2, height - 1 * cm, title)
+    c.setFont(FONT_NAME, 10)
+    c.drawCentredString(width/2, height - 1.5 * cm, company_name)
+    c.drawRightString(right_margin, height - 1 * cm, report_date)
+
+
+def draw_page2_all_channel_trends(c, channel_trends, width, height, company_name, report_date, right_margin):
+    """페이지 2: 모든 채널별 추이 그래프 (한 줄에 하나씩, 크게)"""
+    y_start = height - 1.5 * inch
     
-    c.setFont(FONT_NAME_BOLD, 24)
-    c.drawRightString(7*inch, y_position - 0.1*inch, f"{total_cs:,}건")
+    c.setFillColor(colors.black)
+    c.setFont(FONT_NAME_BOLD, 18)
+    c.drawString(1 * inch, y_start, "📈 채널별 추이")
     
-    y_position -= 0.6*inch
+    if not channel_trends or len(channel_trends) == 0:
+        c.setFont(FONT_NAME, 11)
+        c.setFillColor(colors.grey)
+        c.drawString(1.2*inch, y_start - 0.5*inch, "채널별 추이 데이터가 없습니다.")
+        c.setFillColor(colors.black)
+        return
     
-    # 카테고리별 데이터 테이블
-    categories = summary.get('categories', [])
-    if categories:
+    y_pos = y_start - 0.3*inch  # 제목과 그래프 간격 축소
+    chart_width = 6.5 * inch  # 전체 너비 사용
+    chart_height = 2.3 * inch  # 높이 조정 (한 페이지에 3개 들어가도록)
+    is_first = True
+    
+    for channel, trend_data in channel_trends.items():
+        # 첫 번째가 아니고 페이지 공간이 부족하면 새 페이지
+        if not is_first and y_pos < chart_height + 0.8*inch:
+            c.showPage()
+            draw_page_header(c, "ClaraCS AI 분석 리포트 - 채널별 추이 (계속)", 
+                           company_name, report_date, width, height, right_margin)
+            y_pos = height - 1.5*inch
+        
+        is_first = False
+        
+        # 차트 제목
         c.setFillColor(colors.black)
         c.setFont(FONT_NAME_BOLD, 12)
-        c.drawString(1.2*inch, y_position, "카테고리별 분포")
-        y_position -= 0.25*inch
+        c.drawString(1 * inch, y_pos, f"{channel} 채널")
+        y_pos -= 0.15*inch  # 제목과 그래프 간격 축소
+        
+        # 차트 이미지 생성 및 삽입
+        chart_image = create_channel_chart_image(channel, trend_data)
+        
+        if chart_image:
+            c.drawImage(chart_image, 1*inch, y_pos - chart_height,
+                       width=chart_width, height=chart_height, preserveAspectRatio=True)
+        else:
+            # 차트 생성 실패 시 회색 박스
+            c.setFillColor(colors.HexColor('#F0F0F0'))
+            c.setStrokeColor(colors.lightgrey)
+            c.rect(1*inch, y_pos - chart_height, chart_width, chart_height, fill=1, stroke=1)
+            c.setFillColor(colors.darkgrey)
+            c.setFont(FONT_NAME, 12)
+            c.drawCentredString(4.25*inch, y_pos - chart_height/2, f"{channel} 채널 데이터")
+            c.setFillColor(colors.black)
+        
+        y_pos -= (chart_height + 0.2*inch)  # 그래프와 다음 제목 간격 축소
+
+
+def draw_page1_summary(c, summary, width, height):
+    """페이지 1: 데이터 요약"""
+    y_start = height - 2.2 * inch
+    
+    # 제목을 한 줄로 표시 (베이스라인 정렬)
+    c.setFont(FONT_NAME_BOLD, 16)
+    c.drawString(1 * inch, y_start, "📊 데이터 요약  ")
+    
+    # 괄호 부분을 데이터 요약의 아래부분에 맞춤
+    c.setFont(FONT_NAME, 9)
+    c.setFillColor(colors.grey)
+    c.drawString(2.5 * inch, y_start, "(전체 CS 데이터를 요약하여 보여줍니다)")
+    c.setFillColor(colors.black)
+    
+    y_pos = y_start - 0.4*inch
+    
+    # 전체 CS 건수
+    total_cs = summary.get('total_cs_count', 0)
+    c.setFont(FONT_NAME_BOLD, 14)
+    c.drawString(1.2*inch, y_pos, f"전체 CS 건수: {total_cs:,}건")
+    y_pos -= 0.4*inch
+    
+    # 카테고리별 데이터 (상위 5개)
+    categories = summary.get('categories', [])
+    if categories:
+        c.setFont(FONT_NAME_BOLD, 12)
+        c.drawString(1.2*inch, y_pos, "카테고리별 분포 (TOP 5)")
+        y_pos -= 0.3*inch
         
         table_data = [['카테고리', '건수', '비율']]
         for cat in categories[:5]:
@@ -307,12 +345,12 @@ def draw_summary_section(c, summary, width, height):
                 f"{cat.get('percentage', 0):.1f}%"
             ])
         
-        category_table = Table(table_data, colWidths=[2*inch, 1.5*inch, 1*inch])
+        category_table = Table(table_data, colWidths=[2*inch, 1.2*inch, 0.8*inch])
         category_table.setStyle(TableStyle([
             ('FONTNAME', (0, 0), (-1, -1), FONT_NAME),
-            ('FONTSIZE', (0, 0), (-1, -1), 10),
-            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#f0f0f0')),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
+            ('FONTSIZE', (0, 0), (-1, -1), 9),
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#667eea')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
             ('FONTNAME', (0, 0), (-1, 0), FONT_NAME_BOLD),
             ('ALIGN', (0, 0), (0, -1), 'LEFT'),
             ('ALIGN', (1, 0), (-1, -1), 'CENTER'),
@@ -322,17 +360,16 @@ def draw_summary_section(c, summary, width, height):
         ]))
         
         category_table.wrapOn(c, width, height)
-        category_table.drawOn(c, 1.2*inch, y_position - len(table_data)*0.25*inch)
+        category_table.drawOn(c, 1.2*inch, y_pos - len(table_data)*0.24*inch)
         
-        y_position -= (len(table_data) * 0.25*inch + 0.4*inch)
+        y_pos -= (len(table_data) * 0.24*inch + 0.4*inch)
     
-    # 채널별 해결률
+    # 채널별 해결률 (상위 5개)
     channels = summary.get('channels', [])
-    if channels:
-        c.setFillColor(colors.black)
+    if channels and y_pos > 1.5*inch:
         c.setFont(FONT_NAME_BOLD, 12)
-        c.drawString(1.2*inch, y_position, "채널별 해결률")
-        y_position -= 0.25*inch
+        c.drawString(1.2*inch, y_pos, "채널별 해결률")
+        y_pos -= 0.3*inch
         
         table_data = [['채널', '전체', '해결', '해결률']]
         for ch in channels[:5]:
@@ -345,67 +382,381 @@ def draw_summary_section(c, summary, width, height):
         
         channel_table = Table(table_data, colWidths=[1.5*inch, 1*inch, 1*inch, 1*inch])
         channel_table.setStyle(TableStyle([
-        ('FONTNAME', (0, 0), (-1, -1), FONT_NAME),
-            ('FONTSIZE', (0, 0), (-1, -1), 10),
-            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#f0f0f0')),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
+            ('FONTNAME', (0, 0), (-1, -1), FONT_NAME),
+            ('FONTSIZE', (0, 0), (-1, -1), 9),
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#667eea')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
             ('FONTNAME', (0, 0), (-1, 0), FONT_NAME_BOLD),
             ('ALIGN', (0, 0), (0, -1), 'LEFT'),
             ('ALIGN', (1, 0), (-1, -1), 'CENTER'),
-        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
             ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
             ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f9f9f9')]),
         ]))
         
         channel_table.wrapOn(c, width, height)
-        channel_table.drawOn(c, 1.2*inch, y_position - len(table_data)*0.25*inch)
+        channel_table.drawOn(c, 1.2*inch, y_pos - len(table_data)*0.24*inch)
 
 
-def draw_channel_trends(c, channel_trends, width, height):
-    """채널별 추이 그래프 페이지"""
-    y_start = height - 1*inch
+def draw_page2_additional_charts(c, channel_trends, summary, width, height):
+    """페이지 2: 추가 채널 그래프"""
+    y_start = height - 2.2 * inch
     
-    # 섹션 제목
-    c.setFillColor(colors.HexColor('#f093fb'))
-    c.setFont(FONT_NAME_BOLD, 18)
-    c.drawString(1*inch, y_start, "📈 채널별 추이")
+    c.setFillColor(colors.black)
+    c.setFont(FONT_NAME_BOLD, 16)
+    c.drawString(1 * inch, y_start, "📈 채널별 세부 추이")
+    
+    if channel_trends and len(channel_trends) > 2:
+        # 3번째 이후 채널들
+        channels = list(channel_trends.items())[2:]
+        
+        y_pos = y_start - 0.5*inch
+        
+        for idx, (channel, trend_data) in enumerate(channels[:3]):  # 최대 3개 더
+            if y_pos < 2*inch:
+                break
+            
+            chart_image = create_channel_chart_image(channel, trend_data)
+            
+            # 차트 제목
+            c.setFont(FONT_NAME_BOLD, 12)
+            c.drawString(1.2*inch, y_pos, f"{channel} 채널")
+            
+            if chart_image:
+                c.drawImage(chart_image, 1*inch, y_pos - 2.2*inch,
+                           width=6.5*inch, height=2*inch, preserveAspectRatio=True)
+            else:
+                c.setFillColor(colors.HexColor('#F0F0F0'))
+                c.setStrokeColor(colors.lightgrey)
+                c.rect(1*inch, y_pos - 2.2*inch, 6.5*inch, 2*inch, fill=1, stroke=1)
+                c.setFillColor(colors.darkgrey)
+                c.setFont(FONT_NAME, 10)
+                c.drawCentredString(4.25*inch, y_pos - 1.2*inch, f"{channel} 데이터")
+                c.setFillColor(colors.black)
+            
+            y_pos -= 2.6*inch
+    else:
+        # 추가 채널이 없을 때
+        c.setFont(FONT_NAME, 11)
+        c.setFillColor(colors.grey)
+        c.drawString(1.2*inch, y_start - 0.5*inch, "추가 채널 데이터가 없습니다.")
+        c.setFillColor(colors.black)
+
+
+def draw_left_column_data(c, summary, channel_trends, width, height):
+    """왼쪽 컬럼: 분석한 데이터"""
+    c.setFont(FONT_NAME_BOLD, 16)
+    c.drawString(1 * inch, height - 2.0 * inch, "분석한 데이터")
+    
+    c.setFont(FONT_NAME, 9)
+    c.setFillColor(colors.grey)
+    c.drawString(1 * inch, height - 2.2 * inch, "분석한 데이터를 나타냅니다.")
     
     # 구분선
-    c.setStrokeColor(colors.HexColor('#f093fb'))
-    c.setLineWidth(2)
-    c.line(1*inch, y_start - 0.1*inch, 7.5*inch, y_start - 0.1*inch)
+    c.setStrokeColor(colors.lightgrey)
+    c.line(1 * inch, height - 2.3 * inch, 3.5 * inch, height - 2.3 * inch)
     
-    y_position = y_start - 0.5*inch
+    c.setFillColor(colors.black)
+    y_pos = height - 2.8 * inch
     
-    # 상위 3개 채널 그래프 생성
-    chart_count = 0
-    for channel, trend_data in list(channel_trends.items())[:3]:
-        if chart_count >= 3:
-            break
-            
-        # 차트 이미지 생성
+    # 채널별 데이터
+    c.setFont(FONT_NAME_BOLD, 12)
+    c.drawString(1.2 * inch, y_pos, "채널별 데이터")
+    y_pos -= 0.2 * inch
+    
+    c.setFont(FONT_NAME, 9)
+    channels = summary.get('channels', [])
+    for ch in channels[:5]:
+        channel_name = ch.get('channel', '-')
+        total = ch.get('total', 0)
+        resolved = ch.get('resolved', 0)
+        resolution_rate = ch.get('resolution_rate', 0)
+        
+        c.drawString(1.3 * inch, y_pos, f"{channel_name}: {total:,}건")
+        y_pos -= 0.15 * inch
+        c.setFont(FONT_NAME, 8)
+        c.setFillColor(colors.grey)
+        c.drawString(1.5 * inch, y_pos, f"(해결: {resolved:,}건, 해결률: {resolution_rate:.1f}%)")
+        c.setFillColor(colors.black)
+        y_pos -= 0.2 * inch
+        c.setFont(FONT_NAME, 9)
+    
+    # 카테고리별 데이터
+    y_pos -= 0.2 * inch
+    c.setFont(FONT_NAME_BOLD, 12)
+    c.drawString(1.2 * inch, y_pos, "카테고리별 데이터")
+    y_pos -= 0.2 * inch
+    
+    c.setFont(FONT_NAME, 9)
+    categories = summary.get('categories', [])
+    for cat in categories[:5]:
+        cat_name = cat.get('category_name', '-')
+        count = cat.get('count', 0)
+        percentage = cat.get('percentage', 0)
+        
+        c.drawString(1.3 * inch, y_pos, f"{cat_name}: {count:,}건 ({percentage:.1f}%)")
+        y_pos -= 0.18 * inch
+
+
+def draw_right_column_summary(c, summary, width, height):
+    """오른쪽 컬럼: 데이터 요약 표"""
+    c.setFont(FONT_NAME_BOLD, 16)
+    c.drawString(4.5 * inch, height - 2.0 * inch, "데이터 요약")
+    
+    c.setFont(FONT_NAME, 9)
+    c.setFillColor(colors.grey)
+    c.drawString(4.5 * inch, height - 2.2 * inch, "분석한 데이터를 보기 쉽게 요약한 내용입니다.")
+    
+    c.setStrokeColor(colors.lightgrey)
+    c.line(4.5 * inch, height - 2.3 * inch, 7.5 * inch, height - 2.3 * inch)
+    
+    c.setFillColor(colors.black)
+    
+    # 테이블 데이터 구성
+    total_cs = summary.get('total_cs_count', 0)
+    categories = summary.get('categories', [])
+    channels = summary.get('channels', [])
+    
+    table_data = [
+        ['분석 데이터', f'{total_cs:,}건', None],
+    ]
+    
+    # 채널별 데이터 (상위 3개)
+    for ch in channels[:3]:
+        channel = ch.get('channel', '-')
+        total = ch.get('total', 0)
+        percentage = (total / total_cs * 100) if total_cs > 0 else 0
+        resolution_rate = ch.get('resolution_rate', 0)
+        table_data.append([
+            channel,
+            f'{total:,}건 ({percentage:.1f}%)',
+            f'해결률 {resolution_rate:.1f}%'
+        ])
+    
+    # 카테고리별 데이터 (상위 5개)
+    for cat in categories[:5]:
+        cat_name = cat.get('category_name', '-')
+        count = cat.get('count', 0)
+        percentage = cat.get('percentage', 0)
+        table_data.append([
+            cat_name,
+            f'{count:,}건 ({percentage:.1f}%)',
+            '-'
+        ])
+    
+    summary_table = Table(table_data, colWidths=[0.9*inch, 1.2*inch, 0.9*inch])
+    summary_table.setStyle(TableStyle([
+        ('FONTNAME', (0, 0), (-1, -1), FONT_NAME),
+        ('FONTSIZE', (0, 0), (-1, -1), 9),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.lightgrey),
+        ('SPAN', (1, 0), (2, 0)),
+        ('ALIGN', (0, 0), (-1, 0), 'LEFT'),
+        ('FONTNAME', (0, 0), (0, 0), FONT_NAME_BOLD),
+        ('ALIGN', (0, 1), (0, -1), 'RIGHT'),
+        ('ALIGN', (1, 1), (-1, -1), 'CENTER'),
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#f0f0f0')),
+    ]))
+    
+    table_x = 4.5 * inch
+    table_y = height - 5.5 * inch
+    summary_table.wrapOn(c, width, height)
+    summary_table.drawOn(c, table_x, table_y)
+
+
+def draw_bottom_charts(c, channel_trends, width, height):
+    """하단: 채널별 추이 차트"""
+    c.setFillColor(colors.black)
+    c.setFont(FONT_NAME_BOLD, 16)
+    c.drawString(1 * inch, 3.0 * inch, "채널별 추이 그래프")
+    
+    if channel_trends and len(channel_trends) > 0:
+        # 상위 1개 채널 그래프만 표시
+        channel, trend_data = list(channel_trends.items())[0]
         chart_image = create_channel_chart_image(channel, trend_data)
+        
         if chart_image:
-            # 차트 제목
-            c.setFillColor(colors.black)
-            c.setFont(FONT_NAME_BOLD, 12)
-            c.drawString(1.2*inch, y_position, f"{channel} 채널")
+            c.drawImage(chart_image, 1 * inch, 1.2 * inch, 
+                       width=6.5 * inch, height=1.6 * inch, preserveAspectRatio=True)
+        else:
+            # 차트 생성 실패 시 회색 박스
+            c.setFillColor(colors.HexColor('#F0F0F0'))
+            c.setStrokeColor(colors.lightgrey)
+            c.rect(1 * inch, 1.2 * inch, 6.5 * inch, 1.6 * inch, fill=1, stroke=1)
+            c.setFillColor(colors.darkgrey)
+            c.setFont(FONT_NAME, 12)
+            c.drawCentredString(4.25 * inch, 2.0 * inch, f"{channel} 채널 데이터")
+    else:
+        # 데이터 없을 때
+        c.setFillColor(colors.HexColor('#F0F0F0'))
+        c.setStrokeColor(colors.lightgrey)
+        c.rect(1 * inch, 1.2 * inch, 6.5 * inch, 1.6 * inch, fill=1, stroke=1)
+        c.setFillColor(colors.darkgrey)
+        c.setFont(FONT_NAME, 12)
+        c.drawCentredString(4.25 * inch, 2.0 * inch, "(채널별 추이 데이터)")
+
+
+def draw_insights_page(c, insight, width, height, company_name, report_date, right_margin):
+    """페이지 2: 인사이트 도출"""
+    # 헤더
+    c.setFont(FONT_NAME_BOLD, 14)
+    c.drawCentredString(width/2, height - 1 * cm, "ClaraCS AI 분석 리포트 - 인사이트 도출")
+    c.setFont(FONT_NAME, 10)
+    c.drawCentredString(width/2, height - 1.5 * cm, company_name)
+    c.drawRightString(right_margin, height - 1 * cm, report_date)
+    
+    y_pos = height - 2.5 * inch
+    
+    # 종합 분석 요약
+    overall = insight.get('overall', {})
+    if overall and overall.get('summary'):
+        c.setFont(FONT_NAME_BOLD, 14)
+        c.drawString(1 * inch, y_pos, "💡 종합 분석 요약")
+        y_pos -= 0.3 * inch
+        
+        c.setFont(FONT_NAME, 10)
+        summary_text = overall.get('summary', '')
+        lines = wrap_text(c, summary_text, 6.5*inch, FONT_NAME, 10)
+        for line in lines[:6]:
+            c.drawString(1.2 * inch, y_pos, line)
+            y_pos -= 0.2 * inch
+        
+        y_pos -= 0.2 * inch
+    
+    # 주요 이슈
+    notable_issues = overall.get('notable_issues', [])
+    if notable_issues:
+        c.setFont(FONT_NAME_BOLD, 12)
+        c.drawString(1 * inch, y_pos, "⚠️ 주요 이슈")
+        y_pos -= 0.25 * inch
+        
+        c.setFont(FONT_NAME, 9)
+        for issue in notable_issues[:5]:
+            wrapped_lines = wrap_text(c, f"• {issue}", 6.3*inch, FONT_NAME, 9)
+            for line in wrapped_lines[:2]:
+                c.drawString(1.2 * inch, y_pos, line)
+                y_pos -= 0.18 * inch
+        
+        y_pos -= 0.2 * inch
+    
+    # 카테고리별 인사이트
+    by_category = insight.get('by_category', [])
+    if by_category:
+        c.setFont(FONT_NAME_BOLD, 12)
+        c.drawString(1 * inch, y_pos, "📊 카테고리별 세부 인사이트")
+        y_pos -= 0.3 * inch
+        
+        for cat in by_category[:4]:
+            if y_pos < 1.5 * inch:
+                break
             
-            # 이미지 삽입
-            c.drawImage(chart_image, 1*inch, y_position - 2.3*inch, 
-                       width=6.5*inch, height=2*inch, preserveAspectRatio=True)
+            priority_icon = '🔴' if cat.get('priority') == 'high' else '🟡' if cat.get('priority') == 'medium' else '🟢'
             
-            y_position -= 2.6*inch
-            chart_count += 1
+            c.setFont(FONT_NAME_BOLD, 10)
+            c.drawString(1.2 * inch, y_pos, f"{priority_icon} {cat.get('category_name', '')}")
+            y_pos -= 0.2 * inch
             
-            if chart_count < 3 and y_position < 2*inch:
-                # 페이지 부족하면 새 페이지
-                c.showPage()
-                y_position = height - 1*inch
+            c.setFont(FONT_NAME, 8)
+            problem_lines = wrap_text(c, f"문제점: {cat.get('problem', '-')}", 6*inch, FONT_NAME, 8)
+            for line in problem_lines[:2]:
+                c.drawString(1.4 * inch, y_pos, line)
+                y_pos -= 0.16 * inch
+            
+            goal_lines = wrap_text(c, f"단기 목표: {cat.get('short_term_goal', '-')}", 6*inch, FONT_NAME, 8)
+            for line in goal_lines[:2]:
+                c.drawString(1.4 * inch, y_pos, line)
+                y_pos -= 0.16 * inch
+            
+            y_pos -= 0.15 * inch
+
+
+def draw_solutions_page(c, solution, width, height, company_name, report_date, right_margin):
+    """페이지 3: 솔루션 제안"""
+    # 헤더
+    c.setFont(FONT_NAME_BOLD, 14)
+    c.drawCentredString(width/2, height - 1 * cm, "ClaraCS AI 분석 리포트 - 솔루션 제안")
+    c.setFont(FONT_NAME, 10)
+    c.drawCentredString(width/2, height - 1.5 * cm, company_name)
+    c.drawRightString(right_margin, height - 1 * cm, report_date)
+    
+    y_pos = height - 2.5 * inch
+    
+    # 현황 및 문제점
+    current_status = solution.get('current_status_and_problems', {})
+    if current_status:
+        c.setFont(FONT_NAME_BOLD, 14)
+        c.drawString(1 * inch, y_pos, "🎯 핵심 현황 및 우선순위")
+        y_pos -= 0.3 * inch
+        
+        c.setFont(FONT_NAME, 10)
+        if current_status.get('status'):
+            c.setFont(FONT_NAME_BOLD, 9)
+            c.drawString(1.2 * inch, y_pos, "현황:")
+            y_pos -= 0.2 * inch
+            c.setFont(FONT_NAME, 9)
+            lines = wrap_text(c, current_status['status'], 6.3*inch, FONT_NAME, 9)
+            for line in lines[:3]:
+                c.drawString(1.3 * inch, y_pos, line)
+                y_pos -= 0.18 * inch
+        
+        if current_status.get('problems'):
+            c.setFont(FONT_NAME_BOLD, 9)
+            c.drawString(1.2 * inch, y_pos, "문제점:")
+            y_pos -= 0.2 * inch
+            c.setFont(FONT_NAME, 9)
+            lines = wrap_text(c, current_status['problems'], 6.3*inch, FONT_NAME, 9)
+            for line in lines[:3]:
+                c.drawString(1.3 * inch, y_pos, line)
+                y_pos -= 0.18 * inch
+        
+        y_pos -= 0.2 * inch
+    
+    # 단기/중기/장기 솔루션
+    periods = [
+        ('단기 (1-6개월)', solution.get('short_term', {})),
+        ('중기 (6-12개월)', solution.get('mid_term', {})),
+        ('장기 (12개월+)', solution.get('long_term', {}))
+    ]
+    
+    for period_name, period_data in periods:
+        if not period_data or y_pos < 2 * inch:
+            break
+        
+        c.setFont(FONT_NAME_BOLD, 12)
+        c.drawString(1 * inch, y_pos, f"📅 {period_name}")
+        y_pos -= 0.25 * inch
+        
+        c.setFont(FONT_NAME, 9)
+        if period_data.get('goal_kpi'):
+            c.setFont(FONT_NAME_BOLD, 8)
+            c.drawString(1.2 * inch, y_pos, "목표:")
+            y_pos -= 0.18 * inch
+            c.setFont(FONT_NAME, 8)
+            lines = wrap_text(c, period_data['goal_kpi'], 6*inch, FONT_NAME, 8)
+            for line in lines[:2]:
+                c.drawString(1.3 * inch, y_pos, line)
+                y_pos -= 0.16 * inch
+        
+        actions = period_data.get('actions', [])
+        if actions:
+            c.setFont(FONT_NAME_BOLD, 8)
+            c.drawString(1.2 * inch, y_pos, "액션 플랜:")
+            y_pos -= 0.18 * inch
+            c.setFont(FONT_NAME, 8)
+            for action in actions[:3]:
+                wrapped = wrap_text(c, f"• {action}", 5.8*inch, FONT_NAME, 8)
+                for line in wrapped[:1]:
+                    c.drawString(1.3 * inch, y_pos, line)
+                    y_pos -= 0.16 * inch
+        
+        y_pos -= 0.2 * inch
+
+
+# 기존 함수들 제거 (사용하지 않음)
 
 
 def create_channel_chart_image(channel, trend_data):
-    """채널별 그래프 이미지 생성 (matplotlib)"""
+    """채널별 그래프 이미지 생성 (matplotlib) - ImageReader 반환"""
     try:
         # 한글 폰트 설정
         plt.rcParams['font.family'] = 'DejaVu Sans'
@@ -418,8 +769,8 @@ def create_channel_chart_image(channel, trend_data):
         if not dates or not data_matrix:
             return None
         
-        # 그래프 생성
-        fig, ax = plt.subplots(figsize=(8, 3))
+        # 그래프 생성 (크기 조정)
+        fig, ax = plt.subplots(figsize=(10, 3.5))
         
         # 스택 막대 그래프
         bottom = [0] * len(dates)
@@ -436,21 +787,24 @@ def create_channel_chart_image(channel, trend_data):
         ax.plot(dates, total_data, color='#e74c3c', linewidth=2, marker='o', 
                markersize=4, label='Total', zorder=10)
         
-        ax.set_xlabel('Date', fontsize=9)
-        ax.set_ylabel('Count', fontsize=9)
-        ax.legend(fontsize=8, loc='upper left')
+        ax.set_xlabel('Date', fontsize=11)
+        ax.set_ylabel('Count', fontsize=11)
+        ax.legend(fontsize=9, loc='upper left', ncol=2)  # 2열로 범례 표시
         ax.grid(True, alpha=0.3)
-        plt.xticks(rotation=45, ha='right', fontsize=8)
-        plt.yticks(fontsize=8)
-        plt.tight_layout()
+        plt.xticks(rotation=45, ha='right', fontsize=10)
+        plt.yticks(fontsize=10)
+        plt.tight_layout(pad=0.5)  # 여백 최소화
         
-        # BytesIO로 저장
+        # BytesIO로 저장 후 ImageReader로 변환
         img_buffer = BytesIO()
         plt.savefig(img_buffer, format='png', dpi=150, bbox_inches='tight')
         img_buffer.seek(0)
         plt.close()
         
-        return img_buffer
+        # ImageReader로 변환 (reportlab이 인식 가능)
+        image_reader = ImageReader(img_buffer)
+        
+        return image_reader
         
     except Exception as e:
         logger.error(f"차트 이미지 생성 실패: {e}")

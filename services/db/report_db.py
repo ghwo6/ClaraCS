@@ -908,14 +908,66 @@ class ReportDB:
                 if isinstance(category_ratios, str):
                     category_ratios = json.loads(category_ratios)
                 
+                # 새 구조로 변환
+                total_cs = summary_result.get('total_tickets', 0)
+                
+                # categories 배열로 변환
+                categories = []
+                for cat_name, percentage in category_ratios.items():
+                    count = int(total_cs * float(percentage) / 100) if total_cs > 0 else 0
+                    categories.append({
+                        'category_name': cat_name,
+                        'count': count,
+                        'percentage': float(percentage)
+                    })
+                
+                # channels 배열로 변환 (file_id로 실제 데이터 조회)
+                channels = []
+                file_id = report.get('file_id')
+                
+                if file_id:
+                    # 실제 채널별 해결률 데이터 조회
+                    channel_query_real = """
+                        SELECT 
+                            channel,
+                            COUNT(*) as total,
+                            SUM(CASE WHEN status IN ('closed', 'resolved', 'completed', '완료') THEN 1 ELSE 0 END) as resolved
+                        FROM tb_ticket
+                        WHERE file_id = %s
+                        GROUP BY channel
+                    """
+                    cursor.execute(channel_query_real, [file_id])
+                    channel_rows = cursor.fetchall()
+                    
+                    for row in channel_rows:
+                        resolution_rate = round((row['resolved'] / row['total'] * 100), 1) if row['total'] > 0 else 0
+                        channels.append({
+                            'channel': row['channel'] or '미분류',
+                            'total': row['total'],
+                            'resolved': row['resolved'],
+                            'resolution_rate': resolution_rate
+                        })
+                else:
+                    # file_id가 없으면 스냅샷 데이터만 사용
+                    for channel_name, resolution_rate in resolved_count.items():
+                        channels.append({
+                            'channel': channel_name,
+                            'total': 0,
+                            'resolved': 0,
+                            'resolution_rate': float(resolution_rate)
+                        })
+                
                 summary = {
-                    'total_tickets': summary_result.get('total_tickets', 0),
-                    'resolved_count': resolved_count,
-                    'category_ratios': category_ratios,
-                    'repeat_rate': float(summary_result.get('repeat_rate', 0.0)) if summary_result.get('repeat_rate') else 0.0
+                    'total_cs_count': total_cs,
+                    'categories': categories,
+                    'channels': channels
                 }
             else:
-                summary = {}
+                summary = {
+                    'total_cs_count': 0,
+                    'categories': [],
+                    'channels': []
+                }
             
             # 3. Insight 스냅샷 조회
             insight_query = """
@@ -960,31 +1012,64 @@ class ReportDB:
             # 5. Channel 스냅샷 조회 (여러 행을 그룹화)
             channel_query = """
                 SELECT 
-                    channel,
-                    time_period,
-                    category_id,
-                    count
-                FROM tb_analysis_channel_snapshot
-                WHERE report_id = %s
-                ORDER BY time_period, channel, category_id
+                    cs.channel,
+                    cs.time_period,
+                    cs.category_id,
+                    c.category_name,
+                    cs.count
+                FROM tb_analysis_channel_snapshot cs
+                LEFT JOIN tb_category c ON cs.category_id = c.category_id
+                WHERE cs.report_id = %s
+                ORDER BY cs.channel, cs.time_period, cs.category_id
             """
             cursor.execute(channel_query, [report_id])
             channel_results = cursor.fetchall()
             
-            # 채널별로 데이터 그룹화
+            # 채널별로 데이터 그룹화 및 변환
             channel_trends = {}
             if channel_results:
+                from collections import defaultdict
+                
+                # 채널별로 그룹화
+                grouped = defaultdict(lambda: defaultdict(lambda: defaultdict(int)))
+                dates_set = set()
+                categories_by_channel = defaultdict(set)
+                
                 for row in channel_results:
                     channel = row['channel']
-                    if channel not in channel_trends:
-                        channel_trends[channel] = {
-                            'dates': [],
-                            'categories': [],
-                            'data': []
-                        }
-                    # 간단한 구조로 저장 (실제로는 더 복잡한 변환 필요)
+                    time_period = row['time_period']
+                    category_name = row.get('category_name', '미분류')
+                    count = row['count']
+                    
+                    grouped[channel][time_period][category_name] = count
+                    dates_set.add(time_period)
+                    categories_by_channel[channel].add(category_name)
+                
+                # 날짜 정렬
+                dates_sorted = sorted(list(dates_set))
+                
+                # 채널별로 데이터 구조 생성
+                for channel in grouped.keys():
+                    categories = sorted(list(categories_by_channel[channel]))
+                    
+                    # 데이터 매트릭스 생성
+                    data_matrix = []
+                    for date in dates_sorted:
+                        row_data = []
+                        for category in categories:
+                            row_data.append(grouped[channel][date].get(category, 0))
+                        data_matrix.append(row_data)
+                    
+                    channel_trends[channel] = {
+                        'dates': dates_sorted,
+                        'categories': categories,
+                        'data': data_matrix
+                    }
+                
+                logger.info(f"채널별 추이 데이터 구성 완료: {len(channel_trends)}개 채널")
             else:
                 channel_trends = {}
+                logger.warning("채널 스냅샷 데이터가 없습니다")
             
             # 결과 조합
             result = {
