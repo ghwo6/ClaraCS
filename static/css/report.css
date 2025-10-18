@@ -59,7 +59,7 @@
 }
 
 #channel-trends-card .chart-box {
-    min-height: 370px;  /* 차트 박스 최소 높이 (2/3 비율) */
+    min-height: 662px;  /* 차트 박스 최소 높이 (2/3 비율) */
     display: flex;
     justify-content: center;  /* 가운데 정렬 */
     align-items: center;  /* 세로 가운데 정렬 */
@@ -68,7 +68,7 @@
 /* 채널별 차트 컨테이너 (가로 스크롤 방지, 세로 스크롤만) */
 #channel-charts-container {
     padding: 20px;
-    max-height: 600px;  /* 그래프 높이 (2/3 비율) */
+    max-height: 680px;  /* 2줄(8개)까지 스크롤 없이: (300px * 2줄) + gap(20px) + padding(40px) = 660px + 여유 20px */
     overflow-y: auto;
     overflow-x: hidden;  /* 가로 스크롤 방지 */
     width: 100%;
@@ -204,12 +204,31 @@
 
 /* 그래프 클릭 가능 표시 */
 .channel-chart-wrapper {
-    cursor: pointer;
+    cursor: move; /* 드래그 가능 커서 */
     transition: transform 0.2s, box-shadow 0.2s;
+    position: relative;
 }
 
 .channel-chart-wrapper:hover {
     transform: translateY(-2px);
+}
+
+/* 드래그 중인 상태 */
+.channel-chart-wrapper.sortable-ghost {
+    opacity: 0.4;
+    background: #f0f0f0;
+}
+
+/* 드래그 선택된 상태 */
+.channel-chart-wrapper.sortable-chosen {
+    cursor: grabbing;
+}
+
+/* 드래그 중인 복사본 */
+.channel-chart-wrapper.sortable-drag {
+    opacity: 0.8;
+    transform: rotate(2deg);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3) !important;
 }
 
 /* 차트 모달 팝업 */

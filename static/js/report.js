@@ -150,6 +150,9 @@ class ReportManager {
         Object.entries(channelTrends).forEach(([channel, trendData]) => {
             this.createChannelChart(container, channel, trendData);
         });
+        
+        // 드래그 앤 드롭 기능 초기화
+        this.initDragAndDrop(container);
     }
     
     createChannelChart(container, channel, trendData) {
@@ -472,7 +475,7 @@ class ReportManager {
                         <li>
                             <strong>${cat.category_name} ${priorityBadge}</strong>
                             <ul style="margin-left: 15px; font-size: 14px;">
-                                <li><strong>문제점:</strong> ${cat.problem || '-'}</li>
+                                <li><strong>현황 및 문제점:</strong> ${cat.problem || '-'}</li>
                                 <li><strong>단기 목표:</strong> ${cat.short_term_goal || '-'}</li>
                                 <li><strong>장기 목표:</strong> ${cat.long_term_goal || '-'}</li>
                             </ul>
@@ -517,7 +520,7 @@ class ReportManager {
                 return;
             }
             
-            // ✨ 상단 요약 추가 (현황 및 문제점을 강조하여 맨 위에 표시)
+            // ✨ 상단 요약 추가 (현황 및 문제점:을 강조하여 맨 위에 표시)
             if (currentStatusProblems.status || currentStatusProblems.problems) {
                 solutionsHTML += `
                     <li style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); 
@@ -562,7 +565,7 @@ class ReportManager {
                 solutionsHTML += `
                     <li><strong>단기 (1-6개월)</strong>
                         <ul style="margin-left: 20px; margin-top: 5px;">
-                            ${shortTerm.goal_kpi ? `<li><strong>단기 목표 (+KPI):</strong> ${shortTerm.goal_kpi}</li>` : ''}
+                            ${shortTerm.goal_kpi ? `<li><strong>단기 목표:</strong> ${shortTerm.goal_kpi}</li>` : ''}
                             ${shortTerm.plan ? `<li><strong>단기 플랜:</strong> ${shortTerm.plan}</li>` : ''}
                             ${shortTerm.actions && shortTerm.actions.length > 0 ? `
                                 <li><strong>단기 액션:</strong>
@@ -581,7 +584,7 @@ class ReportManager {
                 solutionsHTML += `
                     <li><strong>중기 (6-12개월)</strong>
                         <ul style="margin-left: 20px; margin-top: 5px;">
-                            ${midTerm.goal_kpi ? `<li><strong>중기 목표 (+KPI):</strong> ${midTerm.goal_kpi}</li>` : ''}
+                            ${midTerm.goal_kpi ? `<li><strong>중기 목표:</strong> ${midTerm.goal_kpi}</li>` : ''}
                             ${midTerm.plan ? `<li><strong>중기 플랜:</strong> ${midTerm.plan}</li>` : ''}
                             ${midTerm.actions && midTerm.actions.length > 0 ? `
                                 <li><strong>중기 액션:</strong>
@@ -600,7 +603,7 @@ class ReportManager {
                 solutionsHTML += `
                     <li><strong>장기 (12개월 이상)</strong>
                         <ul style="margin-left: 20px; margin-top: 5px;">
-                            ${longTerm.goal_kpi ? `<li><strong>장기 목표 (+KPI):</strong> ${longTerm.goal_kpi}</li>` : ''}
+                            ${longTerm.goal_kpi ? `<li><strong>장기 목표:</strong> ${longTerm.goal_kpi}</li>` : ''}
                             ${longTerm.plan ? `<li><strong>장기 플랜:</strong> ${longTerm.plan}</li>` : ''}
                             ${longTerm.actions && longTerm.actions.length > 0 ? `
                                 <li><strong>장기 액션:</strong>
@@ -683,6 +686,46 @@ class ReportManager {
         if (reportSection) {
             console.log('리포트 섹션 로드됨 (file_id 기반)');
         }
+    }
+    
+    initDragAndDrop(container) {
+        /**
+         * SortableJS를 사용한 드래그 앤 드롭 초기화
+         * 그래프 카드들을 자유롭게 재배치할 수 있습니다
+         */
+        if (typeof Sortable === 'undefined') {
+            console.warn('SortableJS 라이브러리가 로드되지 않았습니다.');
+            return;
+        }
+        
+        new Sortable(container, {
+            animation: 200, // 애니메이션 속도 (ms)
+            easing: "cubic-bezier(1, 0, 0, 1)", // 애니메이션 easing
+            ghostClass: 'sortable-ghost', // 드래그 중인 위치에 표시되는 클래스
+            chosenClass: 'sortable-chosen', // 선택된 아이템 클래스
+            dragClass: 'sortable-drag', // 드래그 중인 아이템 클래스
+            forceFallback: false, // HTML5 드래그 앤 드롭 사용
+            fallbackOnBody: true,
+            swapThreshold: 0.65, // 스왑 임계값
+            
+            // 드래그 시작
+            onStart: function(evt) {
+                console.log('드래그 시작:', evt.item);
+            },
+            
+            // 드래그 종료 (순서 변경됨)
+            onEnd: function(evt) {
+                console.log(`그래프 순서 변경: ${evt.oldIndex} → ${evt.newIndex}`);
+                
+                // 순서 변경 완료 메시지 (선택사항)
+                if (evt.oldIndex !== evt.newIndex) {
+                    // 토스트 메시지 표시 (선택사항)
+                    // showMessage('그래프 순서가 변경되었습니다.', 'info');
+                }
+            }
+        });
+        
+        console.log('✅ 드래그 앤 드롭 활성화: 그래프를 드래그하여 순서를 변경할 수 있습니다.');
     }
     
     createChartModal() {
