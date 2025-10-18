@@ -4,7 +4,9 @@ from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
 from reportlab.lib.units import cm, mm, inch
-from reportlab.platypus import Table, TableStyle
+from reportlab.platypus import Table, TableStyle, Paragraph, PageBreak
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.enums import TA_LEFT, TA_CENTER, TA_JUSTIFY
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from services.db.report_db import ReportDB
@@ -13,6 +15,12 @@ import os
 import datetime
 import re
 from urllib.parse import quote
+import matplotlib
+matplotlib.use('Agg')  # GUI 없이 사용
+import matplotlib.pyplot as plt
+import matplotlib.font_manager as fm
+from io import BytesIO
+import base64
 
 logger = get_logger(__name__)
 
@@ -193,136 +201,449 @@ def download_pdf_file():
 
 
 def create_report_with_real_data_to_buffer(buffer, pdf_data):
-    """실제 리포트 데이터를 기반으로 PDF 생성 (BytesIO 버퍼에 직접 작성)"""
+    """실제 리포트 데이터를 기반으로 PDF 생성 (BytesIO 버퍼에 직접 작성) - 개선된 버전"""
     report_data = pdf_data.get('report_data', {})
     summary = report_data.get('summary', {})
     insight = report_data.get('insight', {})
     solution = report_data.get('solution', {})
+    channel_trends = report_data.get('channel_trends', {})
     
-    # 1. 도화지(Canvas)를 준비합니다 (버퍼에 작성)
+    # Canvas 생성
     c = canvas.Canvas(buffer, pagesize=A4)
     width, height = A4
-    right_margin = width - (1 * cm)
     
-    # --- 페이지 상단: 제목과 날짜 ---
-    c.setFont(FONT_NAME_BOLD, 14)
-    c.drawCentredString(width/2, height - 1 * cm, "ClaraCS AI 분석 리포트")
+    # ========== 페이지 1: 표지 + 데이터 요약 ==========
+    draw_cover_page(c, pdf_data, width, height)
+    draw_summary_section(c, summary, width, height)
     
+    # 새 페이지
+    c.showPage()
+    
+    # ========== 페이지 2: 채널별 추이 그래프 ==========
+    if channel_trends:
+        draw_channel_trends(c, channel_trends, width, height)
+        c.showPage()
+    
+    # ========== 페이지 3: 인사이트 도출 ==========
+    draw_insights_section(c, insight, width, height)
+    c.showPage()
+    
+    # ========== 페이지 4: 솔루션 제안 ==========
+    draw_solutions_section(c, solution, width, height)
+    
+    # PDF 저장
+    c.save()
+    logger.info("PDF 생성 완료 (메모리)")
+
+
+def draw_cover_page(c, pdf_data, width, height):
+    """표지 페이지 그리기"""
     company_name = pdf_data.get("company_name", "ClaraCS")
     report_date = pdf_data.get("date", datetime.date.today().strftime("%Y.%m.%d"))
     
+    # 배경 그라디언트 효과 (간단한 사각형들로 표현)
+    c.setFillColor(colors.HexColor('#667eea'))
+    c.rect(0, height - 3*inch, width, 3*inch, fill=1, stroke=0)
+    
+    # 메인 타이틀
+    c.setFillColor(colors.white)
+    c.setFont(FONT_NAME_BOLD, 28)
+    c.drawCentredString(width/2, height - 1.5*inch, "ClaraCS")
+    
+    c.setFont(FONT_NAME_BOLD, 22)
+    c.drawCentredString(width/2, height - 2*inch, "AI 분석 리포트")
+    
+    # 날짜
+    c.setFont(FONT_NAME, 14)
+    c.drawCentredString(width/2, height - 2.5*inch, report_date)
+    
+    # 하단 정보
+    c.setFillColor(colors.black)
     c.setFont(FONT_NAME, 10)
-    c.drawCentredString(width/2, height - 1.5 * cm, company_name)
-    c.drawRightString(right_margin, height - 1 * cm, report_date)
+    c.drawCentredString(width/2, 1.5*inch, f"Report ID: {pdf_data.get('report_id', 'N/A')}")
+    c.drawCentredString(width/2, 1.2*inch, company_name)
+
+
+def draw_summary_section(c, summary, width, height):
+    """데이터 요약 섹션"""
+    y_start = height - 4*inch
     
-    # --- 데이터 요약 섹션 ---
-    c.setFont(FONT_NAME_BOLD, 16)
-    c.drawString(1 * inch, height - 2.0 * inch, "데이터 요약")
+    # 섹션 제목
+    c.setFillColor(colors.HexColor('#667eea'))
+    c.setFont(FONT_NAME_BOLD, 18)
+    c.drawString(1*inch, y_start, "📊 데이터 요약")
     
-    c.setFont(FONT_NAME, 9)
-    c.setFillColor(colors.grey)
-    c.drawString(1 * inch, height - 2.2 * inch, f"Report ID: {pdf_data.get('report_id', 'N/A')}")
+    # 구분선
+    c.setStrokeColor(colors.HexColor('#667eea'))
+    c.setLineWidth(2)
+    c.line(1*inch, y_start - 0.1*inch, 7.5*inch, y_start - 0.1*inch)
     
-    c.setStrokeColor(colors.lightgrey)
-    c.line(1 * inch, height - 2.3 * inch, 7.5 * inch, height - 2.3 * inch)
+    y_position = y_start - 0.4*inch
     
-    # 데이터 요약 테이블 생성
-    total_cs = summary.get('total_tickets', 0) if isinstance(summary, dict) else 0
-    category_ratios = summary.get('category_ratios', {}) if isinstance(summary, dict) else {}
-    resolved_count = summary.get('resolved_count', {}) if isinstance(summary, dict) else {}
+    # 전체 CS 건수 강조
+    total_cs = summary.get('total_cs_count', 0)
+    c.setFillColor(colors.HexColor('#667eea'))
+    c.setFont(FONT_NAME_BOLD, 14)
+    c.drawString(1.2*inch, y_position, "전체 CS 건수")
     
-    # 테이블 데이터 구성
-    table_data = [
-        ['항목', '값', '비율']
-    ]
+    c.setFont(FONT_NAME_BOLD, 24)
+    c.drawRightString(7*inch, y_position - 0.1*inch, f"{total_cs:,}건")
     
-    # 전체 CS 건수
-    table_data.append(['전체 CS 건수', f'{total_cs:,}건', '-'])
+    y_position -= 0.6*inch
     
-    # 카테고리별 데이터
-    if category_ratios and isinstance(category_ratios, dict):
-        for i, (cat_name, cat_percentage) in enumerate(list(category_ratios.items())[:5]):
-            cat_count = int(total_cs * float(cat_percentage) / 100) if total_cs > 0 else 0
-            table_data.append([cat_name, f'{cat_count}건', f'{cat_percentage}%'])
+    # 카테고리별 데이터 테이블
+    categories = summary.get('categories', [])
+    if categories:
+        c.setFillColor(colors.black)
+        c.setFont(FONT_NAME_BOLD, 12)
+        c.drawString(1.2*inch, y_position, "카테고리별 분포")
+        y_position -= 0.25*inch
+        
+        table_data = [['카테고리', '건수', '비율']]
+        for cat in categories[:5]:
+            table_data.append([
+                cat.get('category_name', '-'),
+                f"{cat.get('count', 0):,}건",
+                f"{cat.get('percentage', 0):.1f}%"
+            ])
+        
+        category_table = Table(table_data, colWidths=[2*inch, 1.5*inch, 1*inch])
+        category_table.setStyle(TableStyle([
+            ('FONTNAME', (0, 0), (-1, -1), FONT_NAME),
+            ('FONTSIZE', (0, 0), (-1, -1), 10),
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#f0f0f0')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
+            ('FONTNAME', (0, 0), (-1, 0), FONT_NAME_BOLD),
+            ('ALIGN', (0, 0), (0, -1), 'LEFT'),
+            ('ALIGN', (1, 0), (-1, -1), 'CENTER'),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f9f9f9')]),
+        ]))
+        
+        category_table.wrapOn(c, width, height)
+        category_table.drawOn(c, 1.2*inch, y_position - len(table_data)*0.25*inch)
+        
+        y_position -= (len(table_data) * 0.25*inch + 0.4*inch)
     
     # 채널별 해결률
-    if resolved_count and isinstance(resolved_count, dict):
-        for channel, resolution_rate in list(resolved_count.items())[:3]:
-            table_data.append([f'{channel} 해결률', '-', f'{resolution_rate}%'])
-    
-    summary_table = Table(table_data, colWidths=[1.5*inch, 1.2*inch, 1.2*inch])
-    summary_table.setStyle(TableStyle([
+    channels = summary.get('channels', [])
+    if channels:
+        c.setFillColor(colors.black)
+        c.setFont(FONT_NAME_BOLD, 12)
+        c.drawString(1.2*inch, y_position, "채널별 해결률")
+        y_position -= 0.25*inch
+        
+        table_data = [['채널', '전체', '해결', '해결률']]
+        for ch in channels[:5]:
+            table_data.append([
+                ch.get('channel', '-'),
+                f"{ch.get('total', 0):,}건",
+                f"{ch.get('resolved', 0):,}건",
+                f"{ch.get('resolution_rate', 0):.1f}%"
+            ])
+        
+        channel_table = Table(table_data, colWidths=[1.5*inch, 1*inch, 1*inch, 1*inch])
+        channel_table.setStyle(TableStyle([
         ('FONTNAME', (0, 0), (-1, -1), FONT_NAME),
-        ('FONTSIZE', (0, 0), (-1, -1), 9),
+            ('FONTSIZE', (0, 0), (-1, -1), 10),
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#f0f0f0')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
+            ('FONTNAME', (0, 0), (-1, 0), FONT_NAME_BOLD),
+            ('ALIGN', (0, 0), (0, -1), 'LEFT'),
+            ('ALIGN', (1, 0), (-1, -1), 'CENTER'),
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ('GRID', (0, 0), (-1, -1), 0.5, colors.lightgrey),
-        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#E0E0E0')),
-        ('FONTNAME', (0, 0), (-1, 0), FONT_NAME_BOLD),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-    ]))
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f9f9f9')]),
+        ]))
+        
+        channel_table.wrapOn(c, width, height)
+        channel_table.drawOn(c, 1.2*inch, y_position - len(table_data)*0.25*inch)
+
+
+def draw_channel_trends(c, channel_trends, width, height):
+    """채널별 추이 그래프 페이지"""
+    y_start = height - 1*inch
     
-    table_x = 1 * inch
-    table_y = height - 5.5 * inch
-    summary_table.wrapOn(c, width, height)
-    summary_table.drawOn(c, table_x, table_y)
+    # 섹션 제목
+    c.setFillColor(colors.HexColor('#f093fb'))
+    c.setFont(FONT_NAME_BOLD, 18)
+    c.drawString(1*inch, y_start, "📈 채널별 추이")
     
-    # --- 인사이트 섹션 ---
-    c.setFont(FONT_NAME_BOLD, 14)
-    c.drawString(1 * inch, height - 6.0 * inch, "AI 인사이트")
+    # 구분선
+    c.setStrokeColor(colors.HexColor('#f093fb'))
+    c.setLineWidth(2)
+    c.line(1*inch, y_start - 0.1*inch, 7.5*inch, y_start - 0.1*inch)
     
-    y_position = height - 6.3 * inch
-    c.setFont(FONT_NAME, 9)
-    c.setFillColor(colors.black)
+    y_position = y_start - 0.5*inch
     
-    # 인사이트 내용 표시
-    if insight and isinstance(insight, dict):
-        overall = insight.get('overall', {})
-        if isinstance(overall, dict) and overall.get('summary'):
-            summary_text = overall.get('summary', '')
-            max_width = 6.5 * inch
-            lines = []
-            words = summary_text.split()
-            current_line = ""
+    # 상위 3개 채널 그래프 생성
+    chart_count = 0
+    for channel, trend_data in list(channel_trends.items())[:3]:
+        if chart_count >= 3:
+            break
             
-            for word in words:
-                test_line = current_line + " " + word if current_line else word
-                if c.stringWidth(test_line, FONT_NAME, 9) < max_width:
-                    current_line = test_line
-                else:
-                    if current_line:
-                        lines.append(current_line)
-                    current_line = word
+        # 차트 이미지 생성
+        chart_image = create_channel_chart_image(channel, trend_data)
+        if chart_image:
+            # 차트 제목
+            c.setFillColor(colors.black)
+            c.setFont(FONT_NAME_BOLD, 12)
+            c.drawString(1.2*inch, y_position, f"{channel} 채널")
             
-            if current_line:
-                lines.append(current_line)
+            # 이미지 삽입
+            c.drawImage(chart_image, 1*inch, y_position - 2.3*inch, 
+                       width=6.5*inch, height=2*inch, preserveAspectRatio=True)
             
-            for line in lines[:5]:
-                c.drawString(1.2 * inch, y_position, line)
-                y_position -= 0.15 * inch
+            y_position -= 2.6*inch
+            chart_count += 1
+            
+            if chart_count < 3 and y_position < 2*inch:
+                # 페이지 부족하면 새 페이지
+                c.showPage()
+                y_position = height - 1*inch
+
+
+def create_channel_chart_image(channel, trend_data):
+    """채널별 그래프 이미지 생성 (matplotlib)"""
+    try:
+        # 한글 폰트 설정
+        plt.rcParams['font.family'] = 'DejaVu Sans'
+        plt.rcParams['axes.unicode_minus'] = False
+        
+        dates = trend_data.get('dates', [])
+        categories = trend_data.get('categories', [])
+        data_matrix = trend_data.get('data', [])
+        
+        if not dates or not data_matrix:
+            return None
+        
+        # 그래프 생성
+        fig, ax = plt.subplots(figsize=(8, 3))
+        
+        # 스택 막대 그래프
+        bottom = [0] * len(dates)
+        colors_list = ['#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#f7b731', '#feca57']
+        
+        for i, category in enumerate(categories):
+            category_data = [row[i] if i < len(row) else 0 for row in data_matrix]
+            ax.bar(dates, category_data, bottom=bottom, label=category, 
+                  color=colors_list[i % len(colors_list)], alpha=0.8)
+            bottom = [b + d for b, d in zip(bottom, category_data)]
+        
+        # 전체 합계 선 그래프
+        total_data = [sum(row) for row in data_matrix]
+        ax.plot(dates, total_data, color='#e74c3c', linewidth=2, marker='o', 
+               markersize=4, label='Total', zorder=10)
+        
+        ax.set_xlabel('Date', fontsize=9)
+        ax.set_ylabel('Count', fontsize=9)
+        ax.legend(fontsize=8, loc='upper left')
+        ax.grid(True, alpha=0.3)
+        plt.xticks(rotation=45, ha='right', fontsize=8)
+        plt.yticks(fontsize=8)
+        plt.tight_layout()
+        
+        # BytesIO로 저장
+        img_buffer = BytesIO()
+        plt.savefig(img_buffer, format='png', dpi=150, bbox_inches='tight')
+        img_buffer.seek(0)
+        plt.close()
+        
+        return img_buffer
+        
+    except Exception as e:
+        logger.error(f"차트 이미지 생성 실패: {e}")
+        return None
+
+
+def draw_insights_section(c, insight, width, height):
+    """인사이트 도출 섹션"""
+    y_start = height - 1*inch
     
-    # --- 솔루션 제안 섹션 ---
-    y_position -= 0.3 * inch
-    c.setFont(FONT_NAME_BOLD, 14)
-    c.drawString(1 * inch, y_position, "솔루션 제안")
+    # 섹션 제목
+    c.setFillColor(colors.HexColor('#667eea'))
+    c.setFont(FONT_NAME_BOLD, 18)
+    c.drawString(1*inch, y_start, "💡 인사이트 도출")
     
-    y_position -= 0.25 * inch
-    c.setFont(FONT_NAME, 9)
+    # 구분선
+    c.setStrokeColor(colors.HexColor('#667eea'))
+    c.setLineWidth(2)
+    c.line(1*inch, y_start - 0.1*inch, 7.5*inch, y_start - 0.1*inch)
     
-    if solution and isinstance(solution, dict):
-        short_term = solution.get('short_term', {})
-        if isinstance(short_term, dict) and short_term.get('goal_kpi'):
-            c.setFont(FONT_NAME_BOLD, 10)
-            c.drawString(1.2 * inch, y_position, "단기 (1-6개월)")
-            y_position -= 0.2 * inch
+    y_position = y_start - 0.4*inch
+    
+    # 종합 분석 요약 (강조 박스)
+    overall = insight.get('overall', {})
+    if overall and overall.get('summary'):
+        c.setFillColor(colors.HexColor('#f0f0ff'))
+        c.rect(1*inch, y_position - 1.2*inch, 6.5*inch, 1.2*inch, fill=1, stroke=0)
+        
+        c.setFillColor(colors.HexColor('#667eea'))
+        c.setFont(FONT_NAME_BOLD, 12)
+        c.drawString(1.2*inch, y_position - 0.3*inch, "종합 분석 요약")
+        
+        # 텍스트 래핑
+        summary_text = overall.get('summary', '')
+        c.setFillColor(colors.black)
+        c.setFont(FONT_NAME, 10)
+        lines = wrap_text(c, summary_text, 6*inch, FONT_NAME, 10)
+        
+        text_y = y_position - 0.55*inch
+        for line in lines[:4]:
+            c.drawString(1.3*inch, text_y, line)
+            text_y -= 0.18*inch
+        
+        y_position -= 1.5*inch
+    
+    # 주요 이슈
+    notable_issues = overall.get('notable_issues', [])
+    if notable_issues:
+        c.setFillColor(colors.HexColor('#e74c3c'))
+        c.setFont(FONT_NAME_BOLD, 12)
+        c.drawString(1.2*inch, y_position, "⚠️ 주요 이슈")
+        y_position -= 0.25*inch
+        
+        c.setFillColor(colors.black)
+        c.setFont(FONT_NAME, 10)
+        for issue in notable_issues[:5]:
+            c.drawString(1.4*inch, y_position, f"• {issue}")
+            y_position -= 0.2*inch
+        
+        y_position -= 0.2*inch
+    
+    # 카테고리별 인사이트
+    by_category = insight.get('by_category', [])
+    if by_category:
+        c.setFillColor(colors.black)
+        c.setFont(FONT_NAME_BOLD, 12)
+        c.drawString(1.2*inch, y_position, "카테고리별 세부 인사이트")
+        y_position -= 0.3*inch
+        
+        for cat in by_category[:3]:
+            if y_position < 2*inch:
+                break
+                
+            priority_icon = '🔴' if cat.get('priority') == 'high' else '🟡' if cat.get('priority') == 'medium' else '🟢'
+            
+            c.setFont(FONT_NAME_BOLD, 11)
+            c.drawString(1.4*inch, y_position, f"{priority_icon} {cat.get('category_name', '')}")
+            y_position -= 0.2*inch
             
             c.setFont(FONT_NAME, 9)
-            goal = short_term.get('goal_kpi', '')[:80]
-            c.drawString(1.4 * inch, y_position, f"목표: {goal}")
-            y_position -= 0.15 * inch
+            c.drawString(1.6*inch, y_position, f"문제점: {cat.get('problem', '-')[:80]}")
+            y_position -= 0.18*inch
+            c.drawString(1.6*inch, y_position, f"단기 목표: {cat.get('short_term_goal', '-')[:80]}")
+            y_position -= 0.25*inch
+
+
+def draw_solutions_section(c, solution, width, height):
+    """솔루션 제안 섹션"""
+    y_start = height - 1*inch
     
-    # 2. 버퍼에 저장
-    c.save()
-    logger.info(f"PDF 생성 완료 (메모리)")
+    # 섹션 제목
+    c.setFillColor(colors.HexColor('#f5576c'))
+    c.setFont(FONT_NAME_BOLD, 18)
+    c.drawString(1*inch, y_start, "🎯 솔루션 제안")
+    
+    # 구분선
+    c.setStrokeColor(colors.HexColor('#f5576c'))
+    c.setLineWidth(2)
+    c.line(1*inch, y_start - 0.1*inch, 7.5*inch, y_start - 0.1*inch)
+    
+    y_position = y_start - 0.4*inch
+    
+    # 현황 및 문제점 (강조 박스)
+    current_status = solution.get('current_status_and_problems', {})
+    if current_status:
+        c.setFillColor(colors.HexColor('#fff5f5'))
+        c.rect(1*inch, y_position - 1*inch, 6.5*inch, 1*inch, fill=1, stroke=0)
+        
+        c.setFillColor(colors.HexColor('#f5576c'))
+        c.setFont(FONT_NAME_BOLD, 12)
+        c.drawString(1.2*inch, y_position - 0.25*inch, "핵심 현황 및 우선순위")
+        
+        c.setFillColor(colors.black)
+        c.setFont(FONT_NAME, 10)
+        
+        if current_status.get('status'):
+            lines = wrap_text(c, f"현황: {current_status['status']}", 6*inch, FONT_NAME, 10)
+            text_y = y_position - 0.5*inch
+            for line in lines[:2]:
+                c.drawString(1.3*inch, text_y, line)
+                text_y -= 0.18*inch
+        
+        if current_status.get('problems'):
+            lines = wrap_text(c, f"문제: {current_status['problems']}", 6*inch, FONT_NAME, 10)
+            text_y = y_position - 0.75*inch
+            for line in lines[:2]:
+                c.drawString(1.3*inch, text_y, line)
+                text_y -= 0.18*inch
+        
+        y_position -= 1.3*inch
+    
+    # 단기 솔루션
+    short_term = solution.get('short_term', {})
+    if short_term:
+        draw_solution_period(c, "단기 (1-6개월)", short_term, y_position, width)
+        y_position -= 1.2*inch
+    
+    # 중기 솔루션
+    mid_term = solution.get('mid_term', {})
+    if mid_term and y_position > 3*inch:
+        draw_solution_period(c, "중기 (6-12개월)", mid_term, y_position, width)
+        y_position -= 1.2*inch
+    
+    # 장기 솔루션
+    long_term = solution.get('long_term', {})
+    if long_term and y_position > 3*inch:
+        draw_solution_period(c, "장기 (12개월+)", long_term, y_position, width)
+
+
+def draw_solution_period(c, period_name, period_data, y_position, width):
+    """솔루션 기간별 섹션 그리기"""
+    c.setFillColor(colors.HexColor('#764ba2'))
+    c.setFont(FONT_NAME_BOLD, 11)
+    c.drawString(1.2*inch, y_position, period_name)
+    y_position -= 0.22*inch
+    
+    c.setFillColor(colors.black)
+    c.setFont(FONT_NAME, 9)
+    
+    if period_data.get('goal_kpi'):
+        lines = wrap_text(c, f"목표: {period_data['goal_kpi']}", 5.5*inch, FONT_NAME, 9)
+        for line in lines[:2]:
+            c.drawString(1.4*inch, y_position, line)
+            y_position -= 0.16*inch
+    
+    actions = period_data.get('actions', [])
+    if actions:
+        c.drawString(1.4*inch, y_position, "액션 플랜:")
+        y_position -= 0.16*inch
+        for action in actions[:3]:
+            c.drawString(1.6*inch, y_position, f"• {action[:70]}")
+            y_position -= 0.16*inch
+
+
+def wrap_text(c, text, max_width, font_name, font_size):
+    """텍스트를 지정된 너비에 맞게 줄바꿈"""
+    words = text.split()
+    lines = []
+    current_line = ""
+    
+    for word in words:
+        test_line = current_line + " " + word if current_line else word
+        if c.stringWidth(test_line, font_name, font_size) < max_width:
+            current_line = test_line
+        else:
+            if current_line:
+                lines.append(current_line)
+            current_line = word
+    
+    if current_line:
+        lines.append(current_line)
+    
+    return lines
 
 
 # --- [수정] 함수를 직접 테스트할 때도 임시 데이터를 넣어줍니다 ---
