@@ -35,8 +35,8 @@ function joinKeywords(arr) {
 }
 function flatAllByCategory(all_by_category) {
   if (!all_by_category) return [];
-  // 모든 카테고리의 모든 티켓 (제한 없음)
-  const order = ["배송 문의","환불/교환","상품 문의","기술 지원","불만/클레임","기타"];
+  // 모든 카테고리의 모든 티켓 (우선순위 기반 정렬)
+  const order = ["품질/하자", "서비스", "배송", "AS/수리", "결제", "이벤트", "일반", "기타"];
   const rows = [];
   for (const cat of order) {
     const items = all_by_category[cat] || [];
@@ -70,15 +70,17 @@ function renderCategoryTable(rows) {
   `).join("");
 }
 
-// 채널 도넛 색상/순서 (백엔드 카테고리명과 일치)
-const CHANNEL_CATEGORY_ORDER = ["배송 문의","환불/교환","상품 문의","기술 지원","불만/클레임","기타"];
+// 채널 도넛 색상/순서 (백엔드 카테고리명과 일치 - 우선순위 기반)
+const CHANNEL_CATEGORY_ORDER = ["품질/하자", "서비스", "배송", "AS/수리", "결제", "이벤트", "일반", "기타"];
 const CHANNEL_CATEGORY_COLORS = {
-  "배송 문의": "#ef4444",      // 빨강
-  "환불/교환": "#f59e0b",      // 주황
-  "상품 문의": "#10b981",      // 초록
-  "기술 지원": "#3b82f6",      // 파랑
-  "불만/클레임": "#ff7875",    // 분홍
-  "기타": "#9ca3af"           // 회색
+  "품질/하자": "#ef4444",      // 빨강 (1순위)
+  "서비스": "#f59e0b",         // 주황 (2순위)
+  "배송": "#10b981",           // 초록 (3순위)
+  "AS/수리": "#3b82f6",        // 파랑 (4순위)
+  "결제": "#8b5cf6",           // 보라 (5순위)
+  "이벤트": "#ec4899",         // 핑크 (6순위)
+  "일반": "#6366f1",           // 인디고 (7순위)
+  "기타": "#9ca3af"            // 회색 (8순위)
 };
 
 // conic-gradient 백그라운드 생성
