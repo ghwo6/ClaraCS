@@ -472,7 +472,7 @@ class ReportManager {
                         <li>
                             <strong>${cat.category_name} ${priorityBadge}</strong>
                             <ul style="margin-left: 15px; font-size: 14px;">
-                                <li><strong>문제점:</strong> ${cat.problem || '-'}</li>
+                                <li><strong>현황 및 문제점:</strong> ${cat.problem || '-'}</li>
                                 <li><strong>단기 목표:</strong> ${cat.short_term_goal || '-'}</li>
                                 <li><strong>장기 목표:</strong> ${cat.long_term_goal || '-'}</li>
                             </ul>
@@ -517,7 +517,7 @@ class ReportManager {
                 return;
             }
             
-            // ✨ 상단 요약 추가 (현황 및 문제점을 강조하여 맨 위에 표시)
+            // ✨ 상단 요약 추가 (현황 및 문제점:을 강조하여 맨 위에 표시)
             if (currentStatusProblems.status || currentStatusProblems.problems) {
                 solutionsHTML += `
                     <li style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); 

@@ -458,7 +458,7 @@ JSON 형식으로 응답해주세요:
    - overall: 종합 인사이트 {{summary, notable_issues}}
 
 3. **solution**: 단기/중기/장기 전략 제안
-   - current_status_and_problems: 현황 및 문제점 요약 {{status, problems}}
+   - current_status_and_problems: 현황 및 문제점: 요약 {{status, problems}}
    - short_term: 단기 솔루션 (1-6개월) {{goal_kpi, plan, actions: []}}
    - mid_term: 중기 솔루션 (6-12개월) {{goal_kpi, plan, actions: []}}
    - long_term: 장기 솔루션 (12개월+) {{goal_kpi, plan, actions: []}}

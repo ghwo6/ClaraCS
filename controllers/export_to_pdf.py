@@ -531,7 +531,7 @@ def draw_insights_section(c, insight, width, height):
             y_position -= 0.2*inch
             
             c.setFont(FONT_NAME, 9)
-            c.drawString(1.6*inch, y_position, f"문제점: {cat.get('problem', '-')[:80]}")
+            c.drawString(1.6*inch, y_position, f"현황 및 문제점: {cat.get('problem', '-')[:80]}")
             y_position -= 0.18*inch
             c.drawString(1.6*inch, y_position, f"단기 목표: {cat.get('short_term_goal', '-')[:80]}")
             y_position -= 0.25*inch
@@ -553,7 +553,7 @@ def draw_solutions_section(c, solution, width, height):
     
     y_position = y_start - 0.4*inch
     
-    # 현황 및 문제점 (강조 박스)
+    # 현황 및 문제점: (강조 박스)
     current_status = solution.get('current_status_and_problems', {})
     if current_status:
         c.setFillColor(colors.HexColor('#fff5f5'))
