@@ -59,7 +59,7 @@
 }
 
 #channel-trends-card .chart-box {
-    min-height: 370px;  /* 차트 박스 최소 높이 (2/3 비율) */
+    min-height: 662px;  /* 차트 박스 최소 높이 (2/3 비율) */
     display: flex;
     justify-content: center;  /* 가운데 정렬 */
     align-items: center;  /* 세로 가운데 정렬 */
@@ -68,7 +68,7 @@
 /* 채널별 차트 컨테이너 (가로 스크롤 방지, 세로 스크롤만) */
 #channel-charts-container {
     padding: 20px;
-    max-height: 600px;  /* 그래프 높이 (2/3 비율) */
+    max-height: 680px;  /* 2줄(8개)까지 스크롤 없이: (300px * 2줄) + gap(20px) + padding(40px) = 660px + 여유 20px */
     overflow-y: auto;
     overflow-x: hidden;  /* 가로 스크롤 방지 */
     width: 100%;
