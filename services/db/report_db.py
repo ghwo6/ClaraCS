@@ -54,8 +54,44 @@ class ReportDB:
             if connection and connection.is_connected():
                 connection.close()
     
+    def get_latest_batch_id(self, user_id: int) -> Optional[int]:
+        """사용자의 최신 배치 ID 조회"""
+        logger.info(f"사용자 {user_id}의 최신 배치 조회")
+        
+        connection = self.db_manager.get_connection()
+        cursor = connection.cursor(dictionary=True)
+        
+        try:
+            query = """
+                SELECT batch_id
+                FROM tb_file_batch
+                WHERE user_id = %s
+                  AND status = 'completed'
+                ORDER BY created_at DESC
+                LIMIT 1
+            """
+            
+            cursor.execute(query, (user_id,))
+            result = cursor.fetchone()
+            
+            if result:
+                batch_id = result['batch_id']
+                logger.info(f"최신 배치 조회 완료: batch_id={batch_id}")
+                return batch_id
+            else:
+                logger.warning(f"사용자 {user_id}의 배치가 없습니다")
+                return None
+                
+        except Exception as e:
+            logger.error(f"최신 배치 조회 실패: {e}")
+            return None
+        finally:
+            cursor.close()
+            if connection and connection.is_connected():
+                connection.close()
+    
     def get_latest_file_id(self, user_id: int) -> Optional[int]:
-        """사용자의 최신 업로드 파일 ID 조회"""
+        """사용자의 최신 업로드 파일 ID 조회 (배치에 속하지 않은 파일만)"""
         logger.info(f"사용자 {user_id}의 최신 파일 조회")
         
         connection = self.db_manager.get_connection()
@@ -68,6 +104,7 @@ class ReportDB:
                 WHERE user_id = %s
                   AND status = 'processed'
                   AND (is_deleted IS NULL OR is_deleted = FALSE)
+                  AND batch_id IS NULL
                 ORDER BY created_at DESC
                 LIMIT 1
             """
@@ -291,6 +328,86 @@ class ReportDB:
     # 리포트 데이터 조회 (프론트엔드용)
     # ========================================
     
+    def get_channel_trend_data_by_batch(self, batch_id: int, days: int = 365) -> dict:
+        """배치 기반 채널별 추이 데이터 조회"""
+        logger.info(f"배치 {batch_id}의 채널별 추이 데이터 조회")
+        
+        connection = self.db_manager.get_connection()
+        cursor = connection.cursor(dictionary=True)
+        
+        try:
+            # 채널별, 카테고리별, 날짜별 집계 (배치에 속한 모든 파일)
+            query = """
+                SELECT 
+                    t.channel,
+                    c.category_name,
+                    DATE(t.received_at) as date,
+                    COUNT(*) as count
+                FROM tb_ticket t
+                INNER JOIN tb_uploaded_file f ON f.file_id = t.file_id
+                LEFT JOIN tb_category c ON t.classified_category_id = c.category_id
+                WHERE f.batch_id = %s
+                  AND t.classified_category_id IS NOT NULL
+                GROUP BY t.channel, c.category_name, DATE(t.received_at)
+                ORDER BY DATE(t.received_at), t.channel, c.category_name
+            """
+            
+            cursor.execute(query, [batch_id])
+            results = cursor.fetchall()
+            
+            if not results:
+                logger.warning(f"배치 {batch_id}의 채널별 추이 데이터가 없습니다")
+                return {}
+            
+            logger.debug(f"채널별 추이 원본 데이터 {len(results)}건 조회")
+            
+            # 데이터 구조 변환
+            channel_trends = {}
+            for row in results:
+                channel = row['channel'] or '미분류'
+                category = row['category_name'] or '미분류'
+                date_full = row['date'].strftime('%Y-%m-%d') if row['date'] else ''
+                date_display = row['date'].strftime('%m-%d') if row['date'] else ''
+                count = row['count']
+                
+                if channel not in channel_trends:
+                    channel_trends[channel] = {
+                        'categories': [],
+                        'dates': [],
+                        'dates_full': [],
+                        'data': []
+                    }
+                
+                if category not in channel_trends[channel]['categories']:
+                    channel_trends[channel]['categories'].append(category)
+                
+                if date_display not in channel_trends[channel]['dates']:
+                    channel_trends[channel]['dates'].append(date_display)
+                    channel_trends[channel]['dates_full'].append(date_full)
+                
+                date_idx = channel_trends[channel]['dates'].index(date_display)
+                cat_idx = channel_trends[channel]['categories'].index(category)
+                
+                while len(channel_trends[channel]['data']) <= date_idx:
+                    channel_trends[channel]['data'].append([0] * len(channel_trends[channel]['categories']))
+                
+                for data_row in channel_trends[channel]['data']:
+                    while len(data_row) < len(channel_trends[channel]['categories']):
+                        data_row.append(0)
+                
+                channel_trends[channel]['data'][date_idx][cat_idx] = count
+            
+            logger.info(f"배치 채널별 추이 데이터 조회 완료: {len(channel_trends)}개 채널")
+            return channel_trends
+            
+        except Exception as e:
+            logger.error(f"배치 채널별 추이 데이터 조회 실패: {e}")
+            return {}
+        finally:
+            cursor.close()
+            if connection and connection.is_connected():
+                connection.close()
+    
     def get_channel_trend_data(self, file_id: int, days: int = 365) -> dict:
         """채널별 추이 데이터 조회 (기본 365일, 전체 기간 포함)"""
         logger.info(f"파일 {file_id}의 채널별 추이 데이터 조회 (최근 {days}일)")
@@ -461,6 +578,158 @@ class ReportDB:
             if connection and connection.is_connected():
                 connection.close()
     
+    def get_cs_analysis_data_by_batch(self, batch_id: int) -> dict:
+        """배치 기반 CS 분석용 데이터 조회 - GPT 프롬프트에 사용할 데이터"""
+        logger.info(f"배치 {batch_id}의 CS 분석 데이터 조회")
+        
+        connection = self.db_manager.get_connection()
+        cursor = connection.cursor(dictionary=True)
+        
+        try:
+            # 최신 분류 결과 조회 (배치 기반)
+            cursor.execute("""
+                SELECT class_result_id
+                FROM tb_classification_result
+                WHERE batch_id = %s
+                ORDER BY classified_at DESC
+                LIMIT 1
+            """, [batch_id])
+            
+            result = cursor.fetchone()
+            class_result_id = result['class_result_id'] if result else None
+            
+            if not class_result_id:
+                logger.warning(f"배치 {batch_id}의 분류 결과가 없습니다")
+                return {
+                    'total_tickets': 0,
+                    'category_distribution': [],
+                    'channel_distribution': [],
+                    'status_distribution': {}
+                }
+            
+            # 1. 총 티켓 수 (배치에 속한 모든 파일)
+            cursor.execute("""
+                SELECT COUNT(*) as total_tickets
+                FROM tb_ticket t
+                INNER JOIN tb_uploaded_file f ON f.file_id = t.file_id
+                WHERE f.batch_id = %s
+            """, [batch_id])
+            total_tickets = cursor.fetchone()['total_tickets']
+            
+            # 2. 카테고리별 분포 (분류 결과 기반)
+            category_distribution = []
+            category_results = self.get_category_results(class_result_id)
+            
+            for cat_result in category_results:
+                category_distribution.append({
+                    'category_id': cat_result['category_id'],
+                    'category_name': cat_result['category_name'],
+                    'count': cat_result['count'],
+                    'ratio': cat_result['ratio'],
+                    'percentage': round(cat_result['ratio'] * 100, 1),
+                    'keywords': cat_result.get('example_keywords', [])[:5]
+                })
+            
+            # 3. 채널별 분포
+            cursor.execute("""
+                SELECT channel, COUNT(*) as count
+                FROM tb_ticket t
+                INNER JOIN tb_uploaded_file f ON f.file_id = t.file_id
+                WHERE f.batch_id = %s
+                GROUP BY channel
+                ORDER BY count DESC
+            """, [batch_id])
+            channel_rows = cursor.fetchall()
+            
+            channel_distribution = []
+            for row in channel_rows:
+                channel_distribution.append({
+                    'channel': row['channel'] or '미분류',
+                    'count': row['count'],
+                    'percentage': round((row['count'] / total_tickets * 100), 1) if total_tickets > 0 else 0
+                })
+            
+            # 4. 상태별 분포
+            cursor.execute("""
+                SELECT t.status, COUNT(*) as count
+                FROM tb_ticket t
+                INNER JOIN tb_uploaded_file f ON f.file_id = t.file_id
+                WHERE f.batch_id = %s
+                GROUP BY t.status
+            """, [batch_id])
+            status_rows = cursor.fetchall()
+            
+            status_distribution = {}
+            for row in status_rows:
+                status_distribution[row['status']] = {
+                    'count': row['count'],
+                    'percentage': round((row['count'] / total_tickets * 100), 1) if total_tickets > 0 else 0
+                }
+            
+            # 5. 채널별 해결률
+            cursor.execute("""
+                SELECT 
+                    t.channel,
+                    COUNT(*) as total,
+                    SUM(CASE WHEN t.status IN ('closed', 'resolved', 'completed', '완료') THEN 1 ELSE 0 END) as resolved
+                FROM tb_ticket t
+                INNER JOIN tb_uploaded_file f ON f.file_id = t.file_id
+                WHERE f.batch_id = %s
+                GROUP BY t.channel
+            """, [batch_id])
+            channel_resolution = cursor.fetchall()
+            
+            channel_resolution_rates = []
+            for row in channel_resolution:
+                resolution_rate = round((row['resolved'] / row['total'] * 100), 1) if row['total'] > 0 else 0
+                channel_resolution_rates.append({
+                    'channel': row['channel'] or '미분류',
+                    'total': row['total'],
+                    'resolved': row['resolved'],
+                    'resolution_rate': resolution_rate
+                })
+            
+            # 6. 처리 완료/미처리 건수
+            cursor.execute("""
+                SELECT 
+                    COUNT(CASE WHEN t.status IN ('closed', 'resolved', 'completed', '완료') THEN 1 END) as resolved,
+                    COUNT(CASE WHEN t.status NOT IN ('closed', 'resolved', 'completed', '완료') OR t.status IS NULL THEN 1 END) as unresolved
+                FROM tb_ticket t
+                INNER JOIN tb_uploaded_file f ON f.file_id = t.file_id
+                WHERE f.batch_id = %s
+            """, [batch_id])
+            status_count = cursor.fetchone()
+            
+            total_resolved = status_count['resolved'] or 0
+            total_unresolved = status_count['unresolved'] or 0
+            
+            cs_analysis_data = {
+                'total_tickets': total_tickets,
+                'total_resolved': total_resolved,
+                'total_unresolved': total_unresolved,
+                'category_distribution': category_distribution,
+                'channel_distribution': channel_distribution,
+                'status_distribution': status_distribution,
+                'channel_resolution_rates': channel_resolution_rates,
+                'class_result_id': class_result_id
+            }
+            
+            logger.info(f"배치 CS 분석 데이터 조회 완료: 총 {total_tickets}건")
+            return cs_analysis_data
+            
+        except Exception as e:
+            logger.error(f"배치 CS 분석 데이터 조회 실패: {e}")
+            return {
+                'total_tickets': 0,
+                'category_distribution': [],
+                'channel_distribution': [],
+                'status_distribution': {}
+            }
+        finally:
+            cursor.close()
+            if connection and connection.is_connected():
+                connection.close()
+    
     def get_cs_analysis_data(self, file_id: int) -> dict:
         """CS 분석용 데이터 조회 - GPT 프롬프트에 사용할 데이터"""
         logger.info(f"파일 {file_id}의 CS 분석 데이터 조회")
@@ -604,9 +873,11 @@ class ReportDB:
     # 리포트 저장 (스냅샷)
     # ========================================
     
-    def create_report(self, file_id: int, user_id: int, report_type: str, title: str) -> Optional[int]:
-        """리포트 생성 (tb_analysis_report)"""
-        logger.info(f"리포트 생성: 파일 {file_id}, 유저 {user_id}")
+    def create_report(self, file_id: int, user_id: int, report_type: str, title: str, batch_id: int = None) -> Optional[int]:
+        """리포트 생성 (tb_analysis_report) - 배치 지원"""
+        target_type = "batch" if batch_id else "file"
+        target_id = batch_id if batch_id else file_id
+        logger.info(f"리포트 생성: {target_type} {target_id}, 유저 {user_id}")
         
         connection = self.db_manager.get_connection()
         cursor = connection.cursor()
@@ -614,11 +885,11 @@ class ReportDB:
         try:
             query = """
                 INSERT INTO tb_analysis_report 
-                (file_id, created_by, report_type, title, status, created_at)
-                VALUES (%s, %s, %s, %s, 'processing', NOW())
+                (file_id, batch_id, created_by, report_type, title, status, created_at)
+                VALUES (%s, %s, %s, %s, %s, 'processing', NOW())
             """
             
-            cursor.execute(query, (file_id, user_id, report_type, title))
+            cursor.execute(query, (file_id, batch_id, user_id, report_type, title))
             connection.commit()
             
             report_id = cursor.lastrowid

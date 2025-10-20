@@ -23,6 +23,20 @@ CREATE TABLE `tb_uploaded_file_extension_code` (
   `description` VARCHAR(255)
 );
 
+CREATE TABLE `tb_file_batch` (
+  `batch_id` INT PRIMARY KEY AUTO_INCREMENT COMMENT '배치 ID',
+  `user_id` INT NOT NULL COMMENT '업로드한 사용자 ID',
+  `batch_name` VARCHAR(255) COMMENT '배치 이름 (선택)',
+  `file_count` INT DEFAULT 0 COMMENT '배치에 포함된 파일 수',
+  `total_row_count` INT DEFAULT 0 COMMENT '전체 행 수',
+  `status` VARCHAR(20) DEFAULT 'uploading' COMMENT '배치 상태: uploading, completed, processing, failed',
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '생성 시각',
+  `completed_at` DATETIME COMMENT '완료 시각',
+  INDEX idx_batch_user_id (user_id),
+  INDEX idx_batch_status (status),
+  INDEX idx_batch_created_at (created_at)
+) COMMENT '파일 배치 테이블 - 여러 파일을 하나의 그룹으로 관리';
+
 CREATE TABLE `tb_uploaded_file` (
   `file_id` INT PRIMARY KEY AUTO_INCREMENT,
   `user_id` INT,
@@ -35,9 +49,11 @@ CREATE TABLE `tb_uploaded_file` (
   `deleted_at` DATETIME,
   `created_at` DATETIME DEFAULT (NOW()),
   `processed_at` DATETIME,
+  `batch_id` INT COMMENT '파일이 속한 배치 ID',
   INDEX idx_uploaded_file_user_id (user_id),
   INDEX idx_uploaded_file_status (status),
-  INDEX idx_uploaded_file_created_at (created_at)
+  INDEX idx_uploaded_file_created_at (created_at),
+  INDEX idx_uploaded_file_batch_id (batch_id)
 );
 
 CREATE TABLE `tb_column_mapping_code` (
@@ -93,7 +109,8 @@ CREATE TABLE `tb_ticket` (
 
 CREATE TABLE `tb_classification_result` (
   `class_result_id` INT PRIMARY KEY AUTO_INCREMENT COMMENT '분류 결과 ID',
-  `file_id` INT NOT NULL COMMENT '분류 대상 파일 ID',
+  `file_id` INT COMMENT '분류 대상 파일 ID (단일 파일)',
+  `batch_id` INT COMMENT '분류 대상 배치 ID (배치)',
   `user_id` INT NOT NULL COMMENT '분류 실행 사용자 ID',
   `engine_name` VARCHAR(100) COMMENT 'AI 엔진 이름 (GPT-4, Claude 등)',
   `total_tickets` INT COMMENT '분류된 총 티켓 수',
@@ -102,6 +119,7 @@ CREATE TABLE `tb_classification_result` (
   `classified_at` DATETIME DEFAULT (NOW()) COMMENT '분류 실행 시각',
   `needs_review` BOOLEAN DEFAULT FALSE COMMENT '재검토 필요 여부',
   INDEX idx_classification_file_id (file_id),
+  INDEX idx_classification_batch_id (batch_id),
   INDEX idx_classification_user_id (user_id),
   INDEX idx_classification_date (classified_at)
 );
@@ -139,7 +157,8 @@ CREATE TABLE `tb_classification_reliability_result` (
 
 CREATE TABLE `tb_analysis_report` (
   `report_id` INT PRIMARY KEY AUTO_INCREMENT,
-  `file_id` INT,
+  `file_id` INT COMMENT '리포트 대상 파일 ID (단일 파일)',
+  `batch_id` INT COMMENT '리포트 대상 배치 ID (배치)',
   `created_by` INT,
   `report_type` VARCHAR(50),
   `title` VARCHAR(255),
@@ -148,6 +167,7 @@ CREATE TABLE `tb_analysis_report` (
   `created_at` DATETIME DEFAULT (NOW()),
   `completed_at` DATETIME,
   INDEX idx_report_file_id (file_id),
+  INDEX idx_report_batch_id (batch_id),
   INDEX idx_report_created_by (created_by),
   INDEX idx_report_status (status)
 );

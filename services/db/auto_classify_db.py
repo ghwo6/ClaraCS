@@ -41,6 +41,97 @@ class AutoClassifyDB:
             cursor.close()
             connection.close()
     
+    def get_tickets_by_batch(self, batch_id: int) -> List[Dict[str, Any]]:
+        """배치 ID로 티켓 조회 (배치에 속한 모든 파일의 티켓)"""
+        connection = self.db_manager.get_connection()
+        cursor = connection.cursor(dictionary=True)
+        
+        try:
+            query = """
+                SELECT 
+                    t.ticket_id, t.file_id, t.user_id, t.received_at, t.channel,
+                    t.customer_id, t.product_code, t.inquiry_type, t.title, t.body,
+                    t.assignee, t.status, t.created_at
+                FROM tb_ticket t
+                INNER JOIN tb_uploaded_file f ON f.file_id = t.file_id
+                WHERE f.batch_id = %s
+                ORDER BY t.received_at DESC
+            """
+            
+            cursor.execute(query, (batch_id,))
+            tickets = cursor.fetchall()
+            
+            logger.info(f"배치 티켓 조회 완료: batch_id={batch_id}, {len(tickets)}건")
+            return tickets
+            
+        except Exception as e:
+            logger.error(f"배치 티켓 조회 실패: {e}")
+            raise
+        finally:
+            cursor.close()
+            connection.close()
+    
+    def get_latest_batch_id(self, user_id: int) -> Optional[int]:
+        """사용자의 최신 배치 ID 조회"""
+        connection = self.db_manager.get_connection()
+        cursor = connection.cursor(dictionary=True)
+        
+        try:
+            query = """
+                SELECT batch_id
+                FROM tb_file_batch
+                WHERE user_id = %s
+                  AND status = 'completed'
+                ORDER BY created_at DESC
+                LIMIT 1
+            """
+            
+            cursor.execute(query, (user_id,))
+            result = cursor.fetchone()
+            
+            if result:
+                logger.info(f"최신 배치 조회: batch_id={result['batch_id']}")
+                return result['batch_id']
+            return None
+            
+        except Exception as e:
+            logger.error(f"최신 배치 조회 실패: {e}")
+            return None
+        finally:
+            cursor.close()
+            connection.close()
+    
+    def get_latest_file_id(self, user_id: int) -> Optional[int]:
+        """사용자의 최신 파일 ID 조회 (배치에 속하지 않은 파일만)"""
+        connection = self.db_manager.get_connection()
+        cursor = connection.cursor(dictionary=True)
+        
+        try:
+            query = """
+                SELECT file_id
+                FROM tb_uploaded_file
+                WHERE user_id = %s
+                  AND status = 'processed'
+                  AND batch_id IS NULL
+                ORDER BY created_at DESC
+                LIMIT 1
+            """
+            
+            cursor.execute(query, (user_id,))
+            result = cursor.fetchone()
+            
+            if result:
+                logger.info(f"최신 파일 조회: file_id={result['file_id']}")
+                return result['file_id']
+            return None
+            
+        except Exception as e:
+            logger.error(f"최신 파일 조회 실패: {e}")
+            return None
+        finally:
+            cursor.close()
+            connection.close()
+    
     def get_category_mapping(self) -> Dict[int, str]:
         """카테고리 ID -> 이름 매핑 조회 (parent만)"""
         connection = self.db_manager.get_connection()
@@ -68,20 +159,21 @@ class AutoClassifyDB:
             connection.close()
     
     def insert_classification_result(self, result_data: Dict[str, Any]) -> int:
-        """분류 결과 메타 정보 저장 (tb_classification_result)"""
+        """분류 결과 메타 정보 저장 (tb_classification_result) - 배치 지원"""
         connection = self.db_manager.get_connection()
         cursor = connection.cursor()
         
         try:
             query = """
                 INSERT INTO tb_classification_result
-                (file_id, user_id, engine_name, total_tickets, 
+                (file_id, batch_id, user_id, engine_name, total_tickets, 
                  period_from, period_to, classified_at, needs_review)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
             """
             
             cursor.execute(query, (
                 result_data.get('file_id'),
+                result_data.get('batch_id'),  # 배치 ID 추가
                 result_data.get('user_id'),
                 result_data.get('engine_name'),
                 result_data.get('total_tickets'),
@@ -94,7 +186,8 @@ class AutoClassifyDB:
             connection.commit()
             class_result_id = cursor.lastrowid
             
-            logger.info(f"분류 결과 저장 완료: class_result_id={class_result_id}")
+            batch_info = f", batch_id={result_data.get('batch_id')}" if result_data.get('batch_id') else ""
+            logger.info(f"분류 결과 저장 완료: class_result_id={class_result_id}{batch_info}")
             return class_result_id
             
         except Exception as e:

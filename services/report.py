@@ -18,45 +18,61 @@ class ReportService:
         self.report_db = ReportDB()
         self.ai_service = ai_service
     
-    def generate_report(self, user_id: int = 1, file_id: int = None) -> dict:
+    def generate_report(self, user_id: int = 1, file_id: int = None, batch_id: int = None) -> dict:
         """분석 리포트 생성 - GPT 기반 통합 분석
         
         Args:
             user_id: 사용자 ID (기본값 1)
-            file_id: 파일 ID (선택사항, None이면 최신 파일 사용)
+            file_id: 파일 ID (선택사항, 단일 파일)
+            batch_id: 배치 ID (선택사항, 배치)
         
         Returns:
             dict: 리포트 데이터 (summary, insight, overall_insight, solution)
         """
-        logger.info(f"리포트 생성 시작 (user_id: {user_id}, file_id: {file_id})")
+        logger.info(f"리포트 생성 시작 (user_id: {user_id}, file_id: {file_id}, batch_id: {batch_id})")
         
         try:
-            # 1. file_id가 없으면 최신 파일 선택
-            if not file_id:
-                file_id = self.report_db.get_latest_file_id(user_id)
-                if not file_id:
-                    raise ValueError("분석할 데이터가 없습니다. 먼저 파일을 업로드하고 자동 분류를 실행하세요.")
-                logger.info(f"최신 파일 자동 선택: file_id={file_id}")
+            # 1. file_id와 batch_id 둘 다 없으면 최신 배치 우선 선택
+            if not file_id and not batch_id:
+                # 1순위: 최신 배치 선택
+                batch_id = self.report_db.get_latest_batch_id(user_id)
+                
+                if batch_id:
+                    logger.info(f"🎯 최신 배치 자동 선택: batch_id={batch_id}")
+                else:
+                    # 2순위: 배치가 없으면 최신 파일 선택
+                    file_id = self.report_db.get_latest_file_id(user_id)
+                    
+                    if not file_id:
+                        raise ValueError("분석할 데이터가 없습니다. 먼저 파일을 업로드하고 자동 분류를 실행하세요.")
+                    
+                    logger.info(f"📄 최신 파일 자동 선택: file_id={file_id}")
             
-            # 2. 리포트 레코드 생성
+            # 2. 리포트 레코드 생성 (배치 지원)
             report_title = f"AI 분석 리포트_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-            report_id = self.report_db.create_report(file_id, user_id, 'ai_analysis', report_title)
+            report_id = self.report_db.create_report(file_id, user_id, 'ai_analysis', report_title, batch_id)
             
             if not report_id:
                 raise Exception("리포트 레코드 생성 실패")
             
             logger.info(f"리포트 레코드 생성 완료: report_id={report_id}")
             
-            # 3. CS 데이터 조회 (분류 결과 기반)
+            # 3. CS 데이터 조회 (분류 결과 기반 - 배치 지원)
             logger.info("CS 데이터 조회 중...")
-            cs_data = self.report_db.get_cs_analysis_data(file_id)
+            if batch_id:
+                cs_data = self.report_db.get_cs_analysis_data_by_batch(batch_id)
+            else:
+                cs_data = self.report_db.get_cs_analysis_data(file_id)
             
             if not cs_data or cs_data['total_tickets'] == 0:
                 raise ValueError("분류된 CS 데이터가 없습니다. 먼저 자동 분류를 실행하세요.")
             
-            # 4. 채널별 추이 데이터 조회 (그래프용)
+            # 4. 채널별 추이 데이터 조회 (그래프용 - 배치 지원)
             logger.info("채널별 추이 데이터 조회 중...")
-            channel_trends = self.report_db.get_channel_trend_data(file_id)
+            if batch_id:
+                channel_trends = self.report_db.get_channel_trend_data_by_batch(batch_id)
+            else:
+                channel_trends = self.report_db.get_channel_trend_data(file_id)
             
             # 5. GPT 기반 통합 분석 (한 번의 호출로 모든 섹션 생성)
             logger.info("GPT 기반 통합 분석 시작...")
@@ -69,10 +85,11 @@ class ReportService:
             # 7. 리포트 완료 처리
             self.report_db.complete_report(report_id)
             
-            # 8. 응답 데이터 구성
+            # 8. 응답 데이터 구성 (배치 지원)
             report_data = {
                 'report_id': report_id,
                 'file_id': file_id,
+                'batch_id': batch_id,  # 배치 ID 추가
                 'channel_trends': channel_trends,  # 그래프 데이터 추가
                 'summary': analysis_result.get('summary', {}),
                 'insight': analysis_result.get('insight', {}),
@@ -82,7 +99,8 @@ class ReportService:
                 'data_source': analysis_result.get('_data_source', 'fallback')  # 데이터 출처
             }
             
-            logger.info(f"리포트 생성 완료 (report_id: {report_id}, file_id: {file_id})")
+            target_info = f"batch_id: {batch_id}" if batch_id else f"file_id: {file_id}"
+            logger.info(f"리포트 생성 완료 (report_id: {report_id}, {target_info})")
             return report_data
             
         except Exception as e:
