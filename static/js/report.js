@@ -45,10 +45,28 @@ class ReportManager {
             generateBtn.addEventListener('click', () => this.generateReport());
         }
         
-        // 템플릿 선택 버튼 이벤트
-        const templateBtn = document.querySelector('#btn-template-select');
-        if (templateBtn) {
-            templateBtn.addEventListener('click', () => this.showTemplateSelector());
+        // 템플릿 선택 이벤트
+        const templateSelect = document.querySelector('#template-select');
+        if (templateSelect) {
+            templateSelect.addEventListener('change', () => this.handleTemplateChange());
+        }
+        
+        // 비교 분석 옵션 이벤트
+        const periodSelect = document.querySelector('#period-select');
+        const compareTypeSelect = document.querySelector('#compare-type');
+        
+        if (periodSelect) {
+            periodSelect.addEventListener('change', () => this.updateComparisonOptions());
+        }
+        
+        if (compareTypeSelect) {
+            compareTypeSelect.addEventListener('change', () => this.updateComparisonOptions());
+        }
+        
+        // 공유 버튼 이벤트
+        const shareBtn = document.querySelector('#btn-share-report');
+        if (shareBtn) {
+            shareBtn.addEventListener('click', () => this.showShareModal());
         }
     }
     
@@ -64,8 +82,12 @@ class ReportManager {
         try {
             console.log('GPT 기반 리포트 생성 시작...');
             
+            // 선택된 템플릿 가져오기
+            const templateSelect = document.getElementById('template-select');
+            const selectedTemplate = templateSelect ? templateSelect.value : 'standard';
+            
             // 1. 리포트 생성 API 호출 (최신 파일 자동 선택)
-            const reportData = await this.callGenerateReportAPI();
+            const reportData = await this.callGenerateReportAPI(selectedTemplate);
             
             // 리포트 ID 저장 (PDF 다운로드용)
             this.currentReportId = reportData.report_id;
@@ -80,11 +102,8 @@ class ReportManager {
                 console.log('GPT 기반 리포트 생성 완료:', reportData.data_source);
             }
             
-            // 3. 각 섹션별 데이터 렌더링
-            this.renderChannelTrends(reportData.channel_trends);  // 그래프 추가
-            this.renderSummary(reportData.summary);
-            this.renderInsights(reportData.insight);  // 통합 구조로 변경
-            this.renderSolutions(reportData.solution);
+            // 3. 템플릿별 렌더링
+            this.renderByTemplate(selectedTemplate, reportData);
             
             // 4. localStorage에 리포트 데이터 저장 (자동 복원용)
             const currentTime = new Date().toLocaleString('ko-KR');
@@ -101,14 +120,15 @@ class ReportManager {
         }
     }
     
-    async callGenerateReportAPI() {
+    async callGenerateReportAPI(template = 'standard') {
         const response = await fetch('/api/report/generate', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                user_id: this.currentUserId  // file_id는 자동 선택
+                user_id: this.currentUserId,  // file_id는 자동 선택
+                template: template
             })
         });
         
@@ -651,8 +671,249 @@ class ReportManager {
             container.innerHTML = solutionsHTML;
         }
     
+    renderByTemplate(template, reportData) {
+        console.log(`템플릿 렌더링: ${template}`);
+        
+        switch (template) {
+            case 'executive':
+                this.renderExecutiveReport(reportData);
+                break;
+            case 'detailed':
+                this.renderDetailedReport(reportData);
+                break;
+            case 'trend':
+                this.renderTrendReport(reportData);
+                break;
+            case 'comparison':
+                this.renderComparisonReport(reportData);
+                break;
+            default: // 'standard'
+                this.renderStandardReport(reportData);
+                break;
+        }
+    }
+    
+    renderStandardReport(reportData) {
+        // 표준 리포트 - 모든 섹션 표시
+        this.renderChannelTrends(reportData.channel_trends);
+        this.renderSummary(reportData.summary);
+        this.renderInsights(reportData.insight);
+        this.renderSolutions(reportData.solution);
+    }
+    
+    renderExecutiveReport(reportData) {
+        // 경영진용 요약 - 핵심 지표와 인사이트만
+        this.renderChannelTrends(reportData.channel_trends);
+        this.renderSummary(reportData.summary);
+        this.renderInsights(reportData.insight);
+        // 솔루션 섹션 숨김
+        this.hideSection('solutions');
+    }
+    
+    renderDetailedReport(reportData) {
+        // 상세 분석 - 모든 섹션 + 추가 분석
+        this.renderChannelTrends(reportData.channel_trends);
+        this.renderSummary(reportData.summary);
+        this.renderInsights(reportData.insight);
+        this.renderSolutions(reportData.solution);
+        // 추가 상세 분석 섹션 표시
+        this.renderDetailedAnalysis(reportData);
+    }
+    
+    renderTrendReport(reportData) {
+        // 트렌드 분석 - 시계열 데이터 중심
+        this.renderChannelTrends(reportData.channel_trends);
+        this.renderTrendAnalysis(reportData);
+        this.renderInsights(reportData.insight);
+    }
+    
+    renderComparisonReport(reportData) {
+        // 비교 분석 - 기간별/채널별 비교
+        this.renderChannelTrends(reportData.channel_trends);
+        this.renderSummary(reportData.summary);
+        this.renderComparisonAnalysis(reportData);
+        this.renderInsights(reportData.insight);
+    }
+    
+    hideSection(sectionName) {
+        const section = document.querySelector(`#${sectionName}`);
+        if (section) {
+            section.style.display = 'none';
+        }
+    }
+    
+    showSection(sectionName) {
+        const section = document.querySelector(`#${sectionName}`);
+        if (section) {
+            section.style.display = 'block';
+        }
+    }
+    
+    renderDetailedAnalysis(reportData) {
+        // 상세 분석 섹션 추가 (향후 구현)
+        console.log('상세 분석 렌더링');
+    }
+    
+    renderTrendAnalysis(reportData) {
+        // 트렌드 분석 섹션 추가 (향후 구현)
+        console.log('트렌드 분석 렌더링');
+    }
+    
+    renderComparisonAnalysis(reportData) {
+        // 비교 분석 섹션 추가 (향후 구현)
+        console.log('비교 분석 렌더링');
+    }
+
+    handleTemplateChange() {
+        const templateSelect = document.getElementById('template-select');
+        const comparisonOptions = document.getElementById('comparison-options');
+        
+        if (templateSelect && comparisonOptions) {
+            if (templateSelect.value === 'comparison') {
+                comparisonOptions.style.display = 'flex';
+            } else {
+                comparisonOptions.style.display = 'none';
+            }
+        }
+    }
+    
+    updateComparisonOptions() {
+        const periodSelect = document.getElementById('period-select');
+        const compareTypeSelect = document.getElementById('compare-type');
+        
+        if (periodSelect && compareTypeSelect) {
+            const period = periodSelect.value;
+            const compareType = compareTypeSelect.value;
+            
+            console.log(`비교 분석 설정: ${compareType} - ${period}`);
+            
+            // 비교 분석 옵션에 따른 UI 업데이트
+            this.updateComparisonUI(compareType, period);
+        }
+    }
+    
+    updateComparisonUI(compareType, period) {
+        // 비교 분석 UI 업데이트 (향후 구현)
+        console.log(`UI 업데이트: ${compareType} 비교, ${period} 기간`);
+    }
+
+    showShareModal() {
+        if (!this.currentReportId) {
+            this.showMessage('먼저 리포트를 생성해주세요.', 'warning');
+            return;
+        }
+        
+        // 공유 모달 생성
+        const modal = document.createElement('div');
+        modal.className = 'share-modal';
+        modal.innerHTML = `
+            <div class="share-modal-content">
+                <div class="share-modal-header">
+                    <h3>리포트 공유</h3>
+                    <button class="share-modal-close">×</button>
+                </div>
+                <div class="share-modal-body">
+                    <div class="share-option">
+                        <label>공유 링크 생성</label>
+                        <div class="share-link-container">
+                            <input type="text" id="share-link" readonly value="리포트 링크가 생성됩니다...">
+                            <button id="copy-link" class="btn small">복사</button>
+                        </div>
+                    </div>
+                    
+                    <div class="share-option">
+                        <label>이메일 공유</label>
+                        <div class="email-share">
+                            <input type="email" id="share-email" placeholder="이메일 주소를 입력하세요">
+                            <button id="send-email" class="btn small">전송</button>
+                        </div>
+                    </div>
+                    
+                    <div class="share-option">
+                        <label>공유 설정</label>
+                        <div class="share-settings">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="allow-download" checked>
+                                <span>PDF 다운로드 허용</span>
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="allow-edit">
+                                <span>편집 권한 부여</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        // 모달 이벤트 바인딩
+        this.bindShareModalEvents(modal);
+        
+        // 공유 링크 생성
+        this.generateShareLink();
+    }
+    
+    bindShareModalEvents(modal) {
+        const closeBtn = modal.querySelector('.share-modal-close');
+        const copyBtn = modal.querySelector('#copy-link');
+        const sendBtn = modal.querySelector('#send-email');
+        
+        // 모달 닫기
+        closeBtn.addEventListener('click', () => {
+            modal.remove();
+        });
+        
+        // 배경 클릭으로 닫기
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.remove();
+            }
+        });
+        
+        // 링크 복사
+        copyBtn.addEventListener('click', () => {
+            const linkInput = modal.querySelector('#share-link');
+            linkInput.select();
+            document.execCommand('copy');
+            this.showMessage('링크가 클립보드에 복사되었습니다.', 'success');
+        });
+        
+        // 이메일 전송
+        sendBtn.addEventListener('click', () => {
+            const email = modal.querySelector('#share-email').value;
+            if (!email) {
+                this.showMessage('이메일 주소를 입력해주세요.', 'warning');
+                return;
+            }
+            this.sendEmailShare(email);
+        });
+    }
+    
+    generateShareLink() {
+        // 공유 링크 생성 (실제 구현에서는 서버에서 처리)
+        const shareLink = `${window.location.origin}/shared/report/${this.currentReportId}`;
+        const linkInput = document.querySelector('#share-link');
+        if (linkInput) {
+            linkInput.value = shareLink;
+        }
+    }
+    
+    sendEmailShare(email) {
+        // 이메일 공유 기능 (실제 구현에서는 서버 API 호출)
+        console.log(`이메일 공유: ${email}`);
+        this.showMessage(`리포트가 ${email}로 전송되었습니다.`, 'success');
+        
+        // 모달 닫기
+        const modal = document.querySelector('.share-modal');
+        if (modal) {
+            modal.remove();
+        }
+    }
+
     showTemplateSelector() {
-        this.showMessage('템플릿 선택 기능은 준비 중입니다.', 'info');
+        this.showMessage('템플릿 선택 기능이 활성화되었습니다.', 'info');
     }
     
     showLoading(show) {

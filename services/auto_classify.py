@@ -359,7 +359,7 @@ class AutoClassifyService:
                 'preview': (ticket.get('body') or '')[:15] + '...' if ticket.get('body') else '',
                 'category': cat_name,
                 'keywords': cls.get('keywords', [])[:3],
-                'importance': self._calculate_importance(cls['confidence'])
+                'confidence': self._calculate_importance(cls['confidence'])
             })
         
         # 모든 티켓 반환 (상위 3개 제한 제거)

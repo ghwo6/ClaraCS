@@ -126,7 +126,7 @@ class DashboardManager {
     updateDashboardUI(data) {
         console.log('대시보드 UI 업데이트:', data);
         
-        // 1. KPI 업데이트
+        // 1. KPI 업데이트 (애니메이션 포함)
         const completedEl = document.getElementById('completed-count');
         const pendingEl = document.getElementById('pending-count');
         
@@ -136,7 +136,7 @@ class DashboardManager {
             if (emptyState) {
                 emptyState.remove();
             }
-            completedEl.innerHTML = `${data.total_resolved.toLocaleString()}건`;
+            this.animateNumber(completedEl, data.total_resolved, '건');
             completedEl.style.fontSize = '22px';
             completedEl.style.fontWeight = '700';
         }
@@ -147,7 +147,7 @@ class DashboardManager {
             if (emptyState) {
                 emptyState.remove();
             }
-            pendingEl.innerHTML = `${data.total_unresolved.toLocaleString()}건`;
+            this.animateNumber(pendingEl, data.total_unresolved, '건');
             pendingEl.style.fontSize = '22px';
             pendingEl.style.fontWeight = '700';
         }
@@ -262,6 +262,32 @@ class DashboardManager {
         });
     }
     
+    // 숫자 카운팅 애니메이션 함수
+    animateNumber(element, targetValue, suffix = '') {
+        const startValue = 0;
+        const duration = 1500; // 1.5초
+        const startTime = performance.now();
+        
+        const animate = (currentTime) => {
+            const elapsed = currentTime - startTime;
+            const progress = Math.min(elapsed / duration, 1);
+            
+            // easeOutCubic 함수 적용
+            const easeOutCubic = 1 - Math.pow(1 - progress, 3);
+            const currentValue = Math.floor(startValue + (targetValue - startValue) * easeOutCubic);
+            
+            element.innerHTML = `${currentValue.toLocaleString()}${suffix}`;
+            
+            if (progress < 1) {
+                requestAnimationFrame(animate);
+            } else {
+                element.innerHTML = `${targetValue.toLocaleString()}${suffix}`;
+            }
+        };
+        
+        requestAnimationFrame(animate);
+    }
+
     renderInsights(insight) {
         const container = document.getElementById('generated-insights');
         

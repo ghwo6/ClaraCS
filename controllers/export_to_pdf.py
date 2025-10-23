@@ -627,7 +627,7 @@ def draw_insights_page(c, insight, width, height, company_name, report_date, rig
         c.setFont(FONT_NAME, 10)
         summary_text = overall.get('summary', '')
         lines = wrap_text(c, summary_text, 6.5*inch, FONT_NAME, 10)
-        for line in lines[:6]:
+        for line in lines[:8]:  # 6에서 8로 증가
             c.drawString(1.2 * inch, y_pos, line)
             y_pos -= 0.2 * inch
         
@@ -643,7 +643,7 @@ def draw_insights_page(c, insight, width, height, company_name, report_date, rig
         c.setFont(FONT_NAME, 9)
         for issue in notable_issues[:5]:
             wrapped_lines = wrap_text(c, f"• {issue}", 6.3*inch, FONT_NAME, 9)
-            for line in wrapped_lines[:2]:
+            for line in wrapped_lines[:3]:  # 2에서 3으로 증가
                 c.drawString(1.2 * inch, y_pos, line)
                 y_pos -= 0.18 * inch
         
@@ -668,12 +668,12 @@ def draw_insights_page(c, insight, width, height, company_name, report_date, rig
             
             c.setFont(FONT_NAME, 8)
             problem_lines = wrap_text(c, f"문제점: {cat.get('problem', '-')}", 6*inch, FONT_NAME, 8)
-            for line in problem_lines[:2]:
+            for line in problem_lines[:3]:  # 2에서 3으로 증가
                 c.drawString(1.4 * inch, y_pos, line)
                 y_pos -= 0.16 * inch
             
             goal_lines = wrap_text(c, f"단기 목표: {cat.get('short_term_goal', '-')}", 6*inch, FONT_NAME, 8)
-            for line in goal_lines[:2]:
+            for line in goal_lines[:3]:  # 2에서 3으로 증가
                 c.drawString(1.4 * inch, y_pos, line)
                 y_pos -= 0.16 * inch
             
@@ -705,7 +705,7 @@ def draw_solutions_page(c, solution, width, height, company_name, report_date, r
             y_pos -= 0.2 * inch
             c.setFont(FONT_NAME, 9)
             lines = wrap_text(c, current_status['status'], 6.3*inch, FONT_NAME, 9)
-            for line in lines[:3]:
+            for line in lines[:4]:  # 3에서 4로 증가
                 c.drawString(1.3 * inch, y_pos, line)
                 y_pos -= 0.18 * inch
         
@@ -715,7 +715,7 @@ def draw_solutions_page(c, solution, width, height, company_name, report_date, r
             y_pos -= 0.2 * inch
             c.setFont(FONT_NAME, 9)
             lines = wrap_text(c, current_status['problems'], 6.3*inch, FONT_NAME, 9)
-            for line in lines[:3]:
+            for line in lines[:4]:  # 3에서 4로 증가
                 c.drawString(1.3 * inch, y_pos, line)
                 y_pos -= 0.18 * inch
         
@@ -743,7 +743,7 @@ def draw_solutions_page(c, solution, width, height, company_name, report_date, r
             y_pos -= 0.18 * inch
             c.setFont(FONT_NAME, 8)
             lines = wrap_text(c, period_data['goal_kpi'], 6*inch, FONT_NAME, 8)
-            for line in lines[:2]:
+            for line in lines[:3]:  # 2에서 3으로 증가
                 c.drawString(1.3 * inch, y_pos, line)
                 y_pos -= 0.16 * inch
         
@@ -755,7 +755,7 @@ def draw_solutions_page(c, solution, width, height, company_name, report_date, r
             c.setFont(FONT_NAME, 8)
             for action in actions[:3]:
                 wrapped = wrap_text(c, f"• {action}", 5.8*inch, FONT_NAME, 8)
-                for line in wrapped[:1]:
+                for line in wrapped[:2]:  # 1에서 2로 증가
                     c.drawString(1.3 * inch, y_pos, line)
                     y_pos -= 0.16 * inch
         
@@ -990,24 +990,34 @@ def draw_solution_period(c, period_name, period_data, y_position, width):
 
 
 def wrap_text(c, text, max_width, font_name, font_size):
-    """텍스트를 지정된 너비에 맞게 줄바꿈"""
+    """텍스트를 지정된 너비에 맞게 줄바꿈 (개선된 버전)"""
     if not text or not isinstance(text, str):
         return []
     
-    words = text.split()
+    # 한글과 영문을 구분하여 처리
+    import re
+    
+    # 한글, 영문, 숫자, 특수문자를 구분
+    tokens = re.findall(r'[\uAC00-\uD7AF]+|[a-zA-Z0-9]+|[^\s\uAC00-\uD7AFa-zA-Z0-9]', text)
+    
     lines = []
     current_line = ""
     
-    for word in words:
-        test_line = current_line + " " + word if current_line else word
-        if c.stringWidth(test_line, font_name, font_size) < max_width:
+    for token in tokens:
+        test_line = current_line + token if current_line else token
+        
+        # 공백 추가 (단어 사이에만)
+        if current_line and not current_line.endswith(' ') and not token.startswith(' '):
+            test_line = current_line + " " + token
+        
+        if c.stringWidth(test_line, font_name, font_size) <= max_width:
             current_line = test_line
         else:
             if current_line:
-                lines.append(current_line)
-            current_line = word
+                lines.append(current_line.strip())
+            current_line = token
     
     if current_line:
-        lines.append(current_line)
+        lines.append(current_line.strip())
     
     return lines

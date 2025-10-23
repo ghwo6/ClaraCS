@@ -110,14 +110,61 @@
         <div class="ticket-header">
           <strong>티켓 목록</strong>
           <div class="ticket-controls">
-            <input type="text" id="ticket-search" class="search-input" placeholder="🔍 검색 (내용, 채널, 카테고리)">
-            <span id="ticket-count" class="ticket-count">총 0건</span>
+            <!-- 필터 옵션 -->
+            <div class="filter-controls">
+              <select id="date-filter" class="filter-select">
+                <option value="">전체 기간</option>
+                <option value="today">오늘</option>
+                <option value="week">최근 1주</option>
+                <option value="month">최근 1개월</option>
+                <option value="quarter">최근 3개월</option>
+              </select>
+              
+              <select id="channel-filter" class="filter-select">
+                <option value="">전체 채널</option>
+                <option value="카카오톡">카카오톡</option>
+                <option value="이메일">이메일</option>
+                <option value="게시판">게시판</option>
+                <option value="네이버톡톡">네이버톡톡</option>
+                <option value="전화 상담">전화 상담</option>
+                <option value="전화">전화</option>
+              </select>
+              
+              <select id="category-filter" class="filter-select">
+                <option value="">전체 카테고리</option>
+                <option value="품질/하자">품질/하자</option>
+                <option value="서비스">서비스</option>
+                <option value="배송">배송</option>
+                <option value="AS/수리">AS/수리</option>
+                <option value="결제">결제</option>
+                <option value="이벤트">이벤트</option>
+                <option value="일반">일반</option>
+                <option value="기타">기타</option>
+              </select>
+              
+              <button id="clear-filters" class="btn ghost small">필터 초기화</button>
+            </div>
+            
+            <div class="search-controls">
+              <input type="text" id="ticket-search" class="search-input" placeholder="🔍 검색 (내용, 채널, 카테고리)">
+              
+              <select id="sort-select" class="filter-select">
+                <option value="date-desc">최신순</option>
+                <option value="date-asc">오래된순</option>
+                <option value="category">카테고리순</option>
+                <option value="channel">채널순</option>
+                <option value="confidence-desc">신뢰도 높은순</option>
+                <option value="confidence-asc">신뢰도 낮은순</option>
+              </select>
+              
+              <span id="ticket-count" class="ticket-count">총 0건</span>
+            </div>
           </div>
         </div>
         <table class="table" style="margin-top:8px;">
           <thead>
             <tr>
-              <th>접수일</th><th>채널</th><th>내용</th><th>카테고리</th><th>키워드</th><th class="right">중요도</th>
+              <th>접수일</th><th>채널</th><th>내용</th><th>카테고리</th><th>키워드</th><th class="right">신뢰도</th>
             </tr>
           </thead>
           <tbody id="ticketTableBody">
@@ -137,6 +184,7 @@
 
   </main>
 </div>
+<script type="text/javascript" src="{{ url_for('static', filename='js/theme.js') }}"></script>
 <script type="text/javascript" src="{{ url_for('static', filename='js/common.js') }}"></script>
 <script type="text/javascript" src="{{ url_for('static', filename='js/auto_classify.js') }}"></script>
 </body>

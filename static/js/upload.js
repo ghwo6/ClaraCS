@@ -474,20 +474,8 @@ function initValidationSteps(fileCount) {
     
     html += '</div>';
     
-    // 기존 내용에 추가 (교체하지 않음)
-    if (validation_result.querySelector('.validation-steps')) {
-        // 이미 검증 단계가 있으면 새로운 세션으로 추가
-        const separator = document.createElement('div');
-        separator.style.cssText = 'height: 1px; background: rgba(255, 255, 255, 0.1); margin: 20px 0;';
-        validation_result.appendChild(separator);
-        
-        const newSection = document.createElement('div');
-        newSection.innerHTML = html;
-        validation_result.appendChild(newSection.firstChild);
-    } else {
-        // 첫 번째 검증이면 교체
-        validation_result.innerHTML = html;
-    }
+    // 기존 검증 단계가 있으면 제거하고 새로운 검증 단계로 교체
+    validation_result.innerHTML = html;
 }
 
 // 파일별 검증 단계 업데이트
