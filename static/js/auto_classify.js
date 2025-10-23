@@ -299,7 +299,7 @@ function renderReliability(r, ui) {
 let allTickets = [];
 let filteredTickets = [];
 let currentPage = 1;
-const ITEMS_PER_PAGE = 30;
+const ITEMS_PER_PAGE = 10;
 
 function renderTicketTableFromAll(all_by_category) {
   const tbody = document.getElementById("ticketTableBody");
@@ -640,29 +640,9 @@ window.resetClassification = function resetClassification() {
   clearUIToInitial();
 };
 
-(function restoreLastState() {
-  try {
-    const ts = localStorage.getItem("autoclass:last_run_at");
-    if (ts) setLastRunLabel(ts);
-
-    const raw = localStorage.getItem("autoclass:last");
-    if (raw) {
-      const data = JSON.parse(raw);
-      renderCategoryTable(data.category_info || []);
-      renderChannelCards(data.channel_info || []);
-      renderReliability(data.reliability_info || {}, data.ui || {});
-      if (data.tickets?.all_by_category) {
-        renderTicketTableFromAll(data.tickets.all_by_category);
-      }
-      requestAnimationFrame(syncChannelsHeight); //new!
-    } else {
-      // 완전 초기 상태 보장
-      clearUIToInitial();
-    }
-  } catch(e) { 
-    console.error('복원 실패:', e);
-    clearUIToInitial();
-  }
+(function initializePage() {
+  // 페이지 로드 시 항상 초기화된 상태로 표시
+  clearUIToInitial();
 })();
 
 
