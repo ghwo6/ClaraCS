@@ -494,9 +494,9 @@ class ReportManager {
                         <li>
                             <strong>${cat.category_name} ${priorityBadge}</strong>
                             <ul style="margin-left: 15px; font-size: 14px;">
-                                <li><strong>현황 및 문제점:</strong> ${cat.problem || '-'}</li>
-                                <li><strong>단기 목표:</strong> ${cat.short_term_goal || '-'}</li>
-                                <li><strong>장기 목표:</strong> ${cat.long_term_goal || '-'}</li>
+                                <li><strong>📊 현황 및 문제점:</strong><div style="margin-left: 10px; white-space: pre-line;">${cat.problem || '-'}</div></li>
+                                <li><strong>🎯 단기 목표:</strong><div style="margin-left: 10px; white-space: pre-line;">${cat.short_term_goal || '-'}</div></li>
+                                <li><strong>🚀 장기 목표:</strong><div style="margin-left: 10px; white-space: pre-line;">${cat.long_term_goal || '-'}</div></li>
                             </ul>
                         </li>
                     `;
@@ -559,7 +559,7 @@ class ReportManager {
                                    margin-bottom: 10px;
                                    line-height: 1.6;">
                             <strong style="display: block; margin-bottom: 6px; font-size: 14px;">📌 현황</strong>
-                            <div style="font-size: 14px;">${currentStatusProblems.status}</div>
+                            <div style="font-size: 14px; white-space: pre-line;">${currentStatusProblems.status}</div>
                         </div>
                     `;
                 }
@@ -571,7 +571,7 @@ class ReportManager {
                                    border-radius: 6px;
                                    line-height: 1.6;">
                             <strong style="display: block; margin-bottom: 6px; font-size: 14px;">⚠️ 주요 문제점</strong>
-                            <div style="font-size: 14px;">${currentStatusProblems.problems}</div>
+                            <div style="font-size: 14px; white-space: pre-line;">${currentStatusProblems.problems}</div>
                         </div>
                     `;
                 }
@@ -584,12 +584,12 @@ class ReportManager {
                 solutionsHTML += `
                     <li><strong>단기 (1-6개월)</strong>
                         <ul style="margin-left: 20px; margin-top: 5px;">
-                            ${shortTerm.goal_kpi ? `<li><strong>단기 목표:</strong> ${shortTerm.goal_kpi}</li>` : ''}
-                            ${shortTerm.plan ? `<li><strong>단기 플랜:</strong> ${shortTerm.plan}</li>` : ''}
+                            ${shortTerm.goal_kpi ? `<li><strong>1️⃣ 단기 목표:</strong><div style="margin-left: 10px; white-space: pre-line;">${shortTerm.goal_kpi}</div></li>` : ''}
+                            ${shortTerm.plan ? `<li><strong>2️⃣ 단기 플랜:</strong><div style="margin-left: 10px; white-space: pre-line;">${shortTerm.plan}</div></li>` : ''}
                             ${shortTerm.actions && shortTerm.actions.length > 0 ? `
-                                <li><strong>단기 액션:</strong>
-                                    <ul style="margin-left: 15px;">
-                                        ${shortTerm.actions.map(action => `<li>- ${action}</li>`).join('')}
+                                <li><strong>3️⃣ 단기 액션:</strong>
+                                    <ul style="margin-left: 20px;">
+                                        ${shortTerm.actions.map(action => `<li>• ${action}</li>`).join('')}
                                     </ul>
                                 </li>
                             ` : ''}
@@ -603,12 +603,12 @@ class ReportManager {
                 solutionsHTML += `
                     <li><strong>중기 (6-12개월)</strong>
                         <ul style="margin-left: 20px; margin-top: 5px;">
-                            ${midTerm.goal_kpi ? `<li><strong>중기 목표:</strong> ${midTerm.goal_kpi}</li>` : ''}
-                            ${midTerm.plan ? `<li><strong>중기 플랜:</strong> ${midTerm.plan}</li>` : ''}
+                            ${midTerm.goal_kpi ? `<li><strong>4️⃣ 중기 목표:</strong><div style="margin-left: 10px; white-space: pre-line;">${midTerm.goal_kpi}</div></li>` : ''}
+                            ${midTerm.plan ? `<li><strong>5️⃣ 중기 플랜:</strong><div style="margin-left: 10px; white-space: pre-line;">${midTerm.plan}</div></li>` : ''}
                             ${midTerm.actions && midTerm.actions.length > 0 ? `
-                                <li><strong>중기 액션:</strong>
-                                    <ul style="margin-left: 15px;">
-                                        ${midTerm.actions.map(action => `<li>- ${action}</li>`).join('')}
+                                <li><strong>6️⃣ 중기 액션:</strong>
+                                    <ul style="margin-left: 20px;">
+                                        ${midTerm.actions.map(action => `<li>• ${action}</li>`).join('')}
                                     </ul>
                                 </li>
                             ` : ''}
@@ -622,12 +622,12 @@ class ReportManager {
                 solutionsHTML += `
                     <li><strong>장기 (12개월 이상)</strong>
                         <ul style="margin-left: 20px; margin-top: 5px;">
-                            ${longTerm.goal_kpi ? `<li><strong>장기 목표:</strong> ${longTerm.goal_kpi}</li>` : ''}
-                            ${longTerm.plan ? `<li><strong>장기 플랜:</strong> ${longTerm.plan}</li>` : ''}
+                            ${longTerm.goal_kpi ? `<li><strong>7️⃣ 장기 목표:</strong><div style="margin-left: 10px; white-space: pre-line;">${longTerm.goal_kpi}</div></li>` : ''}
+                            ${longTerm.plan ? `<li><strong>8️⃣ 장기 플랜:</strong><div style="margin-left: 10px; white-space: pre-line;">${longTerm.plan}</div></li>` : ''}
                             ${longTerm.actions && longTerm.actions.length > 0 ? `
-                                <li><strong>장기 액션:</strong>
-                                    <ul style="margin-left: 15px;">
-                                        ${longTerm.actions.map(action => `<li>- ${action}</li>`).join('')}
+                                <li><strong>9️⃣ 장기 액션:</strong>
+                                    <ul style="margin-left: 20px;">
+                                        ${longTerm.actions.map(action => `<li>• ${action}</li>`).join('')}
                                     </ul>
                                 </li>
                             ` : ''}
