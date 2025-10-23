@@ -198,7 +198,9 @@ def download_pdf_file():
         )
         
     except Exception as e:
+        import traceback
         logger.error(f"PDF 다운로드 처리 중 오류 발생: {e}")
+        logger.error(f"상세 오류: {traceback.format_exc()}")
         return jsonify({"error": "리포트를 처리하는 중 서버에서 오류가 발생했습니다."}), 500
 
 
@@ -206,13 +208,19 @@ def create_report_with_real_data_to_buffer(buffer, pdf_data):
     """실제 리포트 데이터를 기반으로 PDF 생성 (프로토타입 레이아웃 기반)"""
     report_data = pdf_data.get('report_data', {})
     
-    # 데이터 추출 (스냅샷에서 가져오기)
-    summary = report_data.get('summary', {})
-    insight = report_data.get('insight', {})
-    solution = report_data.get('solution', {})
-    channel_trends = report_data.get('channel_trends', {})
+    if not report_data:
+        logger.error("report_data가 None이거나 비어있습니다.")
+        report_data = {}
     
-    logger.info(f"PDF 생성 데이터 확인 - summary: {bool(summary)}, channel_trends: {len(channel_trends) if channel_trends else 0}개")
+    # 데이터 추출 (스냅샷에서 가져오기) - None 체크
+    summary = report_data.get('summary') or {}
+    insight = report_data.get('insight') or {}
+    solution = report_data.get('solution') or {}
+    channel_trends = report_data.get('channel_trends') or {}
+    
+    logger.info(f"PDF 생성 데이터 확인 - summary: {bool(summary)}, insight: {bool(insight)}, solution: {bool(solution)}, channel_trends: {len(channel_trends) if channel_trends else 0}개")
+    logger.info(f"summary keys: {list(summary.keys()) if summary else 'None'}")
+    logger.info(f"channel_trends keys: {list(channel_trends.keys()) if channel_trends else 'None'}")
     
     # Canvas 생성
     c = canvas.Canvas(buffer, pagesize=A4)
@@ -251,7 +259,7 @@ def draw_page_header(c, title, company_name, report_date, width, height, right_m
     c.setFont(FONT_NAME, 10)
     c.drawCentredString(width/2, height - 1.5 * cm, company_name)
     c.drawRightString(right_margin, height - 1 * cm, report_date)
-
+    
 
 def draw_page2_all_channel_trends(c, channel_trends, width, height, company_name, report_date, right_margin):
     """페이지 2: 모든 채널별 추이 그래프 (한 줄에 하나씩, 크게)"""
@@ -331,19 +339,20 @@ def draw_page1_summary(c, summary, width, height):
     y_pos -= 0.4*inch
     
     # 카테고리별 데이터 (상위 5개)
-    categories = summary.get('categories', [])
-    if categories:
+    categories = summary.get('categories') or []
+    if categories and isinstance(categories, list):
         c.setFont(FONT_NAME_BOLD, 12)
         c.drawString(1.2*inch, y_pos, "카테고리별 분포 (TOP 5)")
         y_pos -= 0.3*inch
         
         table_data = [['카테고리', '건수', '비율']]
         for cat in categories[:5]:
-            table_data.append([
-                cat.get('category_name', '-'),
-                f"{cat.get('count', 0):,}건",
-                f"{cat.get('percentage', 0):.1f}%"
-            ])
+            if cat:  # cat이 None이 아닌지 확인
+                table_data.append([
+                    cat.get('category_name', '-') if isinstance(cat, dict) else '-',
+                    f"{cat.get('count', 0):,}건" if isinstance(cat, dict) else '0건',
+                    f"{cat.get('percentage', 0):.1f}%" if isinstance(cat, dict) else '0%'
+                ])
         
         category_table = Table(table_data, colWidths=[2*inch, 1.2*inch, 0.8*inch])
         category_table.setStyle(TableStyle([
@@ -365,20 +374,21 @@ def draw_page1_summary(c, summary, width, height):
         y_pos -= (len(table_data) * 0.24*inch + 0.4*inch)
     
     # 채널별 해결률 (상위 5개)
-    channels = summary.get('channels', [])
-    if channels and y_pos > 1.5*inch:
+    channels = summary.get('channels') or []
+    if channels and isinstance(channels, list) and y_pos > 1.5*inch:
         c.setFont(FONT_NAME_BOLD, 12)
         c.drawString(1.2*inch, y_pos, "채널별 해결률")
         y_pos -= 0.3*inch
         
         table_data = [['채널', '전체', '해결', '해결률']]
         for ch in channels[:5]:
-            table_data.append([
-                ch.get('channel', '-'),
-                f"{ch.get('total', 0):,}건",
-                f"{ch.get('resolved', 0):,}건",
-                f"{ch.get('resolution_rate', 0):.1f}%"
-            ])
+            if ch:  # ch가 None이 아닌지 확인
+                table_data.append([
+                    ch.get('channel', '-') if isinstance(ch, dict) else '-',
+                    f"{ch.get('total', 0):,}건" if isinstance(ch, dict) else '0건',
+                    f"{ch.get('resolved', 0):,}건" if isinstance(ch, dict) else '0건',
+                    f"{ch.get('resolution_rate', 0):.1f}%" if isinstance(ch, dict) else '0%'
+                ])
         
         channel_table = Table(table_data, colWidths=[1.5*inch, 1*inch, 1*inch, 1*inch])
         channel_table.setStyle(TableStyle([
@@ -562,7 +572,7 @@ def draw_right_column_summary(c, summary, width, height):
     table_y = height - 5.5 * inch
     summary_table.wrapOn(c, width, height)
     summary_table.drawOn(c, table_x, table_y)
-
+    
 
 def draw_bottom_charts(c, channel_trends, width, height):
     """하단: 채널별 추이 차트"""
@@ -774,7 +784,7 @@ def create_channel_chart_image(channel, trend_data):
         
         # 스택 막대 그래프
         bottom = [0] * len(dates)
-        colors_list = ['#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#f7b731', '#feca57']
+        colors_list = ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40', '#C9CBCF', '#E7E9ED']
         
         for i, category in enumerate(categories):
             category_data = [row[i] if i < len(row) else 0 for row in data_matrix]
@@ -981,6 +991,9 @@ def draw_solution_period(c, period_name, period_data, y_position, width):
 
 def wrap_text(c, text, max_width, font_name, font_size):
     """텍스트를 지정된 너비에 맞게 줄바꿈"""
+    if not text or not isinstance(text, str):
+        return []
+    
     words = text.split()
     lines = []
     current_line = ""
@@ -998,12 +1011,3 @@ def wrap_text(c, text, max_width, font_name, font_size):
         lines.append(current_line)
     
     return lines
-
-
-# --- [수정] 함수를 직접 테스트할 때도 임시 데이터를 넣어줍니다 ---
-if __name__ == "__main__":
-    test_data = {
-        "company_name": "XX(주)",
-        "date": "2025.10.03"
-    }
-    create_prototype_report("test_report.pdf", test_data)

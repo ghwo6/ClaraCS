@@ -264,10 +264,10 @@ async function validateAndUploadFiles() {
     }
 }
 
-// 파일 업로드 함수
+// 파일 업로드 함수 (배치 업로드 사용)
 async function uploadFiles() {
-    let uploadedCount = 0;
     let totalFiles = all_files.length;
+    let batchId = null;
     let totalTickets = 0;
 
     // 업로드 단계 추가 (기존 검증 내역 유지)
@@ -281,20 +281,19 @@ async function uploadFiles() {
     `;
     validation_result.appendChild(uploadSection);
 
-    for (let i = 0; i < all_files.length; i++) {
-        const file = all_files[i];
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('user_id', 1); // 임시 user_id
+    try {
+        // 파일 1개인 경우: 기존 API 사용
+        if (totalFiles === 1) {
+            const formData = new FormData();
+            formData.append('file', all_files[0]);
+            formData.append('user_id', 1);
 
-        // 진행 상황 업데이트
-        const stepElement = document.getElementById('step_upload');
-        if (stepElement) {
-            const textSpan = stepElement.querySelector('.step-text');
-            textSpan.textContent = `데이터 업로드 중... (${i + 1}/${totalFiles})`;
-        }
+            const stepElement = document.getElementById('step_upload');
+            if (stepElement) {
+                const textSpan = stepElement.querySelector('.step-text');
+                textSpan.textContent = `데이터 업로드 중... (1/1)`;
+            }
 
-        try {
             const response = await fetch('/api/upload', {
                 method: 'POST',
                 body: formData
@@ -303,85 +302,118 @@ async function uploadFiles() {
             const data = await response.json();
 
             if (data.success) {
-                uploadedCount++;
-                totalTickets += data.data.tickets_inserted;
-                console.log(`파일 업로드 성공 (${uploadedCount}/${totalFiles}):`, data.data);
-                
-                // 마지막 파일 업로드 완료 시
-                if (uploadedCount === totalFiles) {
-                    fileId = data.data.file_id;
-                    createdAt = data.data.created_at;
-                    
-                    // 최종 성공 메시지
-                    const stepElement = document.getElementById('step_upload');
-                    if (stepElement) {
-                        const iconSpan = stepElement.querySelector('.step-icon');
-                        const textSpan = stepElement.querySelector('.step-text');
-                        iconSpan.textContent = '✓';
-                        iconSpan.style.color = '#22c55e';
-                        textSpan.textContent = '데이터 업로드 완료';
-                        textSpan.style.color = '#22c55e';
-                        textSpan.style.fontWeight = 'normal';
-                    }
-                    
-                    await sleep(300);
-                    
-                    // 최종 성공 메시지 추가
-                    const successSection = document.createElement('div');
-                    successSection.style.cssText = 'margin-top: 20px; padding: 15px; background: rgba(16, 185, 129, 0.1); border-radius: 6px; border: 1px solid rgba(16, 185, 129, 0.3);';
-                    successSection.innerHTML = `
-                        <div style="color: #10b981; font-weight: 600; font-size: 15px; margin-bottom: 10px;">
-                            🎉 모든 처리가 완료되었습니다!
-                        </div>
-                        <div style="color: var(--text); font-size: 13px; line-height: 1.6;">
-                            <strong>처리 결과:</strong><br>
-                            • 파일 업로드: ${totalFiles}개<br>
-                            • 티켓 저장: ${totalTickets}건
-                        </div>
-                    `;
-                    validation_result.appendChild(successSection);
-                    
-                    // 업로드 성공 후 파일 목록 초기화
-                    all_files = [];
-                    file_list.innerHTML = '';
-                    title.textContent = default_title;
-                    desc.textContent = default_desc;
-                    updateSummary();
-                    
-                    // 파일 목록 초기화했지만 미리보기는 유지 (마지막 업로드된 파일)
-                }
+                fileId = data.data.file_id;
+                createdAt = data.data.created_at;
+                totalTickets = data.data.tickets_inserted;
+                console.log('단일 파일 업로드 성공:', data.data);
             } else {
-                console.error(`파일 업로드 실패 (${i + 1}/${totalFiles}):`, data.error);
-                
-                const stepElement = document.getElementById('step_upload');
-                if (stepElement) {
-                    const iconSpan = stepElement.querySelector('.step-icon');
-                    const textSpan = stepElement.querySelector('.step-text');
-                    iconSpan.textContent = '✗';
-                    iconSpan.style.color = '#ef4444';
-                    textSpan.textContent = '데이터 업로드 실패';
-                    textSpan.style.color = '#ef4444';
-                }
-                
-                await sleep(300);
-                showValidationStep('error', `❌ 파일 업로드 실패: ${data.error}`);
+                throw new Error(data.error || '파일 업로드 실패');
             }
-        } catch (error) {
-            console.error(`서버 오류 발생 (${i + 1}/${totalFiles}):`, error);
+        } 
+        // 파일 2개 이상인 경우: 배치 API 사용
+        else {
+            const formData = new FormData();
             
+            // 모든 파일을 한 번에 추가
+            for (let i = 0; i < all_files.length; i++) {
+                formData.append('files', all_files[i]);  // 'files' (복수형!)
+            }
+            formData.append('user_id', 1);
+            formData.append('batch_name', `업로드 ${new Date().toLocaleString('ko-KR')}`);
+
             const stepElement = document.getElementById('step_upload');
             if (stepElement) {
-                const iconSpan = stepElement.querySelector('.step-icon');
                 const textSpan = stepElement.querySelector('.step-text');
-                iconSpan.textContent = '✗';
-                iconSpan.style.color = '#ef4444';
-                textSpan.textContent = '서버 오류 발생';
-                textSpan.style.color = '#ef4444';
+                textSpan.textContent = `배치 업로드 중... (${totalFiles}개 파일)`;
             }
-            
-            await sleep(300);
-            showValidationStep('error', '❌ 서버 오류가 발생했습니다.');
+
+            const response = await fetch('/api/upload/batch', {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                batchId = data.data.batch_id;
+                totalTickets = data.data.total_rows;
+                console.log('배치 업로드 성공:', data.data);
+                console.log(`🎯 batch_id=${batchId}, ${totalFiles}개 파일, ${totalTickets}개 티켓`);
+            } else {
+                throw new Error(data.error || '배치 업로드 실패');
+            }
         }
+
+        // 업로드 성공 처리
+        const stepElement = document.getElementById('step_upload');
+        if (stepElement) {
+            const iconSpan = stepElement.querySelector('.step-icon');
+            const textSpan = stepElement.querySelector('.step-text');
+            iconSpan.textContent = '✓';
+            iconSpan.style.color = '#22c55e';
+            textSpan.textContent = '데이터 업로드 완료';
+            textSpan.style.color = '#22c55e';
+            textSpan.style.fontWeight = 'normal';
+        }
+        
+        await sleep(300);
+        
+        // 최종 성공 메시지 추가
+        const successSection = document.createElement('div');
+        successSection.style.cssText = 'margin-top: 20px; padding: 15px; background: rgba(16, 185, 129, 0.1); border-radius: 6px; border: 1px solid rgba(16, 185, 129, 0.3);';
+        
+        let successMessage = '';
+        if (batchId) {
+            successMessage = `
+                <div style="color: #10b981; font-weight: 600; font-size: 15px; margin-bottom: 10px;">
+                    🎉 모든 처리가 완료되었습니다!
+                </div>
+                <div style="color: var(--text); font-size: 13px; line-height: 1.6;">
+                    <strong>처리 결과:</strong><br>
+                    • 배치 업로드: ${totalFiles}개 파일 (batch_id: ${batchId})<br>
+                    • 티켓 저장: ${totalTickets}건<br>
+                    <br>
+                    <span style="color: #10b981;">💡 자동분류와 리포트는 ${totalFiles}개 파일 전체를 통합 처리합니다!</span>
+                </div>
+            `;
+        } else {
+            successMessage = `
+                <div style="color: #10b981; font-weight: 600; font-size: 15px; margin-bottom: 10px;">
+                    🎉 모든 처리가 완료되었습니다!
+                </div>
+                <div style="color: var(--text); font-size: 13px; line-height: 1.6;">
+                    <strong>처리 결과:</strong><br>
+                    • 파일 업로드: ${totalFiles}개<br>
+                    • 티켓 저장: ${totalTickets}건
+                </div>
+            `;
+        }
+        
+        successSection.innerHTML = successMessage;
+        validation_result.appendChild(successSection);
+        
+        // 업로드 성공 후 파일 목록 초기화
+        all_files = [];
+        file_list.innerHTML = '';
+        title.textContent = default_title;
+        desc.textContent = default_desc;
+        updateSummary();
+        
+    } catch (error) {
+        console.error('업로드 중 오류:', error);
+        
+        const stepElement = document.getElementById('step_upload');
+        if (stepElement) {
+            const iconSpan = stepElement.querySelector('.step-icon');
+            const textSpan = stepElement.querySelector('.step-text');
+            iconSpan.textContent = '✗';
+            iconSpan.style.color = '#ef4444';
+            textSpan.textContent = '데이터 업로드 실패';
+            textSpan.style.color = '#ef4444';
+        }
+        
+        await sleep(300);
+        showValidationStep('error', `❌ 업로드 실패: ${error.message}`);
     }
 }
 

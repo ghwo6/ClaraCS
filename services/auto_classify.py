@@ -15,17 +15,31 @@ class AutoClassifyService:
         self.db = AutoClassifyDB()
         self.classifier = None  # 지연 초기화
     
-    def run_classification(self, user_id: int, file_id: int, use_ai: bool = False) -> dict:
+    def run_classification(self, user_id: int, file_id: int = None, batch_id: int = None, use_ai: bool = False) -> dict:
         """
-        자동분류 실행
+        자동분류 실행 (단일 파일 또는 배치)
+        
+        Args:
+            user_id: 사용자 ID
+            file_id: 파일 ID (단일 파일 분류)
+            batch_id: 배치 ID (배치 분류)
+            use_ai: AI 분류 엔진 사용 여부
+            
+        Note:
+            file_id와 batch_id 중 하나는 반드시 제공되어야 함
         
         1. DB에서 티켓 조회
-        2. 각 티켓 분류 (규칙 기반)
+        2. 각 티켓 분류 (규칙 기반 또는 AI 기반)
         3. 분류 결과 DB 저장
         4. 집계 데이터 계산
         5. 프론트엔드 응답 생성
         """
-        logger.info(f"자동분류 실행 시작: user_id={user_id}, file_id={file_id}")
+        if not file_id and not batch_id:
+            raise ValueError("file_id 또는 batch_id 중 하나는 반드시 제공되어야 합니다.")
+        
+        target_type = "batch" if batch_id else "file"
+        target_id = batch_id if batch_id else file_id
+        logger.info(f"자동분류 실행 시작: user_id={user_id}, {target_type}_id={target_id}")
         
         try:
             # 1. 카테고리 매핑 조회 및 분류기 초기화
@@ -55,11 +69,15 @@ class AutoClassifyService:
                 self.classifier = RuleBasedClassifier(category_mapping)
             # ============================================================
             
-            # 2. 티켓 조회
-            tickets = self.db.get_tickets_by_file(file_id)
+            # 2. 티켓 조회 (파일 또는 배치)
+            if batch_id:
+                tickets = self.db.get_tickets_by_batch(batch_id)
+            else:
+                tickets = self.db.get_tickets_by_file(file_id)
+            
             if not tickets:
-                logger.warning(f"분류할 티켓이 없습니다: file_id={file_id}")
-                return self._empty_response(user_id, file_id)
+                logger.warning(f"분류할 티켓이 없습니다: {target_type}_id={target_id}")
+                return self._empty_response(user_id, file_id, batch_id)
             
             logger.info(f"티켓 {len(tickets)}건 조회 완료")
             
@@ -82,9 +100,10 @@ class AutoClassifyService:
             period_from = min(dates).date() if dates else None
             period_to = max(dates).date() if dates else None
             
-            # 5. 분류 결과 메타 정보 저장
+            # 5. 분류 결과 메타 정보 저장 (배치 지원)
             class_result_id = self.db.insert_classification_result({
                 'file_id': file_id,
+                'batch_id': batch_id,  # 배치 ID 추가
                 'user_id': user_id,
                 'engine_name': self.classifier.get_engine_name(),
                 'total_tickets': len(tickets),
@@ -104,16 +123,16 @@ class AutoClassifyService:
             self.db.insert_channel_results(class_result_id, channel_stats)
             self.db.insert_reliability_result(class_result_id, reliability_stats)
             
-            # 8. 프론트엔드 응답 생성
+            # 8. 프론트엔드 응답 생성 (배치 지원)
             response = self._build_response(
-                class_result_id, user_id, file_id,
+                class_result_id, user_id, file_id, batch_id,
                 period_from, period_to,
                 tickets, classification_results,
                 category_stats, channel_stats, reliability_stats,
                 category_mapping
             )
             
-            logger.info(f"자동분류 완료: user_id={user_id}, file_id={file_id}, class_result_id={class_result_id}")
+            logger.info(f"자동분류 완료: user_id={user_id}, {target_type}_id={target_id}, class_result_id={class_result_id}")
             return response
             
         except Exception as e:
@@ -224,13 +243,13 @@ class AutoClassifyService:
             'needs_review_count': low_conf  # 재검토 필요 (신뢰도 낮은 것)
         }
     
-    def _build_response(self, class_result_id: int, user_id: int, file_id: int,
+    def _build_response(self, class_result_id: int, user_id: int, file_id: int, batch_id: int,
                        period_from, period_to,
                        tickets: List[Dict], classifications: List[Dict],
                        category_stats: List[Dict], channel_stats: List[Dict],
                        reliability_stats: Dict[str, Any],
                        category_mapping: Dict[int, str]) -> Dict[str, Any]:
-        """프론트엔드 응답 JSON 생성"""
+        """프론트엔드 응답 JSON 생성 (배치 지원)"""
         
         # 카테고리 정보
         category_info = []
@@ -260,6 +279,7 @@ class AutoClassifyService:
             'meta': {
                 'user_id': user_id,
                 'file_id': file_id,
+                'batch_id': batch_id,  # 배치 ID 추가
                 'total_tickets': len(tickets),
                 'classified_at': datetime.now().isoformat(),
                 'engine_name': self.classifier.get_engine_name()
@@ -358,14 +378,15 @@ class AutoClassifyService:
         else:
             return '하'
     
-    def _empty_response(self, user_id: int, file_id: int) -> Dict[str, Any]:
-        """티켓이 없을 때 빈 응답"""
+    def _empty_response(self, user_id: int, file_id: int = None, batch_id: int = None) -> Dict[str, Any]:
+        """티켓이 없을 때 빈 응답 (배치 지원)"""
         return {
             'return_code': 0,
             'message': '분류할 티켓이 없습니다.',
             'meta': {
                 'user_id': user_id,
-                'file_id': file_id
+                'file_id': file_id,
+                'batch_id': batch_id
             },
             'category_info': [],
             'channel_info': [],

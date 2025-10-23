@@ -13,7 +13,7 @@ upload_bp = Blueprint("upload", __name__)
 
 @upload_bp.route("/api/upload", methods=["POST"])
 def upload_file():
-    """데이터 업로드 API"""
+    """데이터 업로드 API (단일 파일)"""
     try:
         if 'file' not in request.files:
             return jsonify({'success': False, 'message': '파일이 없습니다.'}), 400
@@ -31,6 +31,41 @@ def upload_file():
             'success': True,
             'message': '파일 업로드 및 처리가 완료되었습니다.',
             'data': upload_data
+        }), 200
+    
+    except Exception as e:
+        logger.error(f"파일 업로드 실패: {e}")
+        return jsonify({
+            'success': False,
+            'error': f'파일 업로드 중 오류가 발생했습니다: {str(e)}'
+        }), 500
+
+
+@upload_bp.route("/api/upload/batch", methods=["POST"])
+def upload_batch():
+    """배치 업로드 API (여러 파일)"""
+    try:
+        files = request.files.getlist('files')  # 여러 파일 받기
+        
+        if not files or len(files) == 0:
+            return jsonify({'success': False, 'message': '파일이 없습니다.'}), 400
+        
+        # user_id 우선순위: 폼 데이터 > 세션 > 환경변수 기본값
+        user_id = request.form.get('user_id') or session.get('user_id') or Config.DEFAULT_USER_ID
+        user_id = int(user_id)
+        
+        # 배치 이름 (선택)
+        batch_name = request.form.get('batch_name')
+        
+        logger.info(f"배치 업로드 요청: {len(files)}개 파일, user_id={user_id}")
+        
+        upload_service = UploadService()
+        batch_data = upload_service.upload_batch(files, user_id=user_id, batch_name=batch_name)
+        
+        return jsonify({
+            'success': True,
+            'message': f'{batch_data["successful_files"]}개 파일 업로드 완료 ({batch_data["failed_files"]}개 실패)',
+            'data': batch_data
         }), 200
         
     except ValueError as ve:
