@@ -641,8 +641,29 @@ window.resetClassification = function resetClassification() {
 };
 
 (function initializePage() {
-  // 페이지 로드 시 항상 초기화된 상태로 표시
-  clearUIToInitial();
+  // 페이지 로드 시 마지막 분류 데이터가 있으면 자동으로 로드
+  try {
+    const ts = localStorage.getItem("autoclass:last_run_at");
+    if (ts) setLastRunLabel(ts);
+
+    const raw = localStorage.getItem("autoclass:last");
+    if (raw) {
+      const data = JSON.parse(raw);
+      renderCategoryTable(data.category_info || []);
+      renderChannelCards(data.channel_info || []);
+      renderReliability(data.reliability_info || {}, data.ui || {});
+      if (data.tickets?.all_by_category) {
+        renderTicketTableFromAll(data.tickets.all_by_category);
+      }
+      requestAnimationFrame(syncChannelsHeight);
+    } else {
+      // 데이터가 없으면 초기 상태로 표시
+      clearUIToInitial();
+    }
+  } catch(e) { 
+    console.error('데이터 복원 실패:', e);
+    clearUIToInitial();
+  }
 })();
 
 

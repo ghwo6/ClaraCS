@@ -35,6 +35,7 @@ class ReportManager {
         this.bindEvents();
         this.loadReportSection();
         this.createChartModal();
+        this.loadLastReportData(); // 마지막 리포트 데이터 자동 로드
     }
     
     bindEvents() {
@@ -84,6 +85,12 @@ class ReportManager {
             this.renderSummary(reportData.summary);
             this.renderInsights(reportData.insight);  // 통합 구조로 변경
             this.renderSolutions(reportData.solution);
+            
+            // 4. localStorage에 리포트 데이터 저장 (자동 복원용)
+            const currentTime = new Date().toLocaleString('ko-KR');
+            localStorage.setItem('report:last_data', JSON.stringify(reportData));
+            localStorage.setItem('report:last_generated_at', currentTime);
+            console.log('리포트 데이터가 localStorage에 저장되었습니다.');
             
         } catch (error) {
             console.error('리포트 생성 실패:', error);
@@ -697,6 +704,39 @@ class ReportManager {
         const reportSection = document.querySelector('#report');
         if (reportSection) {
             console.log('리포트 섹션 로드됨 (file_id 기반)');
+        }
+    }
+    
+    async loadLastReportData() {
+        try {
+            // localStorage에서 마지막 리포트 데이터 확인
+            const lastReportData = localStorage.getItem('report:last_data');
+            const lastReportTime = localStorage.getItem('report:last_generated_at');
+            
+            if (lastReportData && lastReportTime) {
+                console.log('마지막 리포트 데이터 복원 중...', lastReportTime);
+                
+                const reportData = JSON.parse(lastReportData);
+                
+                // 리포트 ID와 파일 ID 저장
+                this.currentReportId = reportData.report_id;
+                this.currentFileId = reportData.file_id;
+                
+                // 각 섹션별 데이터 렌더링
+                this.renderChannelTrends(reportData.channel_trends);
+                this.renderSummary(reportData.summary);
+                this.renderInsights(reportData.insight);
+                this.renderSolutions(reportData.solution);
+                
+                // 성공 메시지 표시
+                this.showMessage(`✅ 마지막 생성된 리포트를 불러왔습니다. (${lastReportTime})`, 'success');
+                
+                console.log('마지막 리포트 데이터 복원 완료');
+            } else {
+                console.log('저장된 리포트 데이터가 없습니다. 새로 생성하세요.');
+            }
+        } catch (error) {
+            console.error('마지막 리포트 데이터 복원 실패:', error);
         }
     }
     
