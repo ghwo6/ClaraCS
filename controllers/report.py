@@ -70,12 +70,13 @@ def generate_report():
         user_id = data.get('user_id') or session.get('user_id') or Config.DEFAULT_USER_ID
         file_id = data.get('file_id')  # 선택사항
         batch_id = data.get('batch_id')  # 선택사항
+        company_name = data.get('company_name', 'ClaraCS')  # 선택된 카테고리
         
-        logger.info(f"리포트 생성 요청: user_id={user_id}, file_id={file_id}, batch_id={batch_id}")
+        logger.info(f"리포트 생성 요청: user_id={user_id}, file_id={file_id}, batch_id={batch_id}, company_name={company_name}")
         
         # 서비스를 통한 리포트 생성
         report_service = ReportService()
-        report_data = report_service.generate_report(user_id, file_id, batch_id)
+        report_data = report_service.generate_report(user_id, file_id, batch_id, company_name)
         
         logger.info(f"리포트 생성 완료 (report_id: {report_data['report_id']})")
         

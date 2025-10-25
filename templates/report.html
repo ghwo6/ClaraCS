@@ -38,13 +38,13 @@
       <div class="head">
         <h2>분석 리포트 (요약/인사이트)</h2>
         <div class="toolbar">
-          <select id="template-select" class="template-select">
+          <!-- <select id="template-select" class="template-select">
             <option value="standard">표준 리포트</option>
             <option value="executive">경영진용 요약</option>
             <option value="detailed">상세 분석</option>
             <option value="trend">트렌드 분석</option>
             <option value="comparison">비교 분석</option>
-          </select>
+          </select> -->
           
           <!-- 비교 분석 옵션 (비교 템플릿 선택 시에만 표시) -->
           <div id="comparison-options" class="comparison-options" style="display: none;">
@@ -61,6 +61,15 @@
             </select>
           </div>
           
+          <select id="category-select" class="filter-select" style="margin-right: 10px;">
+            <option value="생활 및 가정용품">생활 및 가정용품</option>
+            <option value="패션 및 잡화">패션 및 잡화</option>
+            <option value="건강 및 웰빙">건강 및 웰빙</option>
+            <option value="전자제품 및 디지털">전자제품 및 디지털</option>
+            <option value="뷰티 및 퍼스널 케어">뷰티 및 퍼스널 케어</option>
+            <option value="식품 및 음료">식품 및 음료</option>
+            <option value="기타">기타</option>
+          </select>
           <button class="btn save" id="btn-generate-report">리포트 생성</button>
         </div>
       </div>

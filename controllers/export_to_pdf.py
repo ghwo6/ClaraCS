@@ -170,15 +170,19 @@ def download_pdf_file():
             logger.warning(f"리포트를 찾을 수 없음: report_id={report_id}")
             return jsonify({"error": "해당 리포트를 찾을 수 없습니다."}), 404
         
-        # 2. PDF 데이터 구성
+        # 2. PDF 데이터 구성 (리포트 데이터에서 company_name 가져오기)
+        company_name = report_data.get('company_name', 'ClaraCS')
+        category_value = request.args.get('category', '전체')  # category-select 값 가져오기
         pdf_data = {
-            "company_name": "ClaraCS",
+            "company_name": company_name,
             "date": datetime.date.today().strftime("%Y.%m.%d"),
             "report_id": report_id,
-            "report_data": report_data
+            "report_data": report_data,
+            "category_value": category_value
         }
         
-        download_filename = f"AI분석리포트_{pdf_data['company_name']}_{pdf_data['date']}.pdf"
+        category_value = pdf_data.get('category_value', '전체')
+        download_filename = f"ClaraCS_AI분석리포트_{pdf_data['company_name']}_{category_value}_{pdf_data['date']}.pdf"
         
         # 3. 메모리에서 PDF 생성
         logger.info(f"PDF 생성 중 (메모리): {download_filename}")
@@ -229,41 +233,64 @@ def create_report_with_real_data_to_buffer(buffer, pdf_data):
     
     company_name = pdf_data.get("company_name", "ClaraCS")
     report_date = pdf_data.get("date", datetime.date.today().strftime("%Y.%m.%d"))
+    category_value = pdf_data.get("category_value", "전체")  # category-select 값 추가
+    
+    # PDF 메타데이터 설정
+    pdf_title = f"ClaraCS AI 분석 리포트 - {company_name} ({category_value})"
+    c.setTitle(pdf_title)
+    c.setAuthor("ClaraCS")
+    c.setSubject("AI 분석 리포트")
+    c.setKeywords("ClaraCS, AI, 분석, 리포트, CS")
     
     # ========== 페이지 1: 데이터 요약 ==========
-    draw_page_header(c, "ClaraCS AI 분석 리포트", company_name, report_date, width, height, right_margin)
+    draw_page_header(c, "ClaraCS AI 분석 리포트", company_name, report_date, width, height, right_margin, category_value)
     draw_page1_summary(c, summary, width, height)
     
     # ========== 페이지 2: 채널별 추이 (모든 채널, 크게) ==========
     c.showPage()
-    draw_page_header(c, "ClaraCS AI 분석 리포트 - 채널별 추이", company_name, report_date, width, height, right_margin)
-    draw_page2_all_channel_trends(c, channel_trends, width, height, company_name, report_date, right_margin)
+    draw_page_header(c, "ClaraCS AI 분석 리포트 - 채널별 추이", company_name, report_date, width, height, right_margin, category_value)
+    draw_page2_all_channel_trends(c, channel_trends, width, height, company_name, report_date, right_margin, category_value)
     
     # ========== 페이지 3: 인사이트 도출 ==========
     c.showPage()
-    draw_insights_page(c, insight, width, height, company_name, report_date, right_margin)
+    draw_insights_page(c, insight, width, height, company_name, report_date, right_margin, category_value)
     
     # ========== 페이지 4: 솔루션 제안 ==========
     c.showPage()
-    draw_solutions_page(c, solution, width, height, company_name, report_date, right_margin)
+    draw_solutions_page(c, solution, width, height, company_name, report_date, right_margin, category_value)
     
     # PDF 저장
     c.save()
     logger.info("PDF 생성 완료 (메모리)")
 
 
-def draw_page_header(c, title, company_name, report_date, width, height, right_margin):
+def draw_page_header(c, title, company_name, report_date, width, height, right_margin, category_value=None):
     """페이지 상단 헤더"""
     c.setFont(FONT_NAME_BOLD, 14)
-    c.drawCentredString(width/2, height - 1 * cm, title)
+    c.drawCentredString(width/2, height - 2.0 * cm, title)  # 제목을 더 아래로 이동
     c.setFont(FONT_NAME, 10)
-    c.drawCentredString(width/2, height - 1.5 * cm, company_name)
-    c.drawRightString(right_margin, height - 1 * cm, report_date)
+    # 기존 ClaraCS 텍스트를 ClaraCS - 카테고리 형식으로 수정
+    if category_value:
+        c.drawCentredString(width/2, height - 2.5 * cm, f"ClaraCS - {category_value}")
+    else:
+        c.drawCentredString(width/2, height - 2.5 * cm, "ClaraCS")
+    c.drawRightString(right_margin, height - 2.0 * cm, report_date)  # 날짜도 아래로 이동
     
 
-def draw_page2_all_channel_trends(c, channel_trends, width, height, company_name, report_date, right_margin):
+def draw_page2_all_channel_trends(c, channel_trends, width, height, company_name, report_date, right_margin, category_value=None):
     """페이지 2: 모든 채널별 추이 그래프 (한 줄에 하나씩, 크게)"""
-    y_start = height - 1.5 * inch
+    # 헤더 추가
+    c.setFont(FONT_NAME_BOLD, 14)
+    c.drawCentredString(width/2, height - 2.0 * cm, "ClaraCS AI 분석 리포트 - 채널별 추이")
+    c.setFont(FONT_NAME, 10)
+    # 기존 ClaraCS 텍스트를 ClaraCS - 카테고리 형식으로 수정
+    if category_value:
+        c.drawCentredString(width/2, height - 2.5 * cm, f"ClaraCS - {category_value}")
+    else:
+        c.drawCentredString(width/2, height - 2.5 * cm, "ClaraCS")
+    c.drawRightString(right_margin, height - 2.0 * cm, report_date)
+    
+    y_start = height - 2.5 * inch  # 제목 위치를 더 아래로 조정 (여백 추가)
     
     c.setFillColor(colors.black)
     c.setFont(FONT_NAME_BOLD, 18)
@@ -280,22 +307,24 @@ def draw_page2_all_channel_trends(c, channel_trends, width, height, company_name
     chart_width = 6.5 * inch  # 전체 너비 사용
     chart_height = 2.3 * inch  # 높이 조정 (한 페이지에 3개 들어가도록)
     is_first = True
+    channel_index = 1  # 채널 인덱스 번호
     
     for channel, trend_data in channel_trends.items():
         # 첫 번째가 아니고 페이지 공간이 부족하면 새 페이지
         if not is_first and y_pos < chart_height + 0.8*inch:
             c.showPage()
             draw_page_header(c, "ClaraCS AI 분석 리포트 - 채널별 추이 (계속)", 
-                           company_name, report_date, width, height, right_margin)
-            y_pos = height - 1.5*inch
+                           company_name, report_date, width, height, right_margin, category_value)
+            y_pos = height - 2.5*inch  # 새 페이지에서도 위치 조정
         
         is_first = False
         
-        # 차트 제목
+        # 차트 제목 (인덱스 번호 추가)
         c.setFillColor(colors.black)
         c.setFont(FONT_NAME_BOLD, 12)
-        c.drawString(1 * inch, y_pos, f"{channel} 채널")
+        c.drawString(1 * inch, y_pos, f"{channel_index}. {channel} 채널")
         y_pos -= 0.15*inch  # 제목과 그래프 간격 축소
+        channel_index += 1  # 다음 채널을 위해 인덱스 증가
         
         # 차트 이미지 생성 및 삽입
         chart_image = create_channel_chart_image(channel, trend_data)
@@ -318,7 +347,7 @@ def draw_page2_all_channel_trends(c, channel_trends, width, height, company_name
 
 def draw_page1_summary(c, summary, width, height):
     """페이지 1: 데이터 요약"""
-    y_start = height - 2.2 * inch
+    y_start = height - 3.0 * inch  # 제목 위치를 더 아래로 조정 (여백 추가)
     
     # 제목을 한 줄로 표시 (베이스라인 정렬)
     c.setFont(FONT_NAME_BOLD, 16)
@@ -369,9 +398,11 @@ def draw_page1_summary(c, summary, width, height):
         ]))
         
         category_table.wrapOn(c, width, height)
-        category_table.drawOn(c, 1.2*inch, y_pos - len(table_data)*0.24*inch)
+        # 테이블 높이를 더 정확하게 계산
+        table_height = len(table_data) * 0.25*inch + 0.1*inch  # 여유 공간 추가
+        category_table.drawOn(c, 1.2*inch, y_pos - table_height)
         
-        y_pos -= (len(table_data) * 0.24*inch + 0.4*inch)
+        y_pos -= (table_height + 0.4*inch)
     
     # 채널별 해결률 (상위 5개)
     channels = summary.get('channels') or []
@@ -405,7 +436,9 @@ def draw_page1_summary(c, summary, width, height):
         ]))
         
         channel_table.wrapOn(c, width, height)
-        channel_table.drawOn(c, 1.2*inch, y_pos - len(table_data)*0.24*inch)
+        # 테이블 높이를 더 정확하게 계산
+        table_height = len(table_data) * 0.25*inch + 0.1*inch  # 여유 공간 추가
+        channel_table.drawOn(c, 1.2*inch, y_pos - table_height)
 
 
 def draw_page2_additional_charts(c, channel_trends, summary, width, height):
@@ -606,16 +639,20 @@ def draw_bottom_charts(c, channel_trends, width, height):
         c.drawCentredString(4.25 * inch, 2.0 * inch, "(채널별 추이 데이터)")
 
 
-def draw_insights_page(c, insight, width, height, company_name, report_date, right_margin):
+def draw_insights_page(c, insight, width, height, company_name, report_date, right_margin, category_value=None):
     """페이지 2: 인사이트 도출"""
-    # 헤더
+    # 헤더 추가
     c.setFont(FONT_NAME_BOLD, 14)
-    c.drawCentredString(width/2, height - 1 * cm, "ClaraCS AI 분석 리포트 - 인사이트 도출")
+    c.drawCentredString(width/2, height - 2.0 * cm, "ClaraCS AI 분석 리포트 - 인사이트 도출")
     c.setFont(FONT_NAME, 10)
-    c.drawCentredString(width/2, height - 1.5 * cm, company_name)
-    c.drawRightString(right_margin, height - 1 * cm, report_date)
+    # 기존 ClaraCS 텍스트를 ClaraCS - 카테고리 형식으로 수정
+    if category_value:
+        c.drawCentredString(width/2, height - 2.5 * cm, f"ClaraCS - {category_value}")
+    else:
+        c.drawCentredString(width/2, height - 2.5 * cm, "ClaraCS")
+    c.drawRightString(right_margin, height - 2.0 * cm, report_date)
     
-    y_pos = height - 2.5 * inch
+    y_pos = height - 2.7 * inch  # 제목과 본문 사이 거리를 줄임 (3.0에서 2.7로)
     
     # 종합 분석 요약
     overall = insight.get('overall', {})
@@ -627,7 +664,7 @@ def draw_insights_page(c, insight, width, height, company_name, report_date, rig
         c.setFont(FONT_NAME, 10)
         summary_text = overall.get('summary', '')
         lines = wrap_text(c, summary_text, 6.5*inch, FONT_NAME, 10)
-        for line in lines[:8]:  # 6에서 8로 증가
+        for line in lines[:12]:  # 8에서 12로 증가
             c.drawString(1.2 * inch, y_pos, line)
             y_pos -= 0.2 * inch
         
@@ -641,9 +678,9 @@ def draw_insights_page(c, insight, width, height, company_name, report_date, rig
         y_pos -= 0.25 * inch
         
         c.setFont(FONT_NAME, 9)
-        for issue in notable_issues[:5]:
+        for issue in notable_issues[:8]:  # 5에서 8로 증가
             wrapped_lines = wrap_text(c, f"• {issue}", 6.3*inch, FONT_NAME, 9)
-            for line in wrapped_lines[:3]:  # 2에서 3으로 증가
+            for line in wrapped_lines[:4]:  # 3에서 4로 증가
                 c.drawString(1.2 * inch, y_pos, line)
                 y_pos -= 0.18 * inch
         
@@ -656,8 +693,8 @@ def draw_insights_page(c, insight, width, height, company_name, report_date, rig
         c.drawString(1 * inch, y_pos, "📊 카테고리별 세부 인사이트")
         y_pos -= 0.3 * inch
         
-        for cat in by_category[:4]:
-            if y_pos < 1.5 * inch:
+        for cat in by_category[:6]:  # 4에서 6으로 증가
+            if y_pos < 1.0 * inch:  # 1.5에서 1.0으로 조정하여 더 많은 공간 확보
                 break
             
             priority_icon = '🔴' if cat.get('priority') == 'high' else '🟡' if cat.get('priority') == 'medium' else '🟢'
@@ -666,30 +703,41 @@ def draw_insights_page(c, insight, width, height, company_name, report_date, rig
             c.drawString(1.2 * inch, y_pos, f"{priority_icon} {cat.get('category_name', '')}")
             y_pos -= 0.2 * inch
             
+            c.setFont(FONT_NAME_BOLD, 8)
+            c.drawString(1.4 * inch, y_pos, "▶문제점:")
+            y_pos -= 0.16 * inch
             c.setFont(FONT_NAME, 8)
-            problem_lines = wrap_text(c, f"문제점: {cat.get('problem', '-')}", 6*inch, FONT_NAME, 8)
-            for line in problem_lines[:3]:  # 2에서 3으로 증가
-                c.drawString(1.4 * inch, y_pos, line)
+            problem_lines = wrap_text(c, cat.get('problem', '-'), 6*inch, FONT_NAME, 8)
+            for line in problem_lines[:5]:  # 3에서 5로 증가
+                c.drawString(1.6 * inch, y_pos, line)
                 y_pos -= 0.16 * inch
             
-            goal_lines = wrap_text(c, f"단기 목표: {cat.get('short_term_goal', '-')}", 6*inch, FONT_NAME, 8)
-            for line in goal_lines[:3]:  # 2에서 3으로 증가
-                c.drawString(1.4 * inch, y_pos, line)
+            c.setFont(FONT_NAME_BOLD, 8)
+            c.drawString(1.4 * inch, y_pos, "▶단기 목표:")
+            y_pos -= 0.16 * inch
+            c.setFont(FONT_NAME, 8)
+            goal_lines = wrap_text(c, cat.get('short_term_goal', '-'), 6*inch, FONT_NAME, 8)
+            for line in goal_lines[:5]:  # 3에서 5로 증가
+                c.drawString(1.6 * inch, y_pos, line)
                 y_pos -= 0.16 * inch
             
             y_pos -= 0.15 * inch
 
 
-def draw_solutions_page(c, solution, width, height, company_name, report_date, right_margin):
+def draw_solutions_page(c, solution, width, height, company_name, report_date, right_margin, category_value=None):
     """페이지 3: 솔루션 제안"""
-    # 헤더
+    # 헤더 추가
     c.setFont(FONT_NAME_BOLD, 14)
-    c.drawCentredString(width/2, height - 1 * cm, "ClaraCS AI 분석 리포트 - 솔루션 제안")
+    c.drawCentredString(width/2, height - 2.0 * cm, "ClaraCS AI 분석 리포트 - 솔루션 제안")
     c.setFont(FONT_NAME, 10)
-    c.drawCentredString(width/2, height - 1.5 * cm, company_name)
-    c.drawRightString(right_margin, height - 1 * cm, report_date)
+    # 기존 ClaraCS 텍스트를 ClaraCS - 카테고리 형식으로 수정
+    if category_value:
+        c.drawCentredString(width/2, height - 2.5 * cm, f"ClaraCS - {category_value}")
+    else:
+        c.drawCentredString(width/2, height - 2.5 * cm, "ClaraCS")
+    c.drawRightString(right_margin, height - 2.0 * cm, report_date)
     
-    y_pos = height - 2.5 * inch
+    y_pos = height - 2.7 * inch  # 제목과 본문 사이 거리를 줄임 (3.0에서 2.7로)
     
     # 현황 및 문제점
     current_status = solution.get('current_status_and_problems', {})
@@ -705,18 +753,18 @@ def draw_solutions_page(c, solution, width, height, company_name, report_date, r
             y_pos -= 0.2 * inch
             c.setFont(FONT_NAME, 9)
             lines = wrap_text(c, current_status['status'], 6.3*inch, FONT_NAME, 9)
-            for line in lines[:4]:  # 3에서 4로 증가
+            for line in lines[:6]:  # 4에서 6으로 증가
                 c.drawString(1.3 * inch, y_pos, line)
                 y_pos -= 0.18 * inch
         
         if current_status.get('problems'):
             c.setFont(FONT_NAME_BOLD, 9)
-            c.drawString(1.2 * inch, y_pos, "문제점:")
+            c.drawString(1.2 * inch, y_pos, "▶문제점:")
             y_pos -= 0.2 * inch
             c.setFont(FONT_NAME, 9)
             lines = wrap_text(c, current_status['problems'], 6.3*inch, FONT_NAME, 9)
-            for line in lines[:4]:  # 3에서 4로 증가
-                c.drawString(1.3 * inch, y_pos, line)
+            for line in lines[:6]:  # 4에서 6으로 증가
+                c.drawString(1.4 * inch, y_pos, line)
                 y_pos -= 0.18 * inch
         
         y_pos -= 0.2 * inch
@@ -739,24 +787,24 @@ def draw_solutions_page(c, solution, width, height, company_name, report_date, r
         c.setFont(FONT_NAME, 9)
         if period_data.get('goal_kpi'):
             c.setFont(FONT_NAME_BOLD, 8)
-            c.drawString(1.2 * inch, y_pos, "목표:")
+            c.drawString(1.2 * inch, y_pos, "▶목표:")
             y_pos -= 0.18 * inch
             c.setFont(FONT_NAME, 8)
             lines = wrap_text(c, period_data['goal_kpi'], 6*inch, FONT_NAME, 8)
-            for line in lines[:3]:  # 2에서 3으로 증가
-                c.drawString(1.3 * inch, y_pos, line)
+            for line in lines[:5]:  # 3에서 5로 증가
+                c.drawString(1.4 * inch, y_pos, line)
                 y_pos -= 0.16 * inch
         
         actions = period_data.get('actions', [])
         if actions:
             c.setFont(FONT_NAME_BOLD, 8)
-            c.drawString(1.2 * inch, y_pos, "액션 플랜:")
+            c.drawString(1.2 * inch, y_pos, "▶액션 플랜:")
             y_pos -= 0.18 * inch
             c.setFont(FONT_NAME, 8)
-            for action in actions[:3]:
+            for action in actions[:5]:  # 3에서 5로 증가
                 wrapped = wrap_text(c, f"• {action}", 5.8*inch, FONT_NAME, 8)
-                for line in wrapped[:2]:  # 1에서 2로 증가
-                    c.drawString(1.3 * inch, y_pos, line)
+                for line in wrapped[:3]:  # 2에서 3으로 증가
+                    c.drawString(1.4 * inch, y_pos, line)
                     y_pos -= 0.16 * inch
         
         y_pos -= 0.2 * inch
@@ -994,6 +1042,10 @@ def wrap_text(c, text, max_width, font_name, font_size):
     if not text or not isinstance(text, str):
         return []
     
+    # 텍스트 길이 제한 (너무 긴 텍스트는 잘라내기)
+    if len(text) > 1000:
+        text = text[:1000] + "..."
+    
     # 한글과 영문을 구분하여 처리
     import re
     
@@ -1010,7 +1062,10 @@ def wrap_text(c, text, max_width, font_name, font_size):
         if current_line and not current_line.endswith(' ') and not token.startswith(' '):
             test_line = current_line + " " + token
         
-        if c.stringWidth(test_line, font_name, font_size) <= max_width:
+        # 너비 체크 시 여유 공간 추가 (10% 여유)
+        safe_width = max_width * 0.9
+        
+        if c.stringWidth(test_line, font_name, font_size) <= safe_width:
             current_line = test_line
         else:
             if current_line:

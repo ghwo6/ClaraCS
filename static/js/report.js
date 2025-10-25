@@ -121,6 +121,10 @@ class ReportManager {
     }
     
     async callGenerateReportAPI(template = 'standard') {
+        // 선택된 카테고리 가져오기
+        const categorySelect = document.getElementById('category-select');
+        const selectedCategory = categorySelect ? categorySelect.value : 'ClaraCS';
+        
         const response = await fetch('/api/report/generate', {
             method: 'POST',
             headers: {
@@ -128,7 +132,8 @@ class ReportManager {
             },
             body: JSON.stringify({
                 user_id: this.currentUserId,  // file_id는 자동 선택
-                template: template
+                template: template,
+                company_name: selectedCategory  // 선택된 카테고리를 회사명으로 전달
             })
         });
         
