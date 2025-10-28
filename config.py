@@ -28,3 +28,10 @@ class Config:
     # Flask 설정
     SECRET_KEY = os.getenv('SECRET_KEY', 'dev-secret-key')
     DEBUG = os.getenv('DEBUG', 'True').lower() == 'true'
+
+    # 이메일 설정
+    EMAIL_SENDER = os.getenv('EMAIL_ADDRESS')      # 보내는 이메일 주소
+    SMTP_SERVER = os.getenv('MAIL_SERVER')        # SMTP 서버
+    SMTP_PORT = int(os.getenv('MAIL_PORT', 587))  # SMTP 포트
+    SMTP_USER = os.getenv('EMAIL_ADDRESS')        # SMTP 로그인 사용자
+    SMTP_PASSWORD = os.getenv('EMAIL_PASSWORD')  # SMTP 앱 비밀번호

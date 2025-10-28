@@ -92,15 +92,16 @@
     <!-- 내보내기/공유 -->
     <section class="section" id="export">
       <div class="head">
-        <h2>리포트 내보내기 · 공유</h2>
+        <h2>리포트 내보내기</h2>
         <div class="toolbar">
+          <button class="btn send" id="btn-send-email">이메일로 받기</button>
           <button class="btn save" id="btn-export-pdf">PDF 다운로드</button>
         </div>
       </div>
       <div class="body">
         <div class="card">
-          <strong>리포트 내보내기</strong>
-          <p class="subtle">생성된 리포트를 PDF 형식으로 다운로드할 수 있습니다.</p>
+          <strong>리포트 다운로드 · 공유</strong>
+          <p class="subtle">생성된 리포트를 PDF로 다운로드하거나 이메일로 손쉽게 공유할 수 있습니다.</p>
         </div>
       </div>
     </section>
@@ -122,5 +123,6 @@
 <script type="text/javascript" src="{{ url_for('static', filename='js/common.js') }}"></script>
 <script type="text/javascript" src="{{ url_for('static', filename='js/report.js') }}"></script>
 <script type="text/javascript" src="{{ url_for('static', filename='js/pdf_export.js') }}"></script>
+<script type="text/javascript" src="{{ url_for('static', filename='js/send_email.js') }}"></script>
 </body>
 </html>
