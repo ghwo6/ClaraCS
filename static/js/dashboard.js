@@ -196,7 +196,16 @@ class DashboardManager {
             labels: categoryData.map(item => item.category_name || item.category),
             datasets: [{
                 data: categoryData.map(item => item.percentage || item.count),
-                backgroundColor: ['#5B8CFF', '#4BC0C0', '#FFCE56', '#FF6384', '#9966FF', '#FF9F40', '#36A2EB'],
+            backgroundColor: [
+                '#FF6384',
+                '#36A2EB',
+                '#FFCE56',
+                '#4BC0C0',
+                '#9966FF',
+                '#FF9F40',
+                '#C9CBCF',
+                '#FF6384'
+            ],
                 borderWidth: 0
             }]
         };

@@ -23,6 +23,141 @@ class UploadService:
         if not os.path.exists(self.upload_folder):
             os.makedirs(self.upload_folder)
     
+    def upload_batch(self, files, user_id=1, batch_name=None):
+        """
+        여러 파일을 배치로 업로드 및 처리
+        
+        Args:
+            files: 파일 리스트
+            user_id: 사용자 ID
+            batch_name: 배치 이름 (선택)
+            
+        Returns:
+            dict: 배치 업로드 결과
+        """
+        try:
+            if not files or len(files) == 0:
+                raise ValueError('업로드할 파일이 없습니다.')
+            
+            logger.info(f"배치 업로드 시작: {len(files)}개 파일")
+            
+            # 1. 배치 생성
+            batch_id = self.upload_db.create_batch(user_id, batch_name)
+            logger.info(f"파일 배치 생성: batch_id={batch_id}")
+            
+            # 2. 각 파일 업로드 처리
+            uploaded_files = []
+            total_row_count = 0
+            errors = []
+            
+            for file in files:
+                try:
+                    # 파일 업로드 (batch_id 포함)
+                    result = self._upload_single_file(file, user_id, batch_id)
+                    uploaded_files.append(result)
+                    total_row_count += result['row_count']
+                    
+                except Exception as e:
+                    logger.error(f"파일 업로드 실패 ({file.filename}): {e}")
+                    errors.append({
+                        'filename': file.filename,
+                        'error': str(e)
+                    })
+            
+            # 3. 배치 정보 업데이트
+            self.upload_db.update_batch_file_count(
+                batch_id, 
+                len(uploaded_files), 
+                total_row_count
+            )
+            
+            # 4. 배치 완료 처리
+            if len(uploaded_files) > 0:
+                self.upload_db.complete_batch(batch_id)
+            
+            logger.info(f"배치 업로드 완료: batch_id={batch_id}, {len(uploaded_files)}/{len(files)} 성공")
+            
+            return {
+                'batch_id': batch_id,
+                'batch_name': batch_name,
+                'total_files': len(files),
+                'successful_files': len(uploaded_files),
+                'failed_files': len(errors),
+                'total_rows': total_row_count,
+                'uploaded_files': uploaded_files,
+                'errors': errors,
+                'created_at': datetime.now().isoformat()
+            }
+            
+        except Exception as e:
+            logger.error(f"배치 업로드 실패: {e}")
+            raise
+    
+    def _upload_single_file(self, file, user_id, batch_id=None):
+        """
+        단일 파일 업로드 (내부용 - 배치 지원)
+        
+        Args:
+            file: 업로드 파일
+            user_id: 사용자 ID
+            batch_id: 배치 ID (선택)
+            
+        Returns:
+            dict: 업로드 결과
+        """
+        # 1. 파일 검증
+        if not file or file.filename == '':
+            raise ValueError('파일이 선택되지 않았습니다.')
+        
+        if not self.allowed_file(file.filename):
+            raise ValueError('허용되지 않은 파일 형식입니다. (csv, xlsx, xls만 허용)')
+        
+        # 2. 파일 저장
+        original_filename = secure_filename(file.filename)
+        file_extension = original_filename.rsplit('.', 1)[1].lower()
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S_%f')  # 마이크로초 추가
+        storage_filename = f"{timestamp}_{original_filename}"
+        storage_path = os.path.join(self.upload_folder, storage_filename)
+        
+        file.save(storage_path)
+        logger.info(f"파일 저장 완료: {storage_path}")
+        
+        # 3. 파일 데이터 읽기
+        df = self._read_file(storage_path, file_extension)
+        row_count = len(df)
+        
+        # 4. 파일 정보 DB 저장 (batch_id 포함)
+        extension_code_id = self.upload_db.get_extension_code_id(file_extension)
+        file_data = {
+            'user_id': user_id,
+            'original_filename': original_filename,
+            'storage_path': storage_path,
+            'extension_code_id': extension_code_id,
+            'row_count': row_count,
+            'status': 'uploaded',
+            'batch_id': batch_id  # 배치 ID 추가
+        }
+        
+        file_id = self.upload_db.insert_file(file_data)
+        logger.info(f"파일 정보 DB 저장 완료: file_id={file_id}, batch_id={batch_id}")
+        
+        # 5. 컬럼 매핑 조회
+        mapping_dict = self.mapping_service.get_active_mappings_dict()
+        
+        # 6. 티켓 데이터 파싱 및 저장
+        tickets_inserted = self._parse_and_save_tickets(df, file_id, user_id, mapping_dict)
+        
+        # 7. 파일 상태 업데이트
+        self.upload_db.update_file_status(file_id, 'processed')
+        
+        return {
+            'file_id': file_id,
+            'original_filename': original_filename,
+            'row_count': row_count,
+            'tickets_inserted': tickets_inserted,
+            'created_at': datetime.now().isoformat()
+        }
+    
     def allowed_file(self, filename):
         """허용된 파일 확장자 체크"""
         return '.' in filename and \
@@ -30,65 +165,11 @@ class UploadService:
     
     def upload(self, file, user_id=1):
         """
-        파일 업로드 및 처리
-        1. 파일 저장
-        2. 파일 정보 DB 저장
-        3. 컬럼 매핑 조회
-        4. 파일 파싱 및 티켓 데이터 저장
+        단일 파일 업로드 및 처리 (기존 API 호환성 유지)
+        배치 없이 개별 파일로 업로드
         """
         try:
-            # 1. 파일 검증
-            if not file or file.filename == '':
-                raise ValueError('파일이 선택되지 않았습니다.')
-            
-            if not self.allowed_file(file.filename):
-                raise ValueError('허용되지 않은 파일 형식입니다. (csv, xlsx, xls만 허용)')
-            
-            # 2. 파일 저장
-            original_filename = secure_filename(file.filename)
-            file_extension = original_filename.rsplit('.', 1)[1].lower()
-            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-            storage_filename = f"{timestamp}_{original_filename}"
-            storage_path = os.path.join(self.upload_folder, storage_filename)
-            
-            file.save(storage_path)
-            logger.info(f"파일 저장 완료: {storage_path}")
-            
-            # 3. 파일 데이터 읽기
-            df = self._read_file(storage_path, file_extension)
-            row_count = len(df)
-            
-            # 4. 파일 정보 DB 저장
-            extension_code_id = self.upload_db.get_extension_code_id(file_extension)
-            file_data = {
-                'user_id': user_id,
-                'original_filename': original_filename,
-                'storage_path': storage_path,
-                'extension_code_id': extension_code_id,
-                'row_count': row_count,
-                'status': 'uploaded'
-            }
-            
-            file_id = self.upload_db.insert_file(file_data)
-            logger.info(f"파일 정보 DB 저장 완료: file_id={file_id}")
-            
-            # 5. 컬럼 매핑 조회 (활성화된 매핑만)
-            mapping_dict = self.mapping_service.get_active_mappings_dict()
-            
-            # 6. 티켓 데이터 파싱 및 저장
-            tickets_inserted = self._parse_and_save_tickets(df, file_id, user_id, mapping_dict)
-            
-            # 7. 파일 상태 업데이트
-            self.upload_db.update_file_status(file_id, 'processed')
-            
-            return {
-                'file_id': file_id,
-                'original_filename': original_filename,
-                'row_count': row_count,
-                'tickets_inserted': tickets_inserted,
-                'created_at': datetime.now().isoformat()
-            }
-            
+            return self._upload_single_file(file, user_id, batch_id=None)
         except Exception as e:
             logger.error(f"파일 업로드 실패: {e}")
             raise
