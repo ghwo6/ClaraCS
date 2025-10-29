@@ -63,7 +63,7 @@ class DatabaseManager:
                 
                 # 연결 상태 확인
                 if connection.is_connected():
-                    logger.debug(f"DB 연결 성공 (attempt {attempt + 1}/{max_retries})")
+                    # logger.debug(f"DB 연결 성공 (attempt {attempt + 1}/{max_retries})")
                     return connection
                 else:
                     logger.warning(f"연결이 끊어져 있습니다. 재연결 시도 {attempt + 1}/{max_retries}...")

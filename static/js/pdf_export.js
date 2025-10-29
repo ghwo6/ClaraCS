@@ -45,8 +45,12 @@ document.addEventListener("DOMContentLoaded", function() {
             const originalText = exportPdfButton.textContent;
             exportPdfButton.textContent = "생성 중...";
 
+            // category-select 값 가져오기
+            const categorySelect = document.getElementById('category-select');
+            const categoryValue = categorySelect ? categorySelect.value : '전체';
+            
             // 1. 백엔드의 /download-pdf URL로 요청을 보냅니다.
-            fetch(`/download-pdf?report_id=${reportId}`)
+            fetch(`/download-pdf?report_id=${reportId}&category=${encodeURIComponent(categoryValue)}`)
                 .then(response => {
                     // 2. 서버의 응답이 성공적인지 확인합니다.
                     if (!response.ok) {

@@ -18,7 +18,7 @@ class ReportService:
         self.report_db = ReportDB()
         self.ai_service = ai_service
     
-    def generate_report(self, user_id: int = 1, file_id: int = None, batch_id: int = None) -> dict:
+    def generate_report(self, user_id: int = 1, file_id: int = None, batch_id: int = None, company_name: str = 'ClaraCS') -> dict:
         """분석 리포트 생성 - GPT 기반 통합 분석
         
         Args:
@@ -90,6 +90,7 @@ class ReportService:
                 'report_id': report_id,
                 'file_id': file_id,
                 'batch_id': batch_id,  # 배치 ID 추가
+                'company_name': company_name,  # 선택된 카테고리 추가
                 'channel_trends': channel_trends,  # 그래프 데이터 추가
                 'summary': analysis_result.get('summary', {}),
                 'insight': analysis_result.get('insight', {}),
