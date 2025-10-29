@@ -23,6 +23,8 @@ import matplotlib.font_manager as fm
 from io import BytesIO
 import base64
 from PIL import Image
+from utils.email_utils import send_email_with_pdf
+import traceback
 
 logger = get_logger(__name__)
 
@@ -207,6 +209,44 @@ def download_pdf_file():
         logger.error(f"상세 오류: {traceback.format_exc()}")
         return jsonify({"error": "리포트를 처리하는 중 서버에서 오류가 발생했습니다."}), 500
 
+@export_bp.route('/send-pdf-email', methods=['POST'])
+def send_pdf_email():
+    """리포트 PDF를 서버에서 생성 후 이메일로 전송"""
+    try:
+        data = request.get_json()
+        report_id = data.get('report_id')
+        email_to = data.get('email')
+
+        if not report_id or not email_to:
+            return jsonify({"error": "report_id와 email이 필요합니다."}), 400
+
+        # 1. DB에서 리포트 데이터 조회
+        report_db = ReportDB()
+        report_data = report_db.get_report_with_snapshots(int(report_id))
+        if not report_data:
+            return jsonify({"error": "해당 리포트를 찾을 수 없습니다."}), 404
+
+        # 2. PDF 생성 (메모리)
+        from io import BytesIO
+        pdf_buffer = BytesIO()
+        pdf_info = {
+            "company_name": "ClaraCS",
+            "date": datetime.date.today().strftime("%Y.%m.%d"),
+            "report_id": report_id,
+            "report_data": report_data
+        }
+        create_report_with_real_data_to_buffer(pdf_buffer, pdf_info)
+        pdf_buffer.seek(0)
+
+        # 3. 이메일 전송
+        send_email_with_pdf(email_to, pdf_buffer)
+
+        return jsonify({"success": True, "message": f"{email_to}로 PDF가 전송되었습니다."})
+
+    except Exception as e:
+        print("[ERROR] PDF 이메일 전송 중 오류 발생:")
+        traceback.print_exc() 
+        return jsonify({"error": "PDF 이메일 전송 중 오류가 발생했습니다."}), 500
 
 def create_report_with_real_data_to_buffer(buffer, pdf_data):
     """실제 리포트 데이터를 기반으로 PDF 생성 (프로토타입 레이아웃 기반)"""
